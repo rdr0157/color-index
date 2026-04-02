@@ -1,0 +1,463 @@
+l<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walla Walla County Community Development – Parcel Information Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; }
+    body {
+      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #1a1f2e;
+      font-size: 14px;
+      padding-bottom: 48px;
+    }
+    .header {
+      background: #0b2d4c;
+      color: #fff;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 4px solid #869d5c;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-seal {
+      width: 50px; height: 50px;
+      border: 2px solid #bb3829;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      background: rgba(255,255,255,0.08);
+    }
+    .header-agency { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px; text-transform: none; letter-spacing: 0; }
+    .header-title  { font-size: 16px; font-weight: 700; line-height: 1.2; color: #fff; }
+    .header-sub    { font-size: 14px; color: #fff; opacity: .85; margin-top: 3px; }
+    .btn-view {
+      background: #869d5c;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 9px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .btn-view:hover { background: #7a8f52; }
+    .page { max-width: 900px; margin: 22px auto; padding: 0 22px; }
+    .two-col { display: table; width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 14px; }
+    .two-col-cell { display: table-cell; width: 50%; vertical-align: top; padding-right: 7px; }
+    .two-col-cell + .two-col-cell { padding-right: 0; padding-left: 7px; }
+    .section {
+      background: #fff;
+      border: 1px solid #d1d5de;
+      border-radius: 7px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .section-head {
+      background: #0b2d4c;
+      color: #fff;
+      padding: 7px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0;
+    }
+    .section-head h2 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: #fff;
+      margin: 0;
+    }
+    .section-head-link {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0000EE;
+      text-decoration: none;
+      white-space: nowrap;
+      background: #fdfbf3;
+      border: 1px solid #869d5c;
+      border-radius: 4px;
+      padding: 3px 8px;
+    }
+    .section-head-link:hover { text-decoration: underline; }
+    /* Definition list replacing tables */
+    .dlist { width: 100%; margin: 0; padding: 0; }
+    .dlist-row { display: flex; border-bottom: 1px solid #eef0f4; }
+    .dlist-row:last-child { border-bottom: none; }
+    .dlist-row:nth-child(even) { background: #fafbfd; }
+    .dlist dt { padding: 6px 14px; font-size: 12.5px; vertical-align: top; line-height: 1.4; word-break: break-word; color: #000; width: 44%; font-weight: 500; flex-shrink: 0; }
+    .dlist dd { padding: 6px 14px; font-size: 12.5px; vertical-align: top; line-height: 1.4; word-break: break-word; font-weight: 500; color: #1a1f2e; flex: 1; margin: 0; }
+    .val-blue { color: #0000FF; }
+    .val-link { color: #0000FF; text-decoration: none; font-weight: 500; }
+    .val-link:hover { text-decoration: underline; }
+    .setback-link { color: #0000FF; text-decoration: none; font-weight: 500; font-size: 12.5px; }
+    .setback-link:hover { text-decoration: underline; }
+    /* Critical areas */
+    .ca-val   { font-weight: 400; }
+    .ca-yes   { color: #0000FF; }
+    .ca-no    { color: #16a34a; font-weight: 400; }
+    .ca-text  { color: #0000FF; }
+    /* Disclaimer */
+    .disclaimer {
+      border: 1px solid #869d5c;
+      background: #fdfbf3;
+      border-radius: 7px;
+      padding: 11px 16px;
+      margin-bottom: 16px;
+      font-size: 11.5px;
+      color: #000;
+      line-height: 1.65;
+    }
+    .disclaimer strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; color: #000; }
+    /* Footer */
+    .footer {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px 22px;
+      font-size: 11px;
+      color: #000;
+      border-top: 1px solid #d1d5de;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .footer a { color: #000; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @page { size: letter; margin: 0.4in; }
+    @media print {
+      .btn-view  { display: none !important; }
+      .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px 20px; }
+      body { background: #fff; padding: 0; margin: 0; font-size: 10px; }
+      .page { margin: 0; padding: 4px 8px; max-width: 100%; }
+      .two-col { display: table; width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 6px; }
+      .two-col-cell { display: table-cell; width: 50%; vertical-align: top; padding-right: 4px; }
+      .two-col-cell + .two-col-cell { padding-right: 0; padding-left: 4px; }
+      .section { break-inside: avoid; margin-bottom: 6px; border-radius: 3px; }
+      .section-head { padding: 3px 8px; font-size: 8.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .dlist dt, .dlist dd { padding: 2px 8px; font-size: 9.5px; }
+      .ca-val { font-size: 9.5px; }
+      .disclaimer { break-inside: avoid; padding: 5px 10px; font-size: 9px; margin-bottom: 4px; }
+      .disclaimer strong { font-size: 8.5px; margin-bottom: 2px; }
+      .ca-yes { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ca-no  { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-seal">
+      <img src="https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg" alt="Walla Walla County Seal" style="width:44px;height:45px;object-fit:contain;border-radius:50%;">
+    </div>
+    <div>
+      <div class="header-agency">Walla Walla County</div>
+      <div class="header-title">Community Development</div>
+      <div class="header-sub">Parcel Information Report &nbsp;·&nbsp; <span id="report-date"></span></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="btn-view" class="btn-view" style="display:none;" onclick="window.open(window.location.href + '&print=1', '_blank');">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      View Report
+    </button>
+    <button id="btn-print" class="btn-view" style="display:none;" onclick="window.print();">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / Save PDF
+    </button>
+  </div>
+</div>
+
+<div class="page">
+  <div class="two-col" style="font-size:0;">
+    <div class="two-col-cell" style="font-size:14px;"><div class="section">
+      <div class="section-head">
+        <h2>Property Information</h2>
+      </div>
+      <dl class="dlist">
+        <div class="dlist-row"><dt>Parcel Number</dt><dd class="val-blue" id="f-geo">—</dd></div>
+        <div class="dlist-row"><dt>Site Address</dt><dd id="f-sit">—</dd></div>
+        <div class="dlist-row"><dt>Owner</dt><dd class="val-blue" id="f-owner">—</dd></div>
+        <div class="dlist-row"><dt>Mailing Address</dt><dd id="f-mail">—</dd></div>
+        <div class="dlist-row"><dt>Legal Description</dt><dd id="f-legal">—</dd></div>
+        <div class="dlist-row"><dt>Area (ac)</dt><dd id="f-acres">—</dd></div>
+        <div class="dlist-row"><dt>Fire District</dt><dd id="f-fire">—</dd></div>
+        <div class="dlist-row"><dt>Plat Book Page</dt><dd id="f-plat">—</dd></div>
+        <div class="dlist-row"><dt>Assessor's Website</dt><dd id="f-link">—</dd></div>
+      </dl>
+    </div></div><!--
+ --><div class="two-col-cell" style="font-size:14px;"><div class="section">
+      <div class="section-head">
+        <h2>Development Regulations</h2>
+      </div>
+      <dl class="dlist">
+        <div class="dlist-row"><dt>Zoning</dt><dd class="val-blue" id="f-zoning">—</dd></div>
+        <div class="dlist-row"><dt>Land Use</dt><dd id="f-landuse">—</dd></div>
+        <div class="dlist-row"><dt>Urban Growth Area</dt><dd id="f-uga">—</dd></div>
+        <div class="dlist-row"><dt>Shoreline Designation</dt><dd id="f-shoreline">—</dd></div>
+        <div class="dlist-row"><dt>Mill Creek Wildfire Protection</dt><dd id="f-millcreek">—</dd></div>
+        <div class="dlist-row"><dt>Front Setback</dt><dd id="f-sfr">—</dd></div>
+        <div class="dlist-row"><dt>Side Setback</dt><dd id="f-ssi">—</dd></div>
+        <div class="dlist-row"><dt>Rear Setback</dt><dd id="f-sre">—</dd></div>
+        <div class="dlist-row"><dt>Setback Note</dt><dd><a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT17ZO_CH17.18DESTENDI_17.18.020TADEDIRE" target="_blank" class="val-link" aria-label="WWCC 17.18.020 Density and Dimensions - opens in new tab">WWCC 17.18.020 - Density and Dimensions</a></dd></div>
+      </dl>
+    </div></div>
+  </div>
+
+  <!-- Critical Areas -->
+
+  <div class="section">
+    <div class="section-head">
+      <h2>Critical Areas</h2>
+      <a class="section-head-link" href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.08CRARPR" target="_blank" aria-label="WWCC Chapter 18.08 - opens Walla Walla County Code in new tab">WWCC Chapter 18.08</a>
+    </div>
+    <dl class="dlist">
+        <div class="dlist-row"><dt>Flood Hazard Risk</dt><dd><div class="ca-val" id="f-flood">—</div></dd></div>
+        <div class="dlist-row"><dt>Flood Hazard Zone</dt><dd><div class="ca-val" id="f-fz">—</div></dd></div>
+        <div class="dlist-row"><dt>CARA High Recharge Vulnerability</dt><dd><div class="ca-val" id="f-chr">—</div></dd></div>
+        <div class="dlist-row"><dt>CARA Moderate Recharge Vulnerability</dt><dd><div class="ca-val" id="f-cmr">—</div></dd></div>
+        <div class="dlist-row"><dt>Ferruginous Hawk Habitat</dt><dd><div class="ca-val" id="f-chk">—</div></dd></div>
+        <div class="dlist-row"><dt>Neotropical Migrant Songbird Habitat</dt><dd><div class="ca-val" id="f-cso">—</div></dd></div>
+        <div class="dlist-row"><dt>Wintering Birds of Prey Habitat</dt><dd><div class="ca-val" id="f-cwi">—</div></dd></div>
+        <div class="dlist-row"><dt>Slope / Erosion Hazard</dt><dd><div class="ca-val" id="f-csl">—</div></dd></div>
+        <div class="dlist-row"><dt>Liquefaction</dt><dd><div class="ca-val" id="f-cli">—</div></dd></div>
+        <div class="dlist-row"><dt>Wetlands</dt><dd><div class="ca-val" id="f-cwe">—</div></dd></div>
+        <div class="dlist-row"><dt>Riparian Buffer</dt><dd><div class="ca-val" id="f-rip">—</div></dd></div>
+      </dl>
+  </div>
+
+  <div class="disclaimer" role="note">
+    <strong>Disclaimer</strong>
+    This report is generated from GIS data maintained by Walla Walla County Community Development Department and is provided for informational purposes only. The presence of a mapped critical area does not constitute a formal determination. Additional review or information may be required prior to development.
+    <br><br>
+    Parcels as shown may not reflect legal property boundaries. For information regarding public surveys or plat maps please contact the <a href="https://www.wwcowa.gov/departments/assessor/index.php" target="_blank" style="color:#0000FF;" aria-label="Walla Walla County Assessor's Office - opens in new tab">Walla Walla County Assessor's Office</a>.
+    <br><br>
+    <strong style="font-size:10.5px;color:#000;">Other useful links:</strong><br>
+    <a href="https://www.wwcowa.gov/government/community_development/applications.php" target="_blank" style="color:#0000FF;" aria-label="Building Applications and Forms - opens in new tab">Building Applications &amp; Forms</a>
+    &nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="https://cms7files.revize.com/wallawallacounty/document_center/commdev/Applications/Guide%20-%20Complete%20Application.pdf?t=202601061827390&t=202601061827390" target="_blank" style="color:#0000FF;" aria-label="Complete Application Guide PDF - opens in new tab">Complete Application Guide</a>
+  </div>
+</div>
+
+<div class="footer">
+  <div>
+    <div>Walla Walla County Community Development Department</div>
+    <div>310 W. Poplar Street, Suite 200 &nbsp;·&nbsp; Walla Walla, WA 99362</div>
+    <div>509-524-2610 &nbsp;·&nbsp; <a href="mailto:commdev@wwcowa.gov">commdev@wwcowa.gov</a></div>
+  </div>
+  <div style="text-align:right;white-space:nowrap;" id="footer-date"></div>
+</div>
+
+<script>
+  var p = new URLSearchParams(window.location.search);
+
+  function get(key) {
+    try {
+      var v = p.get(key);
+      if (!v || v === 'null' || v === 'undefined') return null;
+      var decoded = decodeURIComponent(v.replace(/\+/g, ' ')).trim();
+      return decoded === '' ? null : decoded;
+    } catch(e) {
+      var raw = p.get(key);
+      return (raw && raw !== 'null' && raw !== 'undefined') ? raw.trim() : null;
+    }
+  }
+
+  function set(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val || '—';
+  }
+
+  // Checklist URLs for each CA field
+  var checklists = {
+    'f-chr': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
+    'f-cmr': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
+    'f-chk': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-cso': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-cwi': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-csl': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Geologically%20Hazardous%20Areas.html',
+    'f-cli': 'https://www.wwcowa.gov/document_center/commdev/Applications/Preliminary%20Liquefaction%20Assessment.html',
+    'f-cwe': 'https://cms7files.revize.com/wallawallacounty/document_center/commdev/Applications/Checklist%20-%20Wetlands.pdf',
+    'f-rip': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html'
+  };
+
+  function setCA(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var v = val || 'NO';
+    var lower = v.toLowerCase();
+    if (lower === 'no') {
+      el.textContent = v;
+      el.className = 'ca-val ca-no';
+    } else {
+      el.className = 'ca-val ca-yes';
+      var url = checklists[id];
+      if (url) {
+        el.innerHTML = '<span style="color:#dc2626;">' + v + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="' + url + '" target="_blank" aria-label="See checklist - opens in new tab" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist &#x2197;</a>';
+      } else {
+        el.innerHTML = '<span style="color:#dc2626;">' + v + '</span>';
+      }
+    }
+  }
+
+  function setCAText(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var v = val || 'NO';
+    if (v.toUpperCase() === 'NO') {
+      el.textContent = v;
+      el.className = 'ca-val ca-no';
+    } else {
+      el.className = 'ca-val ca-yes';
+      el.innerHTML = '<span style="color:#dc2626;">' + v + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.12FLPR" target="_blank" aria-label="See WWCC Chapter 18.12 Flood Damage Prevention - opens in new tab" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See WWCC Chapter 18.12 Flood Damage Prevention &#x2197;</a>';
+    }
+  }
+
+  // ── Dates ──
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('report-date').textContent = 'Generated ' + dateStr;
+  document.getElementById('footer-date').textContent = 'Generated: ' + dateStr;
+
+  // ── Header ──
+  var sit = get('sit');
+  var own = get('own');
+  var geo = get('geo');
+
+  // ── Property Information ──
+  set('f-geo',   geo);
+  set('f-sit',   sit);
+  set('f-owner', own);
+  set('f-fire',  get('fir'));
+
+  var mailEl = document.getElementById('f-mail');
+  var ad1 = get('ad1'), cty = get('cty'), pst = get('pst'), zip = get('zip');
+  var line2 = '';
+  if (cty) line2 += cty;
+  if (pst) line2 += (line2 ? ', ' : '') + pst;
+  if (zip) line2 += (line2 ? ' ' : '') + zip;
+  if (mailEl) {
+    if (ad1 && line2)    mailEl.innerHTML = ad1 + '<br>' + line2;
+    else if (ad1)        mailEl.textContent = ad1;
+    else if (line2)      mailEl.textContent = line2;
+    else                 mailEl.textContent = '—';
+  }
+
+  set('f-legal', get('leg'));
+
+  var acr = get('acr');
+  document.getElementById('f-acres').textContent = (acr && !isNaN(parseFloat(acr))) ? parseFloat(acr).toFixed(2) + ' ac' : '—';
+
+  var platEl = document.getElementById('f-plat');
+  var pbp = get('pbp');
+  var pbl = get('pbl');
+  if (platEl) {
+    if (pbp && pbl) {
+      var platUrl = 'https://www.co.walla-walla.wa.us/document_center/GIS/Taxbooks/' + pbl;
+      platEl.innerHTML = '<a class="val-link" href="' + platUrl + '" target="_blank" aria-label="' + pbp + ' - opens plat document in new tab">' + pbp + '</a>';
+    } else if (pbp) {
+      platEl.textContent = pbp;
+    } else {
+      platEl.textContent = '—';
+    }
+  }
+
+  var pid = get('lnk');
+  var linkEl = document.getElementById('f-link');
+  if (linkEl && pid) {
+    var fullUrl = 'https://propertysearch.co.walla-walla.wa.us/PropertyAccess/Property.aspx?cid=0&year=2025&prop_id=' + pid;
+    linkEl.innerHTML = '<a class="val-link" href="' + fullUrl + '" target="_blank" aria-label="View Property Record in Assessor database - opens in new tab">View Property Record</a>';
+  } else {
+    if (linkEl) linkEl.textContent = '—';
+  }
+
+  // ── Development Regulations ──
+  var zon = get('zon'), zab = get('zab');
+  set('f-zoning', (zon && zab) ? zon + '  (' + zab + ')' : (zon || null));
+
+  var lu = get('lu'), lab = get('lab');
+  set('f-landuse', (lu && lab) ? lu + '  (' + lab + ')' : (lu || null));
+
+  set('f-uga',      get('uga'));
+
+  var sho = get('sho'), sha = get('sha');
+  set('f-shoreline', (sho && sha) ? sho + '  (' + sha + ')' : (sho || null));
+
+  set('f-millcreek', get('mc'));
+  set('f-sfr', get('sfr'));
+  set('f-ssi', get('ssi'));
+  set('f-sre', get('sre'));
+
+  // ── Critical Areas ──
+  setCAText('f-flood', get('cfr'));
+  setCAText('f-fz',    get('cfz'));
+  setCA('f-chr', get('chr'));
+  setCA('f-cmr', get('cmr'));
+  setCA('f-chk', get('chk'));
+  setCA('f-cso', get('cso'));
+  setCA('f-cwi', get('cwi'));
+  setCA('f-csl', get('csl'));
+  setCA('f-cli', get('cli'));
+  setCA('f-cwe', get('cwe'));
+
+  var ripEl = document.getElementById('f-rip');
+  var ripName = get('rnn');
+  var ripBuf  = get('rbn');
+  if (ripEl) {
+    var nameIsNo = !ripName || ripName.toUpperCase() === 'NO';
+    if (nameIsNo) {
+      ripEl.textContent = 'NO';
+      ripEl.className = 'ca-val ca-no';
+    } else {
+      var ripDisplay = ripName;
+      if (ripBuf && ripBuf.toUpperCase() !== 'NO') ripDisplay += ' — ' + ripBuf;
+      ripEl.className = 'ca-val ca-yes';
+      var ripUrl = checklists['f-rip'];
+      ripEl.innerHTML = '<span style="color:#dc2626;">' + ripDisplay + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="' + ripUrl + '" target="_blank" aria-label="See checklist for riparian buffer - opens in new tab" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist &#x2197;</a>';
+    }
+  }
+
+  // ── Show correct button ──
+  try {
+    if (p.get('print') === '1') {
+      document.getElementById('btn-print').style.display = 'flex';
+    } else {
+      document.getElementById('btn-view').style.display = 'flex';
+    }
+  } catch(e) {
+    var vb = document.getElementById('btn-view');
+    if (vb) vb.style.display = 'flex';
+  }
+</script>
+
+</body>
+</html>
