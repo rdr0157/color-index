@@ -363,6 +363,11 @@
   var own = get('own');
   var geo = get('geo');
 
+  // Set page title for PDF filename
+  if (geo) {
+    document.title = 'WWCCDD Parcel Information Report APN ' + geo;
+  }
+
   // ── Property Information ──
   set('f-geo',   geo);
   set('f-sit',   sit);
