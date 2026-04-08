@@ -282,203 +282,202 @@
   <div>
     <div>Walla Walla County Community Development Department</div>
     <div>310 W. Poplar Street, Suite 200 &nbsp;·&nbsp; Walla Walla, WA 99362</div>
-    <div>509-524-2610 &nbsp;·&nbsp; <a href="/cdn-cgi/l/email-protection#8ae9e5e7e7eeeffccafdfde9e5fdeba4ede5fc"><span class="__cf_email__" data-cfemail="a6c5c9cbcbc2c3d0e6d1d1c5c9d1c788c1c9d0">[email&#160;protected]</span></a></div>
+    <div>509-524-2610 &nbsp;·&nbsp; <a href="mailto:commdev@wwcowa.gov">commdev@wwcowa.gov</a></div>
   </div>
   <div style="text-align:right;white-space:nowrap;" id="footer-date"></div>
 </div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
+  var p = new URLSearchParams(window.location.search);
 
-var p = new URLSearchParams(window.location.search);
+  function get(key) {
+    try {
+      var v = p.get(key);
+      if (!v || v === 'null' || v === 'undefined') return null;
+      var decoded = decodeURIComponent(v.replace(/\+/g, ' ')).trim();
+      return decoded === '' ? null : decoded;
+    } catch(e) {
+      var raw = p.get(key);
+      return (raw && raw !== 'null' && raw !== 'undefined') ? raw.trim() : null;
+    }
+  }
 
-function get(key) {
-try {
-var v = p.get(key);
-if (!v || v === ‘null’ || v === ‘undefined’) return null;
-var decoded = decodeURIComponent(v.replace(/+/g, ’ ’)).trim();
-return decoded === ‘’ ? null : decoded;
-} catch(e) {
-var raw = p.get(key);
-return (raw && raw !== ‘null’ && raw !== ‘undefined’) ? raw.trim() : null;
-}
-}
+  function set(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val || '—';
+  }
 
-function set(id, val) {
-var el = document.getElementById(id);
-if (el) el.textContent = val || ‘—’;
-}
+  // Checklist URLs for each CA field
+  var checklists = {
+    'f-chr': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
+    'f-cmr': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
+    'f-chk': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-cso': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-cwi': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-csh': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
+    'f-csl': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Geologically%20Hazardous%20Areas.html',
+    'f-cli': 'https://www.wwcowa.gov/document_center/commdev/Applications/Preliminary%20Liquefaction%20Assessment.html',
+    'f-cwe': 'https://cms7files.revize.com/wallawallacounty/document_center/commdev/Applications/Checklist%20-%20Wetlands.pdf',
+    'f-rip': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html'
+  };
 
-// Checklist URLs for each CA field
-var checklists = {
-‘f-chr’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html’,
-‘f-cmr’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html’,
-‘f-chk’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html’,
-‘f-cso’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html’,
-‘f-cwi’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html’,
-‘f-csh’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html’,
-‘f-csl’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Geologically%20Hazardous%20Areas.html’,
-‘f-cli’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Preliminary%20Liquefaction%20Assessment.html’,
-‘f-cwe’: ‘https://cms7files.revize.com/wallawallacounty/document_center/commdev/Applications/Checklist%20-%20Wetlands.pdf’,
-‘f-rip’: ‘https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html’
-};
+  function setCA(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var v = val || 'NO';
+    var lower = v.toLowerCase();
+    if (lower === 'no') {
+      el.textContent = v;
+      el.className = 'ca-val ca-no';
+    } else {
+      el.className = 'ca-val ca-yes';
+      var url = checklists[id];
+      if (url) {
+        el.innerHTML = '<span style="color:#B72121;">' + v + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="' + url + '" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
+      } else {
+        el.innerHTML = '<span style="color:#B72121;">' + v + '</span>';
+      }
+    }
+  }
 
-function setCA(id, val) {
-var el = document.getElementById(id);
-if (!el) return;
-var v = val || ‘NO’;
-var lower = v.toLowerCase();
-if (lower === ‘no’) {
-el.textContent = v;
-el.className = ‘ca-val ca-no’;
-} else {
-el.className = ‘ca-val ca-yes’;
-var url = checklists[id];
-if (url) {
-el.innerHTML = ‘<span style="color:#B72121;">’ + v + ‘</span> <span style="color:#1a1f2e;">–</span> <a href="' + url + '" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist ↗<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>’;
-} else {
-el.innerHTML = ‘<span style="color:#B72121;">’ + v + ‘</span>’;
-}
-}
-}
+  function setCAText(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var v = val || 'NO';
+    if (v.toUpperCase() === 'NO') {
+      el.textContent = v;
+      el.className = 'ca-val ca-no';
+    } else {
+      el.className = 'ca-val ca-yes';
+      el.innerHTML = '<span style="color:#B72121;">' + v + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.12FLPR" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See WWCC Chapter 18.12 Flood Damage Prevention &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
+    }
+  }
 
-function setCAText(id, val) {
-var el = document.getElementById(id);
-if (!el) return;
-var v = val || ‘NO’;
-if (v.toUpperCase() === ‘NO’) {
-el.textContent = v;
-el.className = ‘ca-val ca-no’;
-} else {
-el.className = ‘ca-val ca-yes’;
-el.innerHTML = ‘<span style="color:#B72121;">’ + v + ‘</span> <span style="color:#1a1f2e;">–</span> <a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.12FLPR" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See WWCC Chapter 18.12 Flood Damage Prevention ↗<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>’;
-}
-}
+  // ── Dates ──
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('report-date').textContent = 'Generated ' + dateStr;
+  document.getElementById('footer-date').textContent = 'Generated: ' + dateStr;
 
-// ── Dates ──
-var now = new Date();
-var dateStr = now.toLocaleDateString(‘en-US’, { year:‘numeric’, month:‘long’, day:‘numeric’ });
-document.getElementById(‘report-date’).textContent = ’Generated ’ + dateStr;
-document.getElementById(‘footer-date’).textContent = ’Generated: ’ + dateStr;
+  // ── Header ──
+  var sit = get('sit');
+  var own = get('own');
+  var geo = get('geo');
 
-// ── Header ──
-var sit = get(‘sit’);
-var own = get(‘own’);
-var geo = get(‘geo’);
+  // ── Property Information ──
+  set('f-geo',   geo);
+  set('f-sit',   sit);
+  set('f-owner', own);
+  set('f-fire',  get('fir'));
 
-// ── Property Information ──
-set(‘f-geo’,   geo);
-set(‘f-sit’,   sit);
-set(‘f-owner’, own);
-set(‘f-fire’,  get(‘fir’));
+  var mailEl = document.getElementById('f-mail');
+  var ad1 = get('ad1'), cty = get('cty'), pst = get('pst'), zip = get('zip');
+  var line2 = '';
+  if (cty) line2 += cty;
+  if (pst) line2 += (line2 ? ', ' : '') + pst;
+  if (zip) line2 += (line2 ? ' ' : '') + zip;
+  if (mailEl) {
+    if (ad1 && line2)    mailEl.innerHTML = ad1 + '<br>' + line2;
+    else if (ad1)        mailEl.textContent = ad1;
+    else if (line2)      mailEl.textContent = line2;
+    else                 mailEl.textContent = '—';
+  }
 
-var mailEl = document.getElementById(‘f-mail’);
-var ad1 = get(‘ad1’), cty = get(‘cty’), pst = get(‘pst’), zip = get(‘zip’);
-var line2 = ‘’;
-if (cty) line2 += cty;
-if (pst) line2 += (line2 ? ’, ’ : ‘’) + pst;
-if (zip) line2 += (line2 ? ’ ’ : ‘’) + zip;
-if (mailEl) {
-if (ad1 && line2)    mailEl.innerHTML = ad1 + ‘<br>’ + line2;
-else if (ad1)        mailEl.textContent = ad1;
-else if (line2)      mailEl.textContent = line2;
-else                 mailEl.textContent = ‘—’;
-}
+  set('f-legal', get('leg'));
 
-set(‘f-legal’, get(‘leg’));
+  var acr = get('acr');
+  document.getElementById('f-acres').textContent = (acr && !isNaN(parseFloat(acr))) ? parseFloat(acr).toFixed(2) + ' ac' : '—';
 
-var acr = get(‘acr’);
-document.getElementById(‘f-acres’).textContent = (acr && !isNaN(parseFloat(acr))) ? parseFloat(acr).toFixed(2) + ’ ac’ : ‘—’;
+  var platEl = document.getElementById('f-plat');
+  var pbp = get('pbp');
+  var pbl = get('pbl');
+  if (platEl) {
+    if (pbp && pbl) {
+      var platUrl = 'https://www.co.walla-walla.wa.us/document_center/GIS/Taxbooks/' + pbl;
+      platEl.innerHTML = '<a class="val-link" href="' + platUrl + '" target="_blank">' + pbp + '<span class="sr-only"> (opens in new tab)</span></a>';
+    } else if (pbp) {
+      platEl.textContent = pbp;
+    } else {
+      platEl.textContent = '—';
+    }
+  }
 
-var platEl = document.getElementById(‘f-plat’);
-var pbp = get(‘pbp’);
-var pbl = get(‘pbl’);
-if (platEl) {
-if (pbp && pbl) {
-var platUrl = ‘https://www.co.walla-walla.wa.us/document_center/GIS/Taxbooks/’ + pbl;
-platEl.innerHTML = ‘<a class="val-link" href="' + platUrl + '" target="_blank">’ + pbp + ‘<span class="sr-only"> (opens in new tab)</span></a>’;
-} else if (pbp) {
-platEl.textContent = pbp;
-} else {
-platEl.textContent = ‘—’;
-}
-}
+  var pid = get('lnk');
+  var linkEl = document.getElementById('f-link');
+  if (linkEl && pid) {
+    var fullUrl = 'https://propertysearch.co.walla-walla.wa.us/PropertyAccess/Property.aspx?cid=0&year=2025&prop_id=' + pid;
+    linkEl.innerHTML = '<a class="val-link" href="' + fullUrl + '" target="_blank">View Property Record<span class="sr-only"> (opens in new tab)</span></a>';
+  } else {
+    if (linkEl) linkEl.textContent = '—';
+  }
 
-var pid = get(‘lnk’);
-var linkEl = document.getElementById(‘f-link’);
-if (linkEl && pid) {
-var fullUrl = ‘https://propertysearch.co.walla-walla.wa.us/PropertyAccess/Property.aspx?cid=0&year=2025&prop_id=’ + pid;
-linkEl.innerHTML = ‘<a class="val-link" href="' + fullUrl + '" target="_blank">View Property Record<span class="sr-only"> (opens in new tab)</span></a>’;
-} else {
-if (linkEl) linkEl.textContent = ‘—’;
-}
+  // ── Development Regulations ──
+  var zon = get('zon'), zab = get('zab');
+  set('f-zoning', (zon && zab) ? zon + '  (' + zab + ')' : (zon || null));
 
-// ── Development Regulations ──
-var zon = get(‘zon’), zab = get(‘zab’);
-set(‘f-zoning’, (zon && zab) ? zon + ’  (’ + zab + ‘)’ : (zon || null));
+  var lu = get('lu'), lab = get('lab');
+  set('f-landuse', (lu && lab) ? lu + '  (' + lab + ')' : (lu || null));
 
-var lu = get(‘lu’), lab = get(‘lab’);
-set(‘f-landuse’, (lu && lab) ? lu + ’  (’ + lab + ‘)’ : (lu || null));
+  set('f-uga',      get('uga'));
 
-set(‘f-uga’,      get(‘uga’));
+  var sho = get('sho'), sha = get('sha');
+  set('f-shoreline', (sho && sha) ? sho + '  (' + sha + ')' : (sho || null));
 
-var sho = get(‘sho’), sha = get(‘sha’);
-set(‘f-shoreline’, (sho && sha) ? sho + ’  (’ + sha + ‘)’ : (sho || null));
+  set('f-millcreek', get('mc'));
+  set('f-sfr', get('sfr'));
+  set('f-ssi', get('ssi'));
+  set('f-sre', get('sre'));
 
-set(‘f-millcreek’, get(‘mc’));
-set(‘f-sfr’, get(‘sfr’));
-set(‘f-ssi’, get(‘ssi’));
-set(‘f-sre’, get(‘sre’));
+  // Setback conditions — only show row if field has a value
+  var sbn = get('sbn');
+  if (sbn) {
+    document.getElementById('f-sbn').textContent = sbn;
+    document.getElementById('row-sbn').style.display = 'flex';
+  }
 
-// Setback conditions — only show row if field has a value
-var sbn = get(‘sbn’);
-if (sbn) {
-document.getElementById(‘f-sbn’).textContent = sbn;
-document.getElementById(‘row-sbn’).style.display = ‘flex’;
-}
+  // ── Critical Areas ──
+  setCAText('f-flood', get('cfr'));
+  setCAText('f-fz',    get('cfz'));
+  setCA('f-chr', get('chr'));
+  setCA('f-cmr', get('cmr'));
+  setCA('f-chk', get('chk'));
+  setCA('f-cso', get('cso'));
+  setCA('f-cwi', get('cwi'));
+  setCA('f-csh', get('csh'));
+  setCA('f-csl', get('csl'));
+  setCA('f-cli', get('cli'));
+  setCA('f-cwe', get('cwe'));
 
-// ── Critical Areas ──
-setCAText(‘f-flood’, get(‘cfr’));
-setCAText(‘f-fz’,    get(‘cfz’));
-setCA(‘f-chr’, get(‘chr’));
-setCA(‘f-cmr’, get(‘cmr’));
-setCA(‘f-chk’, get(‘chk’));
-setCA(‘f-cso’, get(‘cso’));
-setCA(‘f-cwi’, get(‘cwi’));
-setCA(‘f-csh’, get(‘csh’));
-setCA(‘f-csl’, get(‘csl’));
-setCA(‘f-cli’, get(‘cli’));
-setCA(‘f-cwe’, get(‘cwe’));
+  var ripEl = document.getElementById('f-rip');
+  var ripName = get('rnn');
+  var ripBuf  = get('rbn');
+  if (ripEl) {
+    var nameIsNo = !ripName || ripName.toUpperCase() === 'NO';
+    if (nameIsNo) {
+      ripEl.textContent = 'NO';
+      ripEl.className = 'ca-val ca-no';
+    } else {
+      var ripDisplay = ripName;
+      if (ripBuf && ripBuf.toUpperCase() !== 'NO') ripDisplay += ' — ' + ripBuf;
+      ripEl.className = 'ca-val ca-yes';
+      var ripUrl = checklists['f-rip'];
+      ripEl.innerHTML = '<span style="color:#B72121;">' + ripDisplay + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="' + ripUrl + '" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
+    }
+  }
 
-var ripEl = document.getElementById(‘f-rip’);
-var ripName = get(‘rnn’);
-var ripBuf  = get(‘rbn’);
-if (ripEl) {
-var nameIsNo = !ripName || ripName.toUpperCase() === ‘NO’;
-if (nameIsNo) {
-ripEl.textContent = ‘NO’;
-ripEl.className = ‘ca-val ca-no’;
-} else {
-var ripDisplay = ripName;
-if (ripBuf && ripBuf.toUpperCase() !== ‘NO’) ripDisplay += ’ — ’ + ripBuf;
-ripEl.className = ‘ca-val ca-yes’;
-var ripUrl = checklists[‘f-rip’];
-ripEl.innerHTML = ‘<span style="color:#B72121;">’ + ripDisplay + ‘</span> <span style="color:#1a1f2e;">–</span> <a href="' + ripUrl + '" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist ↗<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>’;
-}
-}
-
-// ── Show correct button ──
-// ── Show correct button ──
-try {
-if (p.get(‘print’) === ‘1’) {
-document.getElementById(‘btn-print’).style.display = ‘flex’;
-} else {
-document.getElementById(‘btn-view’).style.display = ‘flex’;
-}
-} catch(e) {
-var vb = document.getElementById(‘btn-view’);
-if (vb) vb.style.display = ‘flex’;
-}
+  // ── Show correct button ──
+  // ── Show correct button ──
+  try {
+    if (p.get('print') === '1') {
+      document.getElementById('btn-print').style.display = 'flex';
+    } else {
+      document.getElementById('btn-view').style.display = 'flex';
+    }
+  } catch(e) {
+    var vb = document.getElementById('btn-view');
+    if (vb) vb.style.display = 'flex';
+  }
 </script>
 
 </body>
