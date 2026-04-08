@@ -104,7 +104,7 @@
     .dlist-row { display: flex; border-bottom: 1px solid #eef0f4; }
     .dlist-row:last-child { border-bottom: none; }
     .dlist-row:nth-child(even) { background: #fafbfd; }
-    .dlist dt { padding: 6px 14px; font-size: 12.5px; vertical-align: top; line-height: 1.4; word-break: break-word; color: #000; width: 44%; font-weight: 500; flex-shrink: 0; }
+    .dlist dt { padding: 6px 14px; font-size: 12.5px; vertical-align: top; line-height: 1.4; word-break: break-word; color: #000; width: 30%; font-weight: 500; flex-shrink: 0; }
     .dlist dd { padding: 6px 14px; font-size: 12.5px; vertical-align: top; line-height: 1.4; word-break: break-word; font-weight: 500; color: #1a1f2e; flex: 1; margin: 0; }
     .val-blue { color: #0000FF; }
     .val-link { color: #0000FF; text-decoration: none; font-weight: 500; }
@@ -234,8 +234,7 @@
         <div class="dlist-row"><dt>Front Setback</dt><dd id="f-sfr">—</dd></div>
         <div class="dlist-row"><dt>Side Setback</dt><dd id="f-ssi">—</dd></div>
         <div class="dlist-row"><dt>Rear Setback</dt><dd id="f-sre">—</dd></div>
-        <div class="dlist-row"><dt>Setback Note</dt><dd><a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT17ZO_CH17.18DESTENDI_17.18.020TADEDIRE" target="_blank" class="val-link">WWCC 17.18.020 - Density and Dimensions<span class="sr-only"> (opens in new tab)</span></a></dd></div>
-        <div class="dlist-row" id="row-sbn" style="display:none;"><dt>Setback Conditions</dt><dd id="f-sbn" style="white-space:pre-wrap;line-height:1.6;">—</dd></div>
+        <div class="dlist-row"><dt>Setback Note</dt><dd><a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT17ZO_CH17.18DESTENDI_17.18.020TADEDIRE" target="_blank" class="val-link">WWCC 17.18.020 - Density and Dimensions<span class="sr-only"> (opens in new tab)</span></a><div id="f-sbn" style="white-space:pre-wrap;line-height:1.6;margin-top:4px;font-weight:400;color:#1a1f2e;"></div></dd></div>
       </dl>
     </div></div>
   </div>
@@ -429,11 +428,13 @@
   set('f-ssi', get('ssi'));
   set('f-sre', get('sre'));
 
-  // Setback conditions — only show row if field has a value
+  // Setback conditions — appears below WWCC link if field has a value
   var sbn = get('sbn');
   if (sbn) {
-    document.getElementById('f-sbn').textContent = sbn;
-    document.getElementById('row-sbn').style.display = 'flex';
+    var formatted = sbn.replace(/\s*(\(\d+\))/g, function(match, p1, offset) {
+      return offset === 0 ? p1 : '\n' + p1;
+    });
+    document.getElementById('f-sbn').textContent = formatted;
   }
 
   // ── Critical Areas ──
