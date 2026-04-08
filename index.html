@@ -365,7 +365,10 @@
 
   // Set page title for PDF filename
   if (geo) {
-    document.title = 'WWCCDD Parcel Information Report APN ' + geo;
+    var yyyy = now.getFullYear();
+    var mm = String(now.getMonth() + 1).padStart(2, '0');
+    var dd = String(now.getDate()).padStart(2, '0');
+    document.title = 'WWCCDD Parcel Information Report APN ' + geo + ' ' + yyyy + '.' + mm + '.' + dd;
   }
 
   // ── Property Information ──
