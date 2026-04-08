@@ -468,6 +468,18 @@ ripEl.innerHTML = ‘<span style="color:#B72121;">’ + ripDisplay + ‘</span> 
 }
 
 // ── Show correct button ──
+// ── Show correct button ──
 try {
 if (p.get(‘print’) === ‘1’) {
-document.getElementById(‘btn-print’).sty
+document.getElementById(‘btn-print’).style.display = ‘flex’;
+} else {
+document.getElementById(‘btn-view’).style.display = ‘flex’;
+}
+} catch(e) {
+var vb = document.getElementById(‘btn-view’);
+if (vb) vb.style.display = ‘flex’;
+}
+</script>
+
+</body>
+</html>
