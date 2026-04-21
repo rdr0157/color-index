@@ -29,7 +29,7 @@
     .dlist-row { display: flex; border-bottom: 1px solid #eef0f4; }
     .dlist-row:last-child { border-bottom: none; }
     .dlist-row:nth-child(even) { background: #fafbfd; }
-    .dlist dt { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; color: #000; width: 30%; font-weight: 500; flex-shrink: 0; }
+    .dlist dt { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; color: #000; width: 25%; font-weight: 500; flex-shrink: 0; }
     .dlist dd { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; font-weight: 500; color: #1a1f2e; flex: 1; margin: 0; }
     .val-blue { color: #0000FF; }
     .val-link { color: #0000FF; text-decoration: none; font-weight: 500; }
@@ -117,6 +117,7 @@
         <div class="dlist-row"><dt>Urban Growth Area</dt><dd id="f-uga">—</dd></div>
         <div class="dlist-row"><dt>Shoreline Designation</dt><dd id="f-shoreline">—</dd></div>
         <div class="dlist-row"><dt>Designated Mineral Lands</dt><dd id="f-mineral">—</dd></div>
+        <div class="dlist-row"><dt>Seismic Design Class</dt><dd id="f-seismic">—</dd></div>
         <div class="dlist-row"><dt>Mill Creek Wildfire Protection</dt><dd id="f-millcreek">—</dd></div>
         <div class="dlist-row"><dt>Front Setback</dt><dd id="f-sfr">—</dd></div>
         <div class="dlist-row"><dt>Side Setback</dt><dd id="f-ssi">—</dd></div>
@@ -315,6 +316,7 @@
 
   // Designated Mineral Lands — plain value
   set('f-mineral', get('mrl'));
+  set('f-seismic', get('smc'));
 
   set('f-millcreek', get('mc'));
   set('f-sfr', get('sfr'));
