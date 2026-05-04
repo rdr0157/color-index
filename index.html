@@ -34,12 +34,13 @@
     .val-blue { color: #0000FF; }
     .val-link { color: #0000FF; text-decoration: none; font-weight: 500; }
     .val-link:hover { text-decoration: underline; }
-    .ca-dlist { width: 100%; margin: 0; padding: 0; }
-    .ca-dlist .dlist-row { display: flex; border-bottom: 1px solid #eef0f4; }
-    .ca-dlist .dlist-row:last-child { border-bottom: none; }
-    .ca-dlist .dlist-row:nth-child(even) { background: #fafbfd; }
-    .ca-dlist dt { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; color: #000; width: 40%; font-weight: 500; flex-shrink: 0; }
-    .ca-dlist dd { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; font-weight: 500; color: #1a1f2e; flex: 1; margin: 0; }
+    .ca-table { width: 100%; border-collapse: collapse; }
+    .ca-table tr { border-bottom: 1px solid #eef0f4; }
+    .ca-table tr:last-child { border-bottom: none; }
+    .ca-table tr:nth-child(even) { background: #fafbfd; }
+    .ca-th { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; color: #000; width: 20%; font-weight: 500; text-align: left; vertical-align: middle; }
+    .ca-td { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; width: 30%; vertical-align: middle; border-right: 1px solid #eef0f4; }
+    .ca-td:last-child { border-right: none; }
     .ca-val  { font-weight: 400; font-size: 12.5px; }
     .ca-yes  { color: #0000FF; }
     .ca-no   { color: #357802; font-weight: 400; }
@@ -62,7 +63,7 @@
       .two-col-cell + .two-col-cell { padding-right: 0; padding-left: 4px; }
       .section { break-inside: avoid; margin-bottom: 6px; border-radius: 3px; }
       .section-head { padding: 3px 8px; font-size: 8.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .dlist dt, .dlist dd, .ca-dlist dt, .ca-dlist dd { padding: 2px 8px; font-size: 9.5px; }
+      .dlist dt, .dlist dd, .ca-th, .ca-td { padding: 2px 8px; font-size: 9.5px; }
       .ca-val { font-size: 9.5px; }
       .disclaimer { break-inside: avoid; padding: 5px 10px; font-size: 9px; margin-bottom: 4px; }
       .ca-yes { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -111,7 +112,7 @@
         <div class="dlist-row"><dt>Legal Description</dt><dd id="f-legal">—</dd></div>
         <div class="dlist-row"><dt>Area (ac)</dt><dd id="f-acres">—</dd></div>
         <div class="dlist-row"><dt>Fire District</dt><dd id="f-fire">—</dd></div>
-        <div class="dlist-row"><dt>Well Report</dt><dd id="f-well">—</dd></div>
+        <div class="dlist-row" style="display:none;"><dt>Well Report</dt><dd id="f-well">—</dd></div>
         <div class="dlist-row"><dt>Plat Book Page</dt><dd id="f-plat">—</dd></div>
         <div class="dlist-row"><dt>Assessor's Website</dt><dd id="f-link">—</dd></div>
       </dl>
@@ -141,29 +142,36 @@
       <h2>Critical Areas</h2>
       <a class="section-head-link" href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.08CRARPR" target="_blank">WWCC Chapter 18.08<span class="sr-only"> (opens in new tab)</span></a>
     </div>
-    <div style="display:table;width:100%;border-collapse:collapse;">
-      <div style="display:table-cell;width:50%;vertical-align:top;border-right:1px solid #eef0f4;">
-        <dl class="ca-dlist">
-          <div class="dlist-row"><dt>Flood Hazard Risk</dt><dd><div class="ca-val" id="f-flood">—</div></dd></div>
-          <div class="dlist-row"><dt>Flood Hazard Zone</dt><dd><div class="ca-val" id="f-fz">—</div></dd></div>
-          <div class="dlist-row"><dt>CARA High Recharge Vulnerability</dt><dd><div class="ca-val" id="f-chr">—</div></dd></div>
-          <div class="dlist-row"><dt>CARA Moderate Recharge Vulnerability</dt><dd><div class="ca-val" id="f-cmr">—</div></dd></div>
-          <div class="dlist-row"><dt>Ferruginous Hawk Habitat</dt><dd><div class="ca-val" id="f-chk">—</div></dd></div>
-          <div class="dlist-row"><dt>Neotropical Migrant Songbird Habitat</dt><dd><div class="ca-val" id="f-cso">—</div></dd></div>
-          <div class="dlist-row"><dt>Wintering Birds of Prey Habitat</dt><dd><div class="ca-val" id="f-cwi">—</div></dd></div>
-        </dl>
-      </div><!--
-   --><div style="display:table-cell;width:50%;vertical-align:top;">
-        <dl class="ca-dlist">
-          <div class="dlist-row"><dt>Shrubsteppe Habitat</dt><dd><div class="ca-val" id="f-csh">—</div></dd></div>
-          <div class="dlist-row"><dt>Slope / Erosion Hazard</dt><dd><div class="ca-val ca-no" id="f-csl">—</div></dd></div>
-          <div class="dlist-row"><dt>Faults</dt><dd><div class="ca-val" id="f-cflt">—</div></dd></div>
-          <div class="dlist-row"><dt>Liquefaction</dt><dd><div class="ca-val" id="f-cli">—</div></dd></div>
-          <div class="dlist-row"><dt>Wetlands</dt><dd><div class="ca-val" id="f-cwe">—</div></dd></div>
-          <div class="dlist-row"><dt>Riparian Buffer</dt><dd><div class="ca-val" id="f-rip">—</div></dd></div>
-        </dl>
-      </div>
-    </div>
+    <table class="ca-table" role="presentation">
+      <tr>
+        <th class="ca-th" scope="row">Flood Hazard Risk</th><td class="ca-td"><div class="ca-val" id="f-flood">—</div></td>
+        <th class="ca-th" scope="row">Shrubsteppe Habitat</th><td class="ca-td"><div class="ca-val" id="f-csh">—</div></td>
+      </tr>
+      <tr>
+        <th class="ca-th" scope="row">Flood Hazard Zone</th><td class="ca-td"><div class="ca-val" id="f-fz">—</div></td>
+        <th class="ca-th" scope="row">Slope / Erosion Hazard</th><td class="ca-td"><div class="ca-val ca-no" id="f-csl">—</div></td>
+      </tr>
+      <tr>
+        <th class="ca-th" scope="row">CARA High Recharge Vulnerability</th><td class="ca-td"><div class="ca-val" id="f-chr">—</div></td>
+        <th class="ca-th" scope="row">Faults</th><td class="ca-td"><div class="ca-val" id="f-cflt">—</div></td>
+      </tr>
+      <tr>
+        <th class="ca-th" scope="row">CARA Moderate Recharge Vulnerability</th><td class="ca-td"><div class="ca-val" id="f-cmr">—</div></td>
+        <th class="ca-th" scope="row">Liquefaction</th><td class="ca-td"><div class="ca-val" id="f-cli">—</div></td>
+      </tr>
+      <tr>
+        <th class="ca-th" scope="row">Ferruginous Hawk Habitat</th><td class="ca-td"><div class="ca-val" id="f-chk">—</div></td>
+        <th class="ca-th" scope="row">Wetlands</th><td class="ca-td"><div class="ca-val" id="f-cwe">—</div></td>
+      </tr>
+      <tr>
+        <th class="ca-th" scope="row">Neotropical Migrant Songbird Habitat</th><td class="ca-td"><div class="ca-val" id="f-cso">—</div></td>
+        <th class="ca-th" scope="row">Riparian Buffer</th><td class="ca-td"><div class="ca-val" id="f-rip">—</div></td>
+      </tr>
+      <tr>
+        <th class="ca-th" scope="row">Wintering Birds of Prey Habitat</th><td class="ca-td"><div class="ca-val" id="f-cwi">—</div></td>
+        <td class="ca-td" colspan="2"></td>
+      </tr>
+    </table>
   </div>
 
   <section class="disclaimer" aria-labelledby="disclaimer-heading">
@@ -302,7 +310,9 @@
   var bwl = get('bwl'), bwr = get('bwr'), bwt = get('bwt'), bwb = get('bwb');
   var bsl = get('bsl'), bsr = get('bsr'), bst = get('bst'), bsb = get('bsb');
   if (wellEl && bwl && bwr && bwt && bwb && bsl && bsr && bst && bsb) {
-    var wellUrl = 'https://appswr.ecology.wa.gov/wellconstruction/map/WCLSWebMap/SearchResultsWithPaging.aspx?left=' + bwl + '&right=' + bwr + '&top=' + bwt + '&bottom=' + bwb + '&selLeft=' + bsl + '&selRight=' + bsr + '&selTop=' + bsb + '&selBottom=' + bst + '&search_scope=1&result_num=25&sort_order=OwnerName&page_index=0';
+    // Strip thousand separators introduced by field formatting
+    function stripCommas(v) { return v.replace(/,/g, ''); }
+    var wellUrl = 'https://appswr.ecology.wa.gov/wellconstruction/map/WCLSWebMap/SearchResultsWithPaging.aspx?left=' + stripCommas(bwl) + '&right=' + stripCommas(bwr) + '&top=' + stripCommas(bwt) + '&bottom=' + stripCommas(bwb) + '&selLeft=' + stripCommas(bsl) + '&selRight=' + stripCommas(bsr) + '&selTop=' + stripCommas(bsb) + '&selBottom=' + stripCommas(bst) + '&search_scope=1&result_num=25&sort_order=OwnerName&page_index=0';
     wellEl.innerHTML = '<a class="val-link" href="' + wellUrl + '" target="_blank">View Well Logs<span class="sr-only"> (opens in new tab)</span></a>';
   } else {
     if (wellEl) wellEl.textContent = '—';
