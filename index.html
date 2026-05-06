@@ -1338,29 +1338,30 @@
       setStatus('All items cleared.');
     };
 
+    // ── Shared helpers ────────────────────────────────────────
+    function escHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function fmt(value, fallback) {
+      const v = value == null ? '' : String(value).trim();
+      return v ? v : (fallback || '—');
+    }
+
+    function fmtSetback(value) {
+      const v = value == null ? '' : String(value).trim();
+      return v ? v + ' ft' : '—';
+    }
+
     // ── Print ─────────────────────────────────────────────────
     window.printPlan = function () {
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
-
-      function escHtml(value) {
-        return String(value == null ? '' : value)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
-      function fmt(value, fallback) {
-        const v = value == null ? '' : String(value).trim();
-        return v ? v : (fallback || '—');
-      }
-
-      function fmtSetback(value) {
-        const v = value == null ? '' : String(value).trim();
-        return v ? v + ' ft' : '—';
-      }
 
       function lineGraphicExists(testFn) {
         return drawLayer.graphics.toArray().some(g => g && g.geometry && testFn(g));
