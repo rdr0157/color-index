@@ -701,6 +701,8 @@
     function textSym(text, size) {
       return {
         type:'text', text, color:[0,0,0,1], haloColor:[255,255,255,1], haloSize:2,
+        font:{size:size||9,weight:'bold',family:'Calibri, Segoe UI, Arial, sans-serif'},
+        horizontalAlignment:'center', verticalAlignment:'middle'
       };
     }
     function calloutLineSym() {
