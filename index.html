@@ -57,7 +57,7 @@
 }
 .bm-btn:hover { border-color:#c8a84b; }
 .bm-btn.active { border-color:#0b2d4c; box-shadow:0 0 0 3px #0b2d4c,0 2px 6px rgba(0,0,0,.35); }
-.bm-thumb { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.bm-thumb { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .bm-label {
   position:relative; z-index:1; font-size:9px; font-weight:700; color:#fff;
   text-shadow:0 1px 2px rgba(0,0,0,.9); text-align:center; line-height:1.2;
@@ -90,7 +90,31 @@
 
 .toggle-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; font-size:12px; }
 
-/* Map */
+/* Search */
+#search-wrap { padding:8px 10px; border-bottom:2px solid #0b2d4c; background:#f7f9fc; }
+#search-input {
+  width:100%; padding:7px 10px; border:1px solid #d5dbe3; border-radius:4px;
+  font:inherit; font-size:12px; margin-bottom:5px;
+}
+#search-input:focus { outline:none; border-color:#0b2d4c; }
+#search-btn {
+  width:100%; padding:7px 10px; background:#0b2d4c; color:#fff;
+  border:none; border-radius:4px; cursor:pointer; font:inherit; font-size:12px; font-weight:700;
+}
+#search-btn:hover { background:#144070; }
+#search-results {
+  margin-top:5px; border:1px solid #d5dbe3; border-radius:4px;
+  background:#fff; max-height:160px; overflow-y:auto; display:none;
+}
+.search-result-item {
+  padding:6px 10px; font-size:11px; cursor:pointer; border-bottom:1px solid #eef1f4; line-height:1.3;
+}
+.search-result-item:last-child { border-bottom:none; }
+.search-result-item:hover { background:#deeeff; }
+.search-result-item .sr-parcel { font-weight:700; color:#0b2d4c; }
+.search-result-item .sr-addr   { color:#444; }
+.search-result-item .sr-owner  { color:#666; font-style:italic; }
+#search-status { font-size:11px; color:#666; margin-top:4px; text-align:center; display:none; }
 #map-wrap { flex:1; position:relative; min-width:0; }
 #viewDiv  { width:100%; height:100%; }
 
@@ -127,7 +151,7 @@
 
 /* ── Right info panel ─────────────────────────────────── */
 #info-panel {
-  width:240px; background:#fff; border-left:1px solid #d7dce3;
+  width:192px; background:#fff; border-left:1px solid #d7dce3;
   display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0;
 }
 .ip-head {
@@ -142,11 +166,10 @@
 .ip-value { font-size:12px; color:#1a1f2e; font-weight:500; margin-top:1px; }
 .ip-empty { font-size:12px; color:#000; font-style:italic; padding:8px 10px; }
 .ca-item {
-  display:flex; flex-direction:column;
-  font-size:12px; margin-bottom:7px; line-height:1.3;
+  display:flex; align-items:flex-start; gap:6px;
+  font-size:12px; color:#1a1f2e; margin-bottom:5px; line-height:1.3;
 }
 .ca-item:last-child { margin-bottom:0; }
-.ca-val { font-size:12px; font-weight:500; margin-top:1px; }
 .ca-dot {
   width:7px; height:7px; border-radius:50%; background:#e85b2a;
   flex-shrink:0; margin-top:3px;
@@ -182,6 +205,16 @@
     <div id="sidebar">
 
 ```
+  <!-- SEARCH -->
+  <div class="section-head">Parcel Search</div>
+  <div id="search-wrap">
+    <input id="search-input" type="text" placeholder="Parcel number or owner name…"
+      onkeydown="if(event.key==='Enter')runSearch()" autocomplete="off" />
+    <button id="search-btn" onclick="runSearch()">Search</button>
+    <div id="search-status"></div>
+    <div id="search-results"></div>
+  </div>
+
   <!-- STRUCTURES -->
   <div class="section-head">Structures</div>
   <div class="section-body">
@@ -380,35 +413,16 @@
 
   <!-- Basemap toggle -->
   <div id="basemap-toggle">
-    <button class="bm-btn active" id="bm-osm" onclick="switchBasemap('osm',this)" title="OpenStreetMap">
-      <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <rect width="64" height="64" fill="#e8e0d0"/>
-        <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
-        <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
-        <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
-        <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
-      </svg>
+    <button class="bm-btn" id="bm-osm" onclick="switchBasemap('osm',this)" title="OpenStreetMap">
+      <img class="bm-thumb" src="https://www.arcgis.com/sharing/rest/content/items/3d1a30626bbc46c582f148b9252676ce/info/thumbnail/thumbnail1553791433520.png" alt="" onerror="this.style.background='#b5cfa5'">
       <span class="bm-label">Streets</span>
     </button>
     <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('topo-vector',this)" title="Topographic">
-      <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <rect width="64" height="64" fill="#f0ebe0"/>
-        <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-        <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-        <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-        <ellipse cx="32" cy="36" rx="4"  ry="2"  fill="#b8a882"/>
-      </svg>
+      <img class="bm-thumb" src="https://www.arcgis.com/sharing/rest/content/items/d5e02a0c1f2b4ec399823fdd3c2fdebd/info/thumbnail/thumbnail.jpg" alt="" onerror="this.style.background='#d4c5a9'">
       <span class="bm-label">Topo</span>
     </button>
-    <button class="bm-btn" id="bm-satellite" onclick="switchBasemap('satellite',this)" title="Imagery">
-      <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <rect width="64" height="64" fill="#2d4a1e"/>
-        <rect x="0"  y="0"  width="32" height="32" fill="#3a5c28" opacity=".8"/>
-        <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
-        <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
-        <rect x="36" y="38" width="12" height="8"  fill="#8ba888" opacity=".6"/>
-        <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
-      </svg>
+   <button class="bm-btn" id="bm-satellite" onclick="switchBasemap('satellite',this)" title="Imagery">
+      <img class="bm-thumb" src="https://www.arcgis.com/sharing/rest/content/items/10df2279f9684e4a9f6a7f08febac2a9/info/thumbnail/thumbnail.jpg" alt="" onerror="this.style.background='#4a6741'">
       <span class="bm-label">Imagery</span>
     </button>
   </div>
@@ -418,7 +432,7 @@
     <div style="font-size:12px;color:#000;">Please wait</div>
   </div>
 
-  <div id="parcel-badge" style="display:none!important;">
+  <div id="parcel-badge">
     <div class="pb-addr" id="pb-addr">—</div>
     <div class="pb-sub"  id="pb-owner"></div>
     <div class="pb-sub"  id="pb-geo"></div>
@@ -435,11 +449,11 @@
 
 <!-- RIGHT INFO PANEL -->
 <div id="info-panel">
-  <div class="ip-head">Parcel Information</div>
+  <div class="ip-head">Parcel Info</div>
   <div class="ip-body" id="ip-basic">
     <div class="ip-empty">Load a parcel to view details.</div>
   </div>
-  <div class="ip-head" id="ip-ca-head" style="display:none;">Critical Areas</div>
+  <div class="ip-head" id="ip-ca-head" style="display:none;">⚠ Critical Areas</div>
   <div class="ip-body" id="ip-ca" style="display:none;"></div>
 </div>
 ```
@@ -1218,23 +1232,19 @@
         return s && s !== '0' ? s + ' ft' : '—';
       };
 
+      // ── Basic info rows ──────────────────────────────────
       const zoning = f(attrs[pf.zoningAbbrev])!=='—'
         ? f(attrs[pf.zoningAbbrev]) + (f(attrs[pf.zoningName])!=='—' ? ' – ' + f(attrs[pf.zoningName]) : '')
         : f(attrs[pf.zoningName]);
 
-      // ── Parcel Information rows (in specified order) ──────
+      const landUse = f(attrs[pf.landUseAbbrev])!=='—'
+        ? f(attrs[pf.landUseAbbrev]) + (f(attrs[pf.landUseName])!=='—' ? ' – ' + f(attrs[pf.landUseName]) : '')
+        : f(attrs[pf.landUseName]);
+
       const basicHtml = `
         <div class="ip-row">
           <span class="ip-label">Parcel Number</span>
           <span class="ip-value">${f(attrs[pf.parcelNumber])}</span>
-        </div>
-        <div class="ip-row">
-          <span class="ip-label">Site Address</span>
-          <span class="ip-value">${f(attrs[pf.siteAddress])}</span>
-        </div>
-        <div class="ip-row">
-          <span class="ip-label">Owner</span>
-          <span class="ip-value">${f(attrs[pf.ownerName])}</span>
         </div>
         <div class="ip-row">
           <span class="ip-label">Area</span>
@@ -1243,6 +1253,18 @@
         <div class="ip-row">
           <span class="ip-label">Zoning</span>
           <span class="ip-value">${zoning}</span>
+        </div>
+        <div class="ip-row">
+          <span class="ip-label">Land Use</span>
+          <span class="ip-value">${landUse}</span>
+        </div>
+        <div class="ip-row">
+          <span class="ip-label">UGA</span>
+          <span class="ip-value">${f(attrs[pf.uga])}</span>
+        </div>
+        <div class="ip-row">
+          <span class="ip-label">Shoreline</span>
+          <span class="ip-value">${f(attrs[pf.shorelineDes])}</span>
         </div>
         <div class="ip-row">
           <span class="ip-label">Front Setback</span>
@@ -1255,53 +1277,44 @@
         <div class="ip-row">
           <span class="ip-label">Rear Setback</span>
           <span class="ip-value">${fmtSetback(attrs[pf.setbackRear])}</span>
-        </div>
-        <div class="ip-row">
-          <span class="ip-label">Setback Note</span>
-          <span class="ip-value">${f(attrs[pf.setbackNote])}</span>
         </div>`;
       document.getElementById('ip-basic').innerHTML = basicHtml;
 
-      // ── Critical Areas — all fields shown as rows ─────────
-      // Values are YES/NO or descriptive text from the layer
+      // ── Critical areas — only show non-NO values ──────────
       const caFields = [
-        { label:'Flood Hazard Risk',                    key: pf.caFloodRisk    },
-        { label:'Flood Hazard Zone',                    key: pf.caFloodZone    },
-        { label:'CARA High Recharge Vulnerability',     key: pf.caCaraHigh     },
-        { label:'CARA Moderate Recharge Vulnerability', key: pf.caCaraMod      },
-        { label:'Ferruginous Hawk Habitat',             key: pf.caHawkHab      },
-        { label:'Neotropical Migrant Songbird Habitat', key: pf.caSongbird     },
-        { label:'Wintering Birds of Prey Habitat',      key: pf.caWinterBirds  },
-        { label:'Shrubsteppe Habitat',                  key: pf.caShrubsteppe  },
-        { label:'Slope / Erosion Hazard',               key: pf.caErosion,     pending: true },
-        { label:'Faults',                               key: pf.caFaults       },
-        { label:'Liquefaction',                         key: pf.caLiquefaction },
-        { label:'Wetlands',                             key: pf.caWetland      },
-        { label:'Riparian Buffer',                      key: pf.caRipName,     extra: pf.caRipBuffer }
+        { label:'Flood Risk',           key: pf.caFloodRisk   },
+        { label:'Flood Zone',           key: pf.caFloodZone   },
+        { label:'CARA High Recharge',   key: pf.caCaraHigh    },
+        { label:'CARA Moderate',        key: pf.caCaraMod     },
+        { label:'Erosion Hazard',       key: pf.caErosion     },
+        { label:'Wetland',              key: pf.caWetland     },
+        { label:'Liquefaction',         key: pf.caLiquefaction },
+        { label:'Riparian Buffer',      key: pf.caRipName,    extra: pf.caRipBuffer },
+        { label:'Ferruginous Hawk',     key: pf.caHawkHab     },
+        { label:'Neotropical Songbird', key: pf.caSongbird    },
+        { label:'Wintering Birds',      key: pf.caWinterBirds },
+        { label:'Mill Creek WPP',       key: pf.millCreek     }
       ];
+
+      const isNo = v => !v || String(v).trim() === '' || String(v).trim().toUpperCase() === 'NO' || String(v).trim() === '0';
+
+      const caItems = caFields.filter(ca => !isNo(attrs[ca.key]));
 
       const caHead = document.getElementById('ip-ca-head');
       const caBody = document.getElementById('ip-ca');
-      caHead.style.display = '';
-      caBody.style.display = '';
 
-      caBody.innerHTML = caFields.map(ca => {
-        let val = ca.pending ? '—' : f(attrs[ca.key], 'NO');
-        if (!ca.pending && ca.extra) {
-          const extraVal = f(attrs[ca.extra]);
-          if (extraVal !== '—') val += ' (' + extraVal + ' ft)';
-        }
-        const valUpper = val.trim().toUpperCase();
-        let valColor = '#000';
-        if (!ca.pending) {
-          if (valUpper === 'NO')  valColor = '#2a7a2a';
-          else if (val !== '—')  valColor = '#b33';
-        }
-        return `<div class="ca-item">
-          <span class="ip-label">${ca.label}</span>
-          <span class="ca-val" style="color:${valColor};">${val}</span>
-        </div>`;
-      }).join('');
+      if (caItems.length === 0) {
+        caHead.style.display = 'none';
+        caBody.style.display = 'none';
+      } else {
+        caHead.style.display = '';
+        caBody.style.display = '';
+        caBody.innerHTML = caItems.map(ca => {
+          let val = f(attrs[ca.key]);
+          if (ca.extra && !isNo(attrs[ca.extra])) val += ' (' + f(attrs[ca.extra]) + ' ft)';
+          return `<div class="ca-item"><span class="ca-dot"></span><span><strong>${ca.label}:</strong> ${val}</span></div>`;
+        }).join('');
+      }
     }
 
     window.toggleSnapping = function (enabled) {
@@ -1408,14 +1421,8 @@
         const barPx = Math.max(48, Math.round(barInches * 96));
         const legendHtml = buildLegendItems();
 
-        const now2 = new Date();
-        const printTitle = 'WWCCDD Site Plan APN ' + (geoParam||'Unknown') + ' ' +
-          now2.getFullYear() + '.' +
-          String(now2.getDate()).padStart(2,'0') + '.' +
-          String(now2.getMonth()+1).padStart(2,'0');
-
         const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>${escHtml(printTitle)}</title>
+<html lang="en"><head><meta charset="UTF-8"><title>Site Plan Print</title>
 <style>
 @page { size: letter landscape; margin: 0; }
 html, body {
@@ -1743,61 +1750,123 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   }, 150);
 };
 
+// ── Parcel loader (shared by URL param + search) ──────────
+function loadParcel(geoId) {
+  document.getElementById('loading').classList.remove('hidden');
+  setStatus('Loading parcel ' + geoId + '…');
+  parcelLayer.queryFeatures({
+    where: pf.parcelNumber + " = '" + geoId.replace(/'/g,"''") + "'",
+    outFields:['*'], returnGeometry:true
+  }).then(result => {
+    if (!result.features || !result.features.length) {
+      document.getElementById('loading').classList.add('hidden');
+      setStatus('Parcel not found.', false); return;
+    }
+    const feature = result.features[0], attrs = feature.attributes;
+    selectedParcelGeometry = feature.geometry;
+    currentParcelAttrs     = attrs;
+    populateInfoPanel(attrs);
+
+    highlightLayer.removeAll();
+    highlightLayer.add(new Graphic({ geometry:selectedParcelGeometry, symbol:{
+      type:'simple-fill', color:[255,215,0,0.08],
+      outline:{type:'simple-line', color:[230,184,0,1], width:3}
+    }}));
+
+    const addr  = fmt(attrs[pf.siteAddress], 'Address not on file');
+    const owner = fmt(attrs[pf.ownerName]);
+    document.getElementById('pb-addr').textContent  = addr;
+    document.getElementById('pb-owner').textContent = owner ? 'Owner: ' + owner : '';
+    document.getElementById('pb-geo').textContent   = 'Parcel: ' + geoId;
+    refreshSnapSources();
+    return view.goTo(selectedParcelGeometry.extent.expand(1.18), { duration:800 });
+  }).then(() => {
+    document.getElementById('loading').classList.add('hidden');
+    setStatus('Parcel loaded — select a tool to begin sketching.', true);
+  }).catch(err => {
+    console.error(err);
+    document.getElementById('loading').classList.add('hidden');
+    setStatus('Error loading parcel.', false);
+  });
+}
+
+// ── Search ────────────────────────────────────────────────
+window.runSearch = function () {
+  const raw = (document.getElementById('search-input').value || '').trim();
+  if (!raw) { setSearchStatus('Enter a parcel number or owner name.'); return; }
+
+  const resultsEl = document.getElementById('search-results');
+  resultsEl.style.display = 'none';
+  resultsEl.innerHTML = '';
+  setSearchStatus('Searching…');
+
+  const safe  = raw.replace(/'/g, "''");
+  const where = `${pf.parcelNumber} = '${safe}' OR UPPER(${pf.ownerName}) LIKE UPPER('%${safe}%')`;
+
+  parcelLayer.queryFeatures({
+    where, outFields:[pf.parcelNumber, pf.ownerName, pf.siteAddress],
+    returnGeometry:false, num:20
+  }).then(result => {
+    setSearchStatus('');
+    if (!result.features || !result.features.length) {
+      setSearchStatus('No parcels found.'); return;
+    }
+    if (result.features.length === 1) {
+      document.getElementById('search-input').value = '';
+      loadParcel(result.features[0].attributes[pf.parcelNumber]); return;
+    }
+    setSearchStatus(result.features.length + ' results — select one:');
+    resultsEl.style.display = 'block';
+    resultsEl.innerHTML = result.features.map(f => {
+      const a     = f.attributes;
+      const geo   = (a[pf.parcelNumber] || '—').replace(/'/g, "\\'");
+      const owner = a[pf.ownerName]   || '';
+      const addr  = a[pf.siteAddress] || '';
+      return `<div class="search-result-item" onclick="selectSearchResult('${geo}')">
+        <div class="sr-parcel">${a[pf.parcelNumber] || '—'}</div>
+        ${addr  ? `<div class="sr-addr">${addr}</div>`   : ''}
+        ${owner ? `<div class="sr-owner">${owner}</div>` : ''}
+      </div>`;
+    }).join('');
+  }).catch(err => {
+    console.error(err);
+    setSearchStatus('Search failed — check console.');
+  });
+};
+
+window.selectSearchResult = function (geoId) {
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('search-results').innerHTML = '';
+  setSearchStatus('');
+  document.getElementById('search-input').value = '';
+  loadParcel(geoId);
+};
+
+function setSearchStatus(msg) {
+  const el = document.getElementById('search-status');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
 // ── Map ready / parcel load ───────────────────────────────
 view.when(() => {
   refreshSnapSources();
-  setStatus('Map initialized',true);
+  setStatus('Map initialized', true);
 
-  // Sync active basemap button to config
   const basemapBtnMap = { 'osm':'bm-osm', 'topo-vector':'bm-topo-vector', 'satellite':'bm-satellite' };
   const initBtnId = basemapBtnMap[cfg.map.basemap] || 'bm-osm';
   const initBtn = document.getElementById(initBtnId);
   if (initBtn) {
-    document.querySelectorAll('.bm-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
     initBtn.classList.add('active');
   }
 
   if (!geoParam) {
     document.getElementById('loading').classList.add('hidden');
-    setStatus('No parcel selected. Return to the portal and choose a parcel.',false);
+    setStatus('Search for a parcel above, or open via the portal with ?geo=PARCELID.', false);
     return;
   }
-  setStatus('Querying parcel '+geoParam+'...');
-
-  parcelLayer.queryFeatures({
-    where: pf.parcelNumber+" = '"+geoParam.replace(/'/g,"''")+"'",
-    outFields:['*'], returnGeometry:true
-  }).then(result=>{
-    if (!result.features||!result.features.length) {
-      document.getElementById('loading').classList.add('hidden');
-      setStatus('Parcel not found.',false); return;
-    }
-    const feature=result.features[0], attrs=feature.attributes;
-    selectedParcelGeometry=feature.geometry;
-    currentParcelAttrs=attrs;
-    populateInfoPanel(attrs);
-
-    highlightLayer.add(new Graphic({geometry:selectedParcelGeometry,symbol:{
-      type:'simple-fill',color:[255,215,0,0.08],
-      outline:{type:'simple-line',color:[230,184,0,1],width:3}
-    }}));
-
-    const addr=fmt(attrs[pf.siteAddress],'Address not on file');
-    const owner=fmt(attrs[pf.ownerName]);
-    document.getElementById('pb-addr').textContent  = addr;
-    document.getElementById('pb-owner').textContent = owner?'Owner: '+owner:'';
-    document.getElementById('pb-geo').textContent   = 'Parcel: '+geoParam;
-    document.getElementById('parcel-badge').style.display='block';
-    refreshSnapSources();
-    return view.goTo(selectedParcelGeometry.extent.expand(1.18),{duration:800});
-  }).then(()=>{
-    document.getElementById('loading').classList.add('hidden');
-    setStatus('Parcel loaded — select a tool to begin sketching.',true);
-  }).catch(err=>{
-    console.error(err);
-    document.getElementById('loading').classList.add('hidden');
-    setStatus('Error loading parcel.',false);
-  });
+  loadParcel(geoParam);
 });
 ```
 
