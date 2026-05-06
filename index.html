@@ -1,1 +1,61 @@
-<button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('topo-vector',this)" title="Topographic">
+require([
+  'esri/Map', 'esri/Basemap', 'esri/views/MapView',
+  'esri/layers/FeatureLayer', 'esri/layers/GraphicsLayer',
+  'esri/Graphic', 'esri/geometry/geometryEngine', 'esri/geometry/Polygon',
+  'esri/widgets/Sketch', 'esri/widgets/Home', 'esri/widgets/ScaleBar'
+], function (
+  EsriMap, Basemap, MapView,
+  FeatureLayer, GraphicsLayer,
+  Graphic, geometryEngine, Polygon,
+  Sketch, Home, ScaleBar
+) {
+
+
+
+const contourTopoBasemap = new Basemap({
+  portalItem: {
+    id: '18d32a699af64bfba4e78eba5a4dd705'
+  }
+});
+
+
+const initialBasemap = cfg.map.basemap === 'contour-topo'
+  ? contourTopoBasemap
+  : cfg.map.basemap;
+
+const map = new EsriMap({
+  basemap: initialBasemap,
+  layers: [parcelLayer, highlightLayer, drawLayer, labelLayer, previewLayer]
+});
+
+
+<button class="bm-btn" id="bm-contour-topo" onclick="switchBasemap('contour-topo',this)" title="Topographic with Contours">
+  <img class="bm-thumb" src="https://www.arcgis.com/sharing/rest/content/items/18d32a699af64bfba4e78eba5a4dd705/info/thumbnail/thumbnail.jpg" alt="" onerror="this.style.background='#d4c5a9'">
+  <span class="bm-label">Topo</span>
+</button>
+
+
+
+window.switchBasemap = function (id, btn) {
+  try {
+    map.basemap = id === 'contour-topo' ? contourTopoBasemap : id;
+    document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setStatus('Basemap: ' + btn.title, true);
+  } catch (err) {
+    console.error(err);
+    setStatus('Unable to switch basemap.', false);
+  }
+};
+
+
+
+const initBtn = document.getElementById('bm-' + cfg.map.basemap);
+if (initBtn) {
+  document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
+  initBtn.classList.add('active');
+}
+
+
+
+
