@@ -191,12 +191,6 @@
   <div id="main">
     <div id="sidebar">
 
-      <!-- SELECTION -->
-      <div class="section-head">Selection</div>
-      <div class="section-body">
-        <button class="tool-btn draw-tool-btn" id="btn-select-parcel" onclick="startParcelSelectTool()">Select Tool – Parcel</button>
-      </div>
-
       <!-- STRUCTURES -->
       <div class="section-head">Structures</div>
       <div class="section-body">
@@ -384,6 +378,10 @@
         <div class="toggle-row">
           <label for="print-parcel">Print to parcel extent</label>
           <input type="checkbox" id="print-parcel" onchange="setPrintExtent('parcel', this.checked)" />
+        </div>
+        <div class="toggle-row">
+          <label for="select-parcel">Select Parcel</label>
+          <input type="checkbox" id="select-parcel" onchange="toggleSelectParcel(this.checked)" />
         </div>
       </div>
 
@@ -867,12 +865,14 @@ view.ui.add(parcelSearch, {
     // ── Tool helpers ──────────────────────────────────────────
     function deactivateAll() {
       document.querySelectorAll('.draw-tool-btn').forEach(b=>b.classList.remove('active'));
-      // Tear down parcel-select click handler if it's running
+      // Auto-deactivate Select Parcel: tear down handler, restore cursor, uncheck box
       if (parcelSelectHandle) {
         parcelSelectHandle.remove();
         parcelSelectHandle = null;
-        view.container.style.cursor = '';
       }
+      view.container.style.cursor = '';
+      const cb = document.getElementById('select-parcel');
+      if (cb) cb.checked = false;
     }
     function activateBtn(id) { const b=document.getElementById(id); if(b)b.classList.add('active'); }
 
@@ -881,71 +881,6 @@ view.ui.add(parcelSearch, {
       deactivateAll();
       if (sketch.state!=='idle') sketch.cancel();
       if (btnId) activateBtn(btnId);
-    }
-
-    // ── PARCEL SELECT TOOL ────────────────────────────────────
-    // Click-to-select tool that loads a parcel into the active workflow.
-    // Mutually exclusive with draw tools — cancelAndReset/deactivateAll
-    // tear it down whenever another tool starts. Clicking a drawn graphic
-    // exits parcel-select mode and lets Sketch enter selection/resize on it.
-    window.startParcelSelectTool = function () {
-      const btn = document.getElementById('btn-select-parcel');
-      const wasActive = btn && btn.classList.contains('active');
-
-      cancelAndReset(); // clears any active draw tool AND tears down parcel-select if on
-
-      if (wasActive) {
-        setStatus('Parcel selection off.');
-        return;
-      }
-
-      activateBtn('btn-select-parcel');
-      parcelSelectHandle = view.on('click', handleParcelSelectionClick);
-      view.container.style.cursor = 'crosshair';
-      setStatus('Click a parcel to load it. Click a drawing to edit it.', true);
-    };
-
-    function handleParcelSelectionClick(event) {
-      // Don't interrupt an active sketch edit
-      if (sketch.state !== 'idle') return;
-
-      // Visual confirmation the click registered
-      setStatus('Looking up parcel...', true);
-
-      view.hitTest(event).then(response => {
-        // If a drawn graphic was clicked, exit parcel-select mode.
-        // Sketch's updateOnGraphicClick will pick up the same click and
-        // enter selection/resize mode on that drawing automatically.
-        const hitSketch = response.results.some(r =>
-          r.graphic && (r.graphic.layer === drawLayer || r.graphic.layer === labelLayer)
-        );
-        if (hitSketch) {
-          deactivateAll();
-          setStatus('Drawing selected — parcel-select tool deactivated.');
-          return;
-        }
-
-        // Otherwise, query the parcel layer at the click point
-        parcelLayer.queryFeatures({
-          geometry: event.mapPoint,
-          spatialRelationship: 'intersects',
-          outFields: ['*'],
-          returnGeometry: true
-        }).then(result => {
-          if (!result.features || !result.features.length) {
-            setStatus('No parcel at that location.', false);
-            return;
-          }
-          setActiveParcel(result.features[0])
-            .then(() => setStatus('Parcel loaded — click another parcel or pick a tool.', true));
-        }).catch(err => {
-          console.error('[parcel-select] queryFeatures failed:', err);
-          setStatus('Error querying parcel — see console.', false);
-        });
-      }).catch(err => {
-        console.error('[parcel-select] hitTest failed:', err);
-        setStatus('Click error — see console.', false);
-      });
     }
 
     // ── STRUCTURE TOOL ────────────────────────────────────────
@@ -1456,6 +1391,99 @@ view.ui.add(parcelSearch, {
       refreshSnapSources();
       setStatus(enabled?'Snapping enabled.':'Snapping disabled.');
     };
+
+    // ── Select Parcel toggle ──────────────────────────────────
+    // Click-to-load parcel mode. Default off. Auto-deactivates when:
+    //   • a drawing/feature is clicked (Sketch picks up the click for resize/move)
+    //   • any draw tool starts (deactivateAll unchecks this box)
+    // Stays on across multiple parcel clicks so the user can switch parcels freely.
+    window.toggleSelectParcel = function (enabled) {
+      if (enabled) {
+        // Clear any active draw tool / sketch state without going through
+        // deactivateAll (which would uncheck the box we just checked).
+        if (sketch.state !== 'idle') sketch.cancel();
+        document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('active'));
+        if (parcelSelectHandle) { parcelSelectHandle.remove(); parcelSelectHandle = null; }
+
+        parcelSelectHandle = view.on('click', handleParcelSelectionClick);
+        view.container.style.cursor = 'crosshair';
+        setStatus('Select Parcel ON — click a parcel to load it. Clicking a drawing exits.', true);
+        console.log('[select-parcel] activated');
+      } else {
+        if (parcelSelectHandle) { parcelSelectHandle.remove(); parcelSelectHandle = null; }
+        view.container.style.cursor = '';
+        setStatus('Select Parcel off.');
+        console.log('[select-parcel] deactivated');
+      }
+    };
+
+    function handleParcelSelectionClick(event) {
+      console.log('[select-parcel] click at', event.mapPoint);
+
+      if (sketch.state !== 'idle') {
+        console.log('[select-parcel] bail — sketch.state =', sketch.state);
+        return;
+      }
+
+      setStatus('Querying parcel...', true);
+
+      view.hitTest(event).then(response => {
+        console.log('[select-parcel] hitTest returned', response.results.length, 'results');
+
+        // Failsafe: if a drawing was clicked, exit Select Parcel mode and
+        // let the Sketch widget handle selection/resize via updateOnGraphicClick.
+        const sketchHit = response.results.some(r =>
+          r.graphic && (r.graphic.layer === drawLayer || r.graphic.layer === labelLayer)
+        );
+        if (sketchHit) {
+          console.log('[select-parcel] drawing clicked — auto-deactivating');
+          if (parcelSelectHandle) { parcelSelectHandle.remove(); parcelSelectHandle = null; }
+          view.container.style.cursor = '';
+          const cb = document.getElementById('select-parcel');
+          if (cb) cb.checked = false;
+          setStatus('Drawing selected — Select Parcel turned off.');
+          return;
+        }
+
+        // Path 1: see if hitTest already gave us a parcel feature
+        const parcelHit = response.results.find(r =>
+          r.graphic && r.graphic.layer === parcelLayer
+        );
+        if (parcelHit && parcelHit.graphic && parcelHit.graphic.attributes && parcelHit.graphic.geometry) {
+          console.log('[select-parcel] parcel from hitTest, attrs:', parcelHit.graphic.attributes);
+          setActiveParcel(parcelHit.graphic)
+            .then(() => setStatus('Parcel loaded.', true))
+            .catch(err => { console.error('[select-parcel] setActiveParcel failed:', err); });
+          return;
+        }
+
+        // Path 2: query the parcel layer by geometry (point intersects polygon)
+        console.log('[select-parcel] no hitTest match, querying layer by geometry...');
+        parcelLayer.queryFeatures({
+          geometry: event.mapPoint,
+          spatialRelationship: 'intersects',
+          where: '1=1',
+          outFields: ['*'],
+          returnGeometry: true
+        }).then(result => {
+          console.log('[select-parcel] queryFeatures returned',
+            result.features ? result.features.length : 0, 'feature(s)');
+          if (!result.features || !result.features.length) {
+            setStatus('No parcel at that location.', false);
+            return;
+          }
+          setActiveParcel(result.features[0])
+            .then(() => setStatus('Parcel loaded.', true))
+            .catch(err => { console.error('[select-parcel] setActiveParcel failed:', err); });
+        }).catch(err => {
+          console.error('[select-parcel] queryFeatures failed:', err);
+          setStatus('Parcel query error — see console (F12).', false);
+        });
+      }).catch(err => {
+        console.error('[select-parcel] hitTest failed:', err);
+        setStatus('hitTest error — see console (F12).', false);
+      });
+    }
 
     // ── Print extent mode ─────────────────────────────────────
     // 'parcel' | null (current view)
