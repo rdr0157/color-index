@@ -124,16 +124,19 @@
     .esri-scale-bar { bottom:60px !important; }
     
     /* ── Parcel search widget ───────────────────────────────── */
-    .esri-search.parcel-search-widget {
+    /* Target the Search widget via its position in the ArcGIS view UI.
+       Accessing widget.container directly before view.ui.add() returns null
+       and crashes the script, so we style it through the parent instead. */
+    .esri-ui-top-right .esri-search {
       width: 330px;
       max-width: calc(100vw - 620px);
     }
-    
-    .esri-search.parcel-search-widget .esri-search__input {
+
+    .esri-ui-top-right .esri-search .esri-search__input {
       font-family: Calibri, 'Segoe UI', Arial, sans-serif;
       font-size: 13px;
     }
-    
+
     /* Keep the basemap buttons below the search box */
     #basemap-toggle {
       top: 62px;
@@ -156,8 +159,7 @@
     .ip-value { font-size:12px; color:#1a1f2e; font-weight:500; margin-top:1px; }
     .ip-empty { font-size:12px; color:#000; font-style:italic; padding:8px 10px; }
     .ca-item {
-      display:flex; align-items:flex-start; justify-content:space-between;
-      gap:4px; font-size:12px; color:#1a1f2e; margin-bottom:5px; line-height:1.3;
+      display:flex; flex-direction:column; margin-bottom:7px; font-size:12px; line-height:1.3;
     }
     .ca-item:last-child { margin-bottom:0; }
     .ca-dot {
@@ -376,6 +378,14 @@
           <label for="snap-toggle">Snapping on</label>
           <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
         </div>
+        <div class="toggle-row">
+          <label for="print-parcel">Print to parcel extent</label>
+          <input type="checkbox" id="print-parcel" onchange="setPrintExtent('parcel', this.checked)" />
+        </div>
+        <div class="toggle-row">
+          <label for="print-drawings">Print to drawings extent</label>
+          <input type="checkbox" id="print-drawings" onchange="setPrintExtent('drawings', this.checked)" />
+        </div>
       </div>
 
       <div class="section-head">Instructions</div>
@@ -424,7 +434,7 @@
       </div>
 
       <div id="loading">
-        <div style="font-size:14px;font-weight:700;color:#0b2d4c;">Loading your parcel…</div>
+        <div style="font-size:14px;font-weight:700;color:#0b2d4c;">Initializing map…</div>
         <div style="font-size:12px;color:#000;">Please wait</div>
       </div>
 
@@ -566,8 +576,8 @@
       }]
     });
 
-parcelSearch.container.classList.add('parcel-search-widget');
-
+// NOTE: Do NOT access parcelSearch.container here — it is null until after
+// view.ui.add() resolves. Widget styling is handled via CSS on .esri-ui-top-right.
 view.ui.add(parcelSearch, {
   position: 'top-right',
   index: 0
@@ -1345,8 +1355,8 @@ view.ui.add(parcelSearch, {
         }
         const isYes = !ca.pending && val !== 'NO' && val !== '—';
         return `<div class="ca-item">
-          <span class="ip-label" style="min-width:0;flex:1;">${ca.label}</span>
-          <span class="ip-value" style="flex-shrink:0;margin-left:6px;color:${isYes?'#b33':'#000'};">${val}</span>
+          <span class="ip-label">${ca.label}</span>
+          <span class="ip-value" style="color:${isYes?'#b33':'#1a1f2e'};">${val}</span>
         </div>`;
       }).join('');
     }
@@ -1358,6 +1368,51 @@ view.ui.add(parcelSearch, {
       refreshSnapSources();
       setStatus(enabled?'Snapping enabled.':'Snapping disabled.');
     };
+
+    // ── Print extent mode ─────────────────────────────────────
+    // 'parcel' | 'drawings' | null (current view)
+    let printExtentMode = null;
+
+    window.setPrintExtent = function (mode, checked) {
+      if (checked) {
+        // Uncheck the other one — mutually exclusive
+        printExtentMode = mode;
+        if (mode === 'parcel')   document.getElementById('print-drawings').checked = false;
+        if (mode === 'drawings') document.getElementById('print-parcel').checked   = false;
+      } else {
+        // Deselected — free-form print (current view)
+        printExtentMode = null;
+      }
+    };
+
+    function getDrawingsExtent() {
+      const graphics = drawLayer.graphics.toArray().concat(labelLayer.graphics.toArray())
+        .filter(g => g && g.geometry);
+      if (!graphics.length) return null;
+
+      let xmin = Infinity, ymin = Infinity, xmax = -Infinity, ymax = -Infinity;
+      let sr = null;
+      graphics.forEach(g => {
+        const e = g.geometry.extent;
+        sr = sr || g.geometry.spatialReference;
+        if (e) {
+          if (e.xmin < xmin) xmin = e.xmin;
+          if (e.ymin < ymin) ymin = e.ymin;
+          if (e.xmax > xmax) xmax = e.xmax;
+          if (e.ymax > ymax) ymax = e.ymax;
+        } else {
+          // Point geometry
+          const x = g.geometry.x, y = g.geometry.y;
+          if (x < xmin) xmin = x; if (x > xmax) xmax = x;
+          if (y < ymin) ymin = y; if (y > ymax) ymax = y;
+        }
+      });
+      if (!isFinite(xmin)) return null;
+      // If all graphics are a single point, nudge extent so goTo doesn't zoom to infinity
+      if (xmin === xmax) { xmin -= 10; xmax += 10; }
+      if (ymin === ymax) { ymin -= 10; ymax += 10; }
+      return { xmin, ymin, xmax, ymax, spatialReference: sr };
+    }
 
     window.deleteSelected = function () {
       if (sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
@@ -1774,15 +1829,48 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
           });
       }
 
-      if (!selectedParcelGeometry || !selectedParcelGeometry.extent) { setTimeout(captureAndOpen, 250); return; }
-      const ext = selectedParcelGeometry.extent.expand(1.03);
-      try { view.resize(); } catch (e) {}
-      setTimeout(() => {
-        view.goTo(ext, { duration:0 }).then(() => {
-          const wait = () => { if (!view.updating && view.stationary) setTimeout(captureAndOpen, 250); else requestAnimationFrame(wait); };
-          wait();
-        }).catch(() => setTimeout(captureAndOpen, 300));
-      }, 150);
+      if (printExtentMode === 'parcel') {
+        // ── Zoom to parcel boundary ────────────────────────────
+        if (!selectedParcelGeometry || !selectedParcelGeometry.extent) {
+          setTimeout(captureAndOpen, 250); return;
+        }
+        const ext = selectedParcelGeometry.extent.expand(1.03);
+        try { view.resize(); } catch (e) {}
+        setTimeout(() => {
+          view.goTo(ext, { duration:0 }).then(() => {
+            const wait = () => { if (!view.updating && view.stationary) setTimeout(captureAndOpen, 250); else requestAnimationFrame(wait); };
+            wait();
+          }).catch(() => setTimeout(captureAndOpen, 300));
+        }, 150);
+
+      } else if (printExtentMode === 'drawings') {
+        // ── Zoom to envelope of all drawn graphics ─────────────
+        const drawExt = getDrawingsExtent();
+        if (!drawExt) {
+          setStatus('No drawings found — add shapes first or switch print extent mode.', false);
+          if (prePrintViewpoint) view.goTo(prePrintViewpoint, { duration:0 }).catch(() => {});
+          return;
+        }
+        // Build a plain extent object and expand it 15% for padding
+        const pad = 0.15;
+        const w = drawExt.xmax - drawExt.xmin, h = drawExt.ymax - drawExt.ymin;
+        const expanded = {
+          xmin: drawExt.xmin - w * pad, ymin: drawExt.ymin - h * pad,
+          xmax: drawExt.xmax + w * pad, ymax: drawExt.ymax + h * pad,
+          spatialReference: drawExt.spatialReference
+        };
+        try { view.resize(); } catch (e) {}
+        setTimeout(() => {
+          view.goTo(expanded, { duration:0 }).then(() => {
+            const wait = () => { if (!view.updating && view.stationary) setTimeout(captureAndOpen, 250); else requestAnimationFrame(wait); };
+            wait();
+          }).catch(() => setTimeout(captureAndOpen, 300));
+        }, 150);
+
+      } else {
+        // ── Free-form: print current view as-is ───────────────
+        setTimeout(captureAndOpen, 250);
+      }
     };
   // ── Parcel loading helpers ────────────────────────────────
   function getParcelDisplayValues(attrs) {
@@ -1907,6 +1995,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
       setStatus('Parcel not found. Search for a parcel to continue.', false);
     });
 });
+  }); // end require() callback
 })();
 </script>
 </body>
