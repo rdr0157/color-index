@@ -379,6 +379,10 @@
           <label for="print-parcel">Print to parcel extent</label>
           <input type="checkbox" id="print-parcel" onchange="setPrintExtent('parcel', this.checked)" />
         </div>
+        <div class="toggle-row">
+          <label for="interactive-select">Interactive Selection</label>
+          <input type="checkbox" id="interactive-select" onchange="toggleInteractiveSelection(this.checked)" />
+        </div>
       </div>
 
       <div class="section-head">Instructions</div>
@@ -1378,6 +1382,62 @@ view.ui.add(parcelSearch, {
       refreshSnapSources();
       setStatus(enabled?'Snapping enabled.':'Snapping disabled.');
     };
+
+    // ── Interactive parcel selection ──────────────────────────
+    // Click anywhere on the map to load the parcel under the cursor.
+    // Failsafe: clicks that hit a drawn graphic (drawLayer/labelLayer) are
+    // ignored here and routed to the Sketch widget for selection/resize.
+    let interactiveSelectionHandle = null;
+
+    window.toggleInteractiveSelection = function (enabled) {
+      if (enabled) {
+        if (interactiveSelectionHandle) return;
+        interactiveSelectionHandle = view.on('click', handleParcelSelectionClick);
+        view.container.style.cursor = 'crosshair';
+        setStatus('Interactive selection on — click a parcel to load it.', true);
+      } else {
+        if (interactiveSelectionHandle) {
+          interactiveSelectionHandle.remove();
+          interactiveSelectionHandle = null;
+        }
+        view.container.style.cursor = '';
+        setStatus('Interactive selection off.');
+      }
+    };
+
+    function handleParcelSelectionClick(event) {
+      // Bail if the user is mid-edit on a drawing — let them finish first
+      if (sketch.state !== 'idle') return;
+      // Bail if a draw tool is awaiting a placement click
+      if (document.querySelector('.draw-tool-btn.active')) return;
+
+      view.hitTest(event).then(response => {
+        // Failsafe: if a drawn graphic was clicked, do nothing here —
+        // Sketch's updateOnGraphicClick will handle selection/resize.
+        const hitSketch = response.results.some(r =>
+          r.graphic && (r.graphic.layer === drawLayer || r.graphic.layer === labelLayer)
+        );
+        if (hitSketch) return;
+
+        // Query the parcel layer at the click point
+        parcelLayer.queryFeatures({
+          geometry: event.mapPoint,
+          spatialRelationship: 'intersects',
+          outFields: ['*'],
+          returnGeometry: true
+        }).then(result => {
+          if (!result.features || !result.features.length) {
+            setStatus('No parcel at that location.', false);
+            return;
+          }
+          setActiveParcel(result.features[0])
+            .then(() => setStatus('Parcel loaded — select a tool to begin sketching.', true));
+        }).catch(err => {
+          console.error(err);
+          setStatus('Error querying parcel.', false);
+        });
+      });
+    }
 
     // ── Print extent mode ─────────────────────────────────────
     // 'parcel' | null (current view)
