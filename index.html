@@ -455,6 +455,10 @@
       <label for="print-parcel">Print to parcel extent</label>
       <input type="checkbox" id="print-parcel" onchange="setPrintExtent('parcel', this.checked)" />
     </div>
+    <div class="toggle-row">
+      <label for="interactive-select">Interactive selection</label>
+      <input type="checkbox" id="interactive-select" onchange="toggleInteractiveSelect(this.checked)" />
+    </div>
   </div>
 
   <div class="section-head">Instructions</div>
@@ -1473,6 +1477,46 @@ view.ui.add(parcelSearch, {
 
     window.setPrintExtent = function (mode, checked) {
       printExtentMode = checked ? mode : null;
+    };
+
+    // ── Interactive parcel selection ──────────────────────────
+    let _interactiveHandle = null;
+
+    window.toggleInteractiveSelect = function (enabled) {
+      const viewDiv = document.getElementById('viewDiv');
+
+      if (enabled) {
+        viewDiv.style.cursor = 'crosshair';
+        setStatus('Click any parcel to select it.', true);
+
+        _interactiveHandle = view.on('click', async (event) => {
+          // Don't interfere while a sketch tool is actively drawing
+          if (sketch.state === 'active') return;
+
+          const hit = await view.hitTest(event, { include: [parcelLayer, drawLayer, labelLayer] });
+
+          // If the click landed on an existing drawing, let the sketch
+          // widget handle it — don't also trigger a parcel load
+          const onDrawing = hit.results.some(r => r.layer === drawLayer || r.layer === labelLayer);
+          if (onDrawing) return;
+
+          const parcelHit = hit.results.find(r => r.layer === parcelLayer);
+          if (!parcelHit) { setStatus('No parcel found at that location.', false); return; }
+
+          const geoId = parcelHit.graphic.attributes && parcelHit.graphic.attributes[pf.parcelNumber];
+          if (!geoId) return;
+
+          setStatus('Loading selected parcel...');
+          loadParcelByGeo(geoId)
+            .then(() => setStatus('Parcel loaded — select a tool to begin sketching.', true))
+            .catch(err => { console.error(err); setStatus('Could not load parcel at that location.', false); });
+        });
+
+      } else {
+        viewDiv.style.cursor = '';
+        if (_interactiveHandle) { _interactiveHandle.remove(); _interactiveHandle = null; }
+        setStatus('Interactive selection off.', true);
+      }
     };
 
     window.deleteSelected = function () {
