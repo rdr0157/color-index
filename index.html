@@ -800,7 +800,7 @@ view.ui.add(parcelSearch, {
       if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline') return;
       const id = graphic.__sitePlanId || ('line_'+Date.now()+'_'+Math.random().toString(36).slice(2));
       graphic.__sitePlanId = id;
-      const length = Math.abs(geometryEngine.planarLength(graphic.geometry,'feet')).toFixed(1)+"'";
+      const length = Math.abs(geometryEngine.geodesicLength(graphic.geometry,'feet')).toFixed(1)+"'";
       const mid    = graphic.geometry.extent.center;
       let lbl = lineLabelMap.get(id);
       if (lbl) { lbl.geometry=mid; lbl.symbol.text=length; }
@@ -853,7 +853,7 @@ view.ui.add(parcelSearch, {
       Object.assign(g, extraProps);
       drawLayer.add(g);
       sketch.update([g],{tool:'transform',toggleToolOnClick:false});
-      const sq = Math.abs(geometryEngine.planarArea(rect,'square-feet'));
+      const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
       showMeasure(extraProps.__label||'Shape', Math.round(sq).toLocaleString()+' sq ft', lFt+' × '+wFt+' ft');
     }
 
@@ -986,7 +986,7 @@ view.ui.add(parcelSearch, {
           drawLayer.add(g);
           buildDrainfieldOverlay(rect,dfId,isReserve).forEach(x=>labelLayer.add(x));
           sketch.update([g],{tool:'transform',toggleToolOnClick:false});
-          const sq=Math.abs(geometryEngine.planarArea(rect,'square-feet'));
+          const sq=Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
           showMeasure(isReserve?'Reserve drainfield':'Drainfield',Math.round(sq).toLocaleString()+' sq ft',l+' × '+w+' ft');
           setStatus((isReserve?'Reserve drainfield':'Drainfield')+' placed. Resize or rotate as needed.');
         });
@@ -1191,10 +1191,10 @@ view.ui.add(parcelSearch, {
       }
 
       if (g.geometry.type==='polygon') {
-        const sq=Math.abs(geometryEngine.planarArea(g.geometry,'square-feet'));
+        const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
         showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
       } else if (g.geometry.type==='polyline') {
-        const len=Math.abs(geometryEngine.planarLength(g.geometry,'feet'));
+        const len=Math.abs(geometryEngine.geodesicLength(g.geometry,'feet'));
         if (!g.__isLine) {
           showMeasure('Setback / Distance', len.toFixed(1)+' ft', null);
         } else {
@@ -1212,10 +1212,10 @@ view.ui.add(parcelSearch, {
       if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
       if (g.geometry.type==='polygon') {
-        const sq=Math.abs(geometryEngine.planarArea(g.geometry,'square-feet'));
+        const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
         showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
       } else if (g.geometry.type==='polyline') {
-        const len=Math.abs(geometryEngine.planarLength(g.geometry,'feet'));
+        const len=Math.abs(geometryEngine.geodesicLength(g.geometry,'feet'));
         if (!g.__isLine) {
           createOrUpdateLineLabel(g);
           showMeasure('Setback / Distance', len.toFixed(1)+' ft', null);
