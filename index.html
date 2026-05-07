@@ -122,6 +122,22 @@
 
     /* Align ArcGIS scale bar with measure box */
     .esri-scale-bar { bottom:60px !important; }
+    
+    /* ── Parcel search widget ───────────────────────────────── */
+    .esri-search.parcel-search-widget {
+      width: 330px;
+      max-width: calc(100vw - 620px);
+    }
+    
+    .esri-search.parcel-search-widget .esri-search__input {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+    }
+    
+    /* Keep the basemap buttons below the search box */
+    #basemap-toggle {
+      top: 62px;
+    }
 
     /* ── Right info panel ─────────────────────────────────── */
     #info-panel {
@@ -455,17 +471,23 @@
     document.getElementById('statusdot').style.background =
       ok === false ? '#ef4444' : ok === true ? '#22c55e' : '#9ca3af';
   }
+  function fmt(value, fallback) {
+    const s = value == null ? '' : String(value).trim();
+    return s && s !== '0' && s.toLowerCase() !== 'null' ? s : (fallback || '—');
+  }
 
   require([
     'esri/Map', 'esri/views/MapView',
     'esri/layers/FeatureLayer', 'esri/layers/GraphicsLayer',
     'esri/Graphic', 'esri/geometry/geometryEngine', 'esri/geometry/Polygon',
-    'esri/widgets/Sketch', 'esri/widgets/Home', 'esri/widgets/ScaleBar'
+    'esri/widgets/Sketch', 'esri/widgets/Home', 'esri/widgets/ScaleBar',
+    'esri/widgets/Search'
   ], function (
     EsriMap, MapView,
     FeatureLayer, GraphicsLayer,
     Graphic, geometryEngine, Polygon,
-    Sketch, Home, ScaleBar
+    Sketch, Home, ScaleBar,
+    Search
   ) {
     const cfg = window.SitePlanConfig;
     if (!cfg || !cfg.layers || !cfg.layers.parcels) { setStatus('Config failed.', false); return; }
@@ -512,6 +534,44 @@
     });
     view.ui.add(new Home({ view }), 'top-left');
     view.ui.add(new ScaleBar({ view, unit:'dual' }), 'bottom-right');
+    /* ── Parcel Search ─────────────────────────────────────────
+       Searches the same parcel layer used by the Experience Builder geo_id launch.
+       Users can search by parcel number or owner name, select a result, and the
+       builder will load that parcel into the same active-parcel workflow.
+    */
+    const parcelSearch = new Search({
+      view: view,
+      includeDefaultSources: false,
+      searchAllEnabled: false,
+      popupEnabled: false,
+      resultGraphicEnabled: false,
+      locationEnabled: false,
+      allPlaceholder: 'Search parcel number or owner',
+      suggestionsEnabled: true,
+      sources: [{
+        layer: parcelLayer,
+        name: 'Parcels',
+        placeholder: 'Parcel number or owner',
+        searchFields: [
+          pf.parcelNumber,
+          pf.ownerName
+        ],
+        displayField: pf.parcelNumber,
+        suggestionTemplate: '{' + pf.parcelNumber + '} — {' + pf.ownerName + '}',
+        exactMatch: false,
+        outFields: ['*'],
+        maxResults: 6,
+        maxSuggestions: 6,
+        minSuggestCharacters: 2
+      }]
+    });
+
+parcelSearch.container.classList.add('parcel-search-widget');
+
+view.ui.add(parcelSearch, {
+  position: 'top-right',
+  index: 0
+});
 
     window.switchBasemap = function (id, btn) {
       try {
@@ -1724,64 +1784,129 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
         }).catch(() => setTimeout(captureAndOpen, 300));
       }, 150);
     };
-
-    // ── Map ready / parcel load ───────────────────────────────
-    view.when(() => {
-      refreshSnapSources();
-      setStatus('Map initialized',true);
-
-      // Sync active basemap button to config
-      const basemapBtnMap = { 'osm':'bm-osm', 'topo-vector':'bm-topo-vector', 'satellite':'bm-satellite' };
-      const initBtnId = basemapBtnMap[cfg.map.basemap] || 'bm-osm';
-      const initBtn = document.getElementById(initBtnId);
-      if (initBtn) {
-        document.querySelectorAll('.bm-btn').forEach(b=>b.classList.remove('active'));
-        initBtn.classList.add('active');
+  // ── Parcel loading helpers ────────────────────────────────
+  function getParcelDisplayValues(attrs) {
+    return {
+      parcel: fmt(attrs[pf.parcelNumber], '—'),
+      address: fmt(attrs[pf.siteAddress], 'Address not on file'),
+      owner: fmt(attrs[pf.ownerName], '')
+    };
+  }
+  
+  function setActiveParcel(feature, options) {
+    options = options || {};
+    if (!feature || !feature.geometry || !feature.attributes) {
+      return Promise.reject(new Error('Invalid parcel feature.'));
+    }
+  
+    const attrs = feature.attributes;
+  
+    selectedParcelGeometry = feature.geometry;
+    currentParcelAttrs = attrs;
+  
+    highlightLayer.removeAll();
+    highlightLayer.add(new Graphic({
+      geometry: selectedParcelGeometry,
+      symbol: {
+        type: 'simple-fill',
+        color: [255,215,0,0.08],
+        outline: { type:'simple-line', color:[230,184,0,1], width:3 }
       }
-
-      if (!geoParam) {
-        document.getElementById('loading').classList.add('hidden');
-        setStatus('No parcel selected. Return to the portal and choose a parcel.',false);
-        return;
+    }));
+  
+    populateInfoPanel(attrs);
+  
+    const display = getParcelDisplayValues(attrs);
+    document.getElementById('pb-addr').textContent  = display.address;
+    document.getElementById('pb-owner').textContent = display.owner ? 'Owner: ' + display.owner : '';
+    document.getElementById('pb-geo').textContent   = 'Parcel: ' + display.parcel;
+  
+    // Your current badge is hidden with display:none!important in the HTML.
+    // This will not override !important, which is fine if you prefer the right panel.
+    document.getElementById('parcel-badge').style.display = 'block';
+  
+    refreshSnapSources();
+  
+    if (options.skipZoom || !selectedParcelGeometry.extent) {
+      return Promise.resolve();
+    }
+  
+    return view.goTo(selectedParcelGeometry.extent.expand(1.18), { duration: 800 });
+  }
+  
+  function loadParcelByGeo(geoId) {
+    const cleanGeo = String(geoId || '').trim();
+    if (!cleanGeo) {
+      return Promise.reject(new Error('No parcel number provided.'));
+    }
+  
+    setStatus('Querying parcel ' + cleanGeo + '...');
+  
+    return parcelLayer.queryFeatures({
+      where: pf.parcelNumber + " = '" + cleanGeo.replace(/'/g, "''") + "'",
+      outFields: ['*'],
+      returnGeometry: true
+    }).then(result => {
+      if (!result.features || !result.features.length) {
+        throw new Error('Parcel not found.');
       }
-      setStatus('Querying parcel '+geoParam+'...');
-
-      parcelLayer.queryFeatures({
-        where: pf.parcelNumber+" = '"+geoParam.replace(/'/g,"''")+"'",
-        outFields:['*'], returnGeometry:true
-      }).then(result=>{
-        if (!result.features||!result.features.length) {
-          document.getElementById('loading').classList.add('hidden');
-          setStatus('Parcel not found.',false); return;
-        }
-        const feature=result.features[0], attrs=feature.attributes;
-        selectedParcelGeometry=feature.geometry;
-        currentParcelAttrs=attrs;
-        populateInfoPanel(attrs);
-
-        highlightLayer.add(new Graphic({geometry:selectedParcelGeometry,symbol:{
-          type:'simple-fill',color:[255,215,0,0.08],
-          outline:{type:'simple-line',color:[230,184,0,1],width:3}
-        }}));
-
-        const addr=fmt(attrs[pf.siteAddress],'Address not on file');
-        const owner=fmt(attrs[pf.ownerName]);
-        document.getElementById('pb-addr').textContent  = addr;
-        document.getElementById('pb-owner').textContent = owner?'Owner: '+owner:'';
-        document.getElementById('pb-geo').textContent   = 'Parcel: '+geoParam;
-        document.getElementById('parcel-badge').style.display='block';
-        refreshSnapSources();
-        return view.goTo(selectedParcelGeometry.extent.expand(1.18),{duration:800});
-      }).then(()=>{
-        document.getElementById('loading').classList.add('hidden');
-        setStatus('Parcel loaded — select a tool to begin sketching.',true);
-      }).catch(err=>{
-        console.error(err);
-        document.getElementById('loading').classList.add('hidden');
-        setStatus('Error loading parcel.',false);
-      });
+      return setActiveParcel(result.features[0]);
     });
+  }
+  
+  parcelSearch.on('select-result', function (event) {
+    const feature = event.result && event.result.feature;
+    if (!feature) return;
+  
+    setStatus('Loading selected parcel...');
+  
+    setActiveParcel(feature)
+      .then(() => {
+        document.getElementById('loading').classList.add('hidden');
+        setStatus('Parcel loaded — select a tool to begin sketching.', true);
+      })
+      .catch(err => {
+        console.error(err);
+        setStatus('Error loading selected parcel.', false);
+      });
   });
+  // ── Map ready / parcel load ───────────────────────────────
+   view.when(() => {
+  refreshSnapSources();
+  setStatus('Map initialized', true);
+
+  // Sync active basemap button to config
+  const basemapBtnMap = {
+    'osm': 'bm-osm',
+    'topo-vector': 'bm-topo-vector',
+    'satellite': 'bm-satellite'
+  };
+
+  const initBtnId = basemapBtnMap[cfg.map.basemap] || 'bm-osm';
+  const initBtn = document.getElementById(initBtnId);
+
+  if (initBtn) {
+    document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
+    initBtn.classList.add('active');
+  }
+
+  if (!geoParam) {
+    document.getElementById('loading').classList.add('hidden');
+    setStatus('Search for a parcel or return to the portal and choose one.', true);
+    return;
+  }
+
+  loadParcelByGeo(geoParam)
+    .then(() => {
+      document.getElementById('loading').classList.add('hidden');
+      setStatus('Parcel loaded — select a tool to begin sketching.', true);
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('loading').classList.add('hidden');
+      setStatus('Parcel not found. Search for a parcel to continue.', false);
+    });
+});
 })();
 </script>
 </body>
