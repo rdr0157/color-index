@@ -98,16 +98,13 @@
     }
     #loading.hidden { display:none; }
 
-    #parcel-badge, #measure-box {
+    #measure-box {
       position:absolute; left:12px;
       background:rgba(255,255,255,.96); border:1px solid #d5dbe3; border-left:3px solid #0b2d4c;
       border-radius:5px; z-index:10; box-shadow:0 2px 6px rgba(0,0,0,.08);
     }
-    #parcel-badge { top:12px; padding:8px 10px; max-width:320px; display:none; }
     #measure-box  { bottom:60px; padding:8px 10px; min-width:200px; display:none; }
 
-    .pb-addr { font-size:12px; font-weight:700; color:#0b2d4c; }
-    .pb-sub  { font-size:10px; color:#000; margin-top:2px; }
     .ms-label { font-size:11px; text-transform:uppercase; color:#000; letter-spacing:.05em; }
     .ms-main  { font-size:14px; font-weight:400; color:#000; }
     .ms-sub   { font-size:14px; color:#000; }
@@ -438,12 +435,6 @@
         <div style="font-size:12px;color:#000;">Please wait</div>
       </div>
 
-      <div id="parcel-badge" style="display:none!important;">
-        <div class="pb-addr" id="pb-addr">—</div>
-        <div class="pb-sub"  id="pb-owner"></div>
-        <div class="pb-sub"  id="pb-geo"></div>
-      </div>
-
       <div id="measure-box">
         <div class="ms-label" id="ms-label">Selected shape</div>
         <div class="ms-row">
@@ -556,18 +547,18 @@
       popupEnabled: false,
       resultGraphicEnabled: false,
       locationEnabled: false,
-      allPlaceholder: 'Search parcel number or owner',
+      allPlaceholder: 'Search by parcel number or address',
       suggestionsEnabled: true,
       sources: [{
         layer: parcelLayer,
         name: 'Parcels',
-        placeholder: 'Parcel number or owner',
+        placeholder: 'Search by parcel number or address',
         searchFields: [
           pf.parcelNumber,
-          pf.ownerName
+          pf.siteAddress
         ],
-        displayField: pf.parcelNumber,
-        suggestionTemplate: '{' + pf.parcelNumber + '} — {' + pf.ownerName + '}',
+        displayField: pf.siteAddress,
+        suggestionTemplate: '{' + pf.siteAddress + '} — {' + pf.parcelNumber + '}',
         exactMatch: false,
         outFields: ['*'],
         maxResults: 6,
@@ -1486,7 +1477,7 @@ view.ui.add(parcelSearch, {
       function openPrintWindow(dataUrl, mapScale) {
         const attrs = currentParcelAttrs || {};
         const geo   = fmt(geoParam);
-        const addr  = fmt(document.getElementById('pb-addr').textContent, 'Address not on file');
+        const addr  = fmt(attrs[pf.siteAddress], 'Address not on file');
         const owner = fmt(attrs[pf.ownerName]);
         const zoning = fmt(attrs[pf.zoningAbbrev] || attrs[pf.zoningName]);
         const front = fmtSetback(attrs[pf.setbackFront]);
@@ -1855,6 +1846,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
         const pad = 0.15;
         const w = drawExt.xmax - drawExt.xmin, h = drawExt.ymax - drawExt.ymin;
         const expanded = {
+          type: 'extent',
           xmin: drawExt.xmin - w * pad, ymin: drawExt.ymin - h * pad,
           xmax: drawExt.xmax + w * pad, ymax: drawExt.ymax + h * pad,
           spatialReference: drawExt.spatialReference
@@ -1897,7 +1889,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
       geometry: selectedParcelGeometry,
       symbol: {
         type: 'simple-fill',
-        color: [255,215,0,0.08],
+        color: [0, 0, 0, 0],
         outline: { type:'simple-line', color:[230,184,0,1], width:3 }
       }
     }));
@@ -1905,14 +1897,6 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
     populateInfoPanel(attrs);
   
     const display = getParcelDisplayValues(attrs);
-    document.getElementById('pb-addr').textContent  = display.address;
-    document.getElementById('pb-owner').textContent = display.owner ? 'Owner: ' + display.owner : '';
-    document.getElementById('pb-geo').textContent   = 'Parcel: ' + display.parcel;
-  
-    // Your current badge is hidden with display:none!important in the HTML.
-    // This will not override !important, which is fine if you prefer the right panel.
-    document.getElementById('parcel-badge').style.display = 'block';
-  
     refreshSnapSources();
   
     if (options.skipZoom || !selectedParcelGeometry.extent) {
@@ -1950,6 +1934,9 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   
     setActiveParcel(feature)
       .then(() => {
+        // Remove the Search widget's own result graphic so only our
+        // yellow-outline highlight remains — prevents the double highlight.
+        try { parcelSearch.resultGraphics.removeAll(); } catch(e) {}
         document.getElementById('loading').classList.add('hidden');
         setStatus('Parcel loaded — select a tool to begin sketching.', true);
       })
