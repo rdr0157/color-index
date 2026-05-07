@@ -1164,6 +1164,13 @@ view.ui.add(parcelSearch, {
         g.symbol=SYM.septic; g.__isSepticTank=true;
       } else if (pt==='drainfield'||pt==='reserve') {
         const isRes = pt==='reserve';
+        // Guard against near-zero freehand draws — enforce a 10×30 ft minimum
+        const area = Math.abs(geometryEngine.geodesicArea(g.geometry, 'square-feet'));
+        if (area < 100) {
+          const center = g.geometry.extent ? g.geometry.extent.center : g.geometry.centroid;
+          g.geometry = buildRect(center, 30, 10);
+          setStatus('Shape was too small — resized to minimum 10 × 30 ft. Resize as needed.');
+        }
         g.symbol=drainfieldSym(isRes);
         g.__isDrainfield=isRes?'reserve':'primary';
         g.__dfId='df_'+Date.now()+'_'+Math.random().toString(36).slice(2);
@@ -1208,6 +1215,16 @@ view.ui.add(parcelSearch, {
     sketch.on('update', ev => {
       if (!ev.graphics||!ev.graphics.length) return;
       const g=ev.graphics[0];
+
+      // If the user clicks a well's buffer circle or spoke directly,
+      // cancel and redirect to moving the center marker so the whole
+      // group stays together — prevents partial-move on outer elements.
+      if (ev.state==='start' && g.__wellId && g.__wellRole!=='center') {
+        sketch.cancel();
+        const center = drawLayer.graphics.find(x=>x.__wellId===g.__wellId&&x.__wellRole==='center');
+        if (center) sketch.update([center],{tool:'move',toggleToolOnClick:false});
+        return;
+      }
       if (g.__wellRole==='center') syncWell(g.geometry, g.__wellId);
       if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
