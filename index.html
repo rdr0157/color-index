@@ -1934,9 +1934,19 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   
     setActiveParcel(feature)
       .then(() => {
-        // Remove the Search widget's own result graphic so only our
-        // yellow-outline highlight remains — prevents the double highlight.
-        try { parcelSearch.resultGraphics.removeAll(); } catch(e) {}
+        // Give the Search widget one tick to finish placing its own graphic/highlight,
+        // then wipe all of it so only our yellow outline remains.
+        setTimeout(() => {
+          try {
+            // Remove the view-level highlight the Search widget applied internally
+            if (parcelSearch.viewModel && parcelSearch.viewModel.highlightHandle) {
+              parcelSearch.viewModel.highlightHandle.remove();
+            }
+            parcelSearch.resultGraphics.removeAll();
+            // Clear the search bar text (issue: bar fills with "geo_id, address")
+            parcelSearch.clear();
+          } catch(e) {}
+        }, 50);
         document.getElementById('loading').classList.add('hidden');
         setStatus('Parcel loaded — select a tool to begin sketching.', true);
       })
@@ -1949,6 +1959,24 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
    view.when(() => {
   refreshSnapSources();
   setStatus('Map initialized', true);
+
+  // Block the Enter key on the search input so the widget never auto-selects
+  // the first result. Users must click a suggestion from the dropdown.
+  const searchInputObserver = new MutationObserver(() => {
+    const input = document.querySelector('.esri-ui-top-right .esri-search__input');
+    if (input && !input.__enterBlocked) {
+      input.__enterBlocked = true;
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+          setStatus('Select a parcel from the dropdown suggestions.', true);
+        }
+      }, true); // capture phase — runs before the widget's own handler
+      searchInputObserver.disconnect();
+    }
+  });
+  searchInputObserver.observe(document.body, { childList: true, subtree: true });
 
   // Sync active basemap button to config
   const basemapBtnMap = {
