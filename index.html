@@ -558,12 +558,12 @@
           pf.siteAddress
         ],
         displayField: pf.siteAddress,
-        suggestionTemplate: '{' + pf.siteAddress + '} — {' + pf.parcelNumber + '}',
+        suggestionTemplate: '{' + pf.parcelNumber + '}, {' + pf.siteAddress + '}',
         exactMatch: false,
         outFields: ['*'],
-        maxResults: 6,
-        maxSuggestions: 6,
-        minSuggestCharacters: 2
+        maxResults: 8,
+        maxSuggestions: 8,
+        minSuggestCharacters: 1
       }]
     });
 
