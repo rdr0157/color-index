@@ -642,10 +642,19 @@ view.ui.add(parcelSearch, {
     // Interior lines (header + 3 laterals) are separate computed graphics
     // so they always stay exactly 1 header + 3 laterals regardless of polygon size.
     function drainfieldSym(isReserve) {
+      // Keep the drainfield polygon itself nearly invisible, but not fully
+      // transparent. ArcGIS Sketch hit-testing is much more reliable when
+      // the polygon has a small fill/outline, while the visible drainfield
+      // pattern still comes from the four overlay lines below.
       return {
         type: 'simple-fill',
-        color: [0, 0, 0, 0],
-        outline: { type: 'simple-line', color: [0, 0, 0, 0], width: 0 }
+        color: [0, 110, 45, 0.015],
+        outline: {
+          type: 'simple-line',
+          color: [0, 110, 45, 0.18],
+          width: 0.75,
+          style: isReserve ? 'short-dash' : 'solid'
+        }
       };
     }
 
@@ -803,6 +812,13 @@ view.ui.add(parcelSearch, {
       document.getElementById('measure-box').style.display = 'none';
     }
 
+    function showSelectedShapeOnly(name) {
+      // Used for standard-size objects such as septic tanks where the user
+      // should see that the object is selected, but not receive redundant
+      // side-length labels or area calculations.
+      showMeasure('Selected shape', name || 'Shape', null);
+    }
+
     // ── Line labels (setback / distance) ─────────────────────
     function createOrUpdateLineLabel(graphic) {
       if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline') return;
@@ -877,7 +893,11 @@ view.ui.add(parcelSearch, {
     }
 
     function shouldSkipShapeMeasurement(graphic) {
-      return !!(graphic && (graphic.__isSepticTank || graphic.__skipMeasure));
+      return !!(graphic && graphic.__skipMeasure);
+    }
+
+    function shouldShowSelectedShapeOnly(graphic) {
+      return !!(graphic && graphic.__showSelectedShapeOnly);
     }
 
     function syncPolygonEdgeLabels(graphic) {
@@ -926,16 +946,49 @@ view.ui.add(parcelSearch, {
       }
     }
 
+    // ── Ground-distance geometry builders ────────────────────
+    // The map draws in Web Mercator. At Walla Walla County's latitude, one
+    // Web Mercator map meter is only about 0.69 ground meters. Without this
+    // correction, a 100' radius appears closer to 69' when measured
+    // geodesically. These helpers convert requested ground feet into the
+    // equivalent local Web Mercator map distance.
+    function latitudeDegreesAtPoint(point) {
+      if (point && isFinite(point.latitude)) return point.latitude;
+
+      const sr = point && point.spatialReference;
+      const wkid = sr && (sr.wkid || sr.latestWkid);
+      const isWebMercator = sr && (sr.isWebMercator || wkid === 3857 || wkid === 102100 || sr.latestWkid === 3857);
+      if (point && isWebMercator && isFinite(point.y)) {
+        const r = 6378137;
+        return (2 * Math.atan(Math.exp(point.y / r)) - Math.PI / 2) * 180 / Math.PI;
+      }
+
+      if (point && sr && (sr.isWGS84 || wkid === 4326) && isFinite(point.y)) return point.y;
+      if (view && view.center && isFinite(view.center.latitude)) return view.center.latitude;
+      return (cfg.map.center && cfg.map.center[1]) || 46.14;
+    }
+
+    function localWebMercatorScaleFactor(point) {
+      const latRad = latitudeDegreesAtPoint(point) * Math.PI / 180;
+      const cosLat = Math.cos(latRad);
+      if (!isFinite(cosLat) || Math.abs(cosLat) < 0.1) return 1;
+      return 1 / cosLat;
+    }
+
+    function feetToLocalMapMeters(point, feet) {
+      return feet * 0.3048 * localWebMercatorScaleFactor(point);
+    }
+
     // ── Circle builder (well buffer) ──────────────────────────
     function circlePolygon(center, radiusFt) {
-      const r=radiusFt*0.3048, n=72, rings=[];
+      const r=feetToLocalMapMeters(center, radiusFt), n=72, rings=[];
       for (let i=0;i<=n;i++) { const a=(i/n)*2*Math.PI; rings.push([center.x+r*Math.cos(a),center.y+r*Math.sin(a)]); }
       return new Polygon({rings:[rings],spatialReference:center.spatialReference});
     }
 
     // ── Well graphics sync (on move) ──────────────────────────
     function syncWell(center, wellId) {
-      const r = 100*0.3048;
+      const r = feetToLocalMapMeters(center, 100);
       const buf = drawLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='buffer');
       if (buf) buf.geometry = circlePolygon(center, 100);
       const sp = drawLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='spoke_0');
@@ -947,7 +1000,7 @@ view.ui.add(parcelSearch, {
 
     // ── Fixed-size rect builder ───────────────────────────────
     function buildRect(center, lFt, wFt) {
-      const m=0.3048, hl=(lFt*m)/2, hw=(wFt*m)/2, x=center.x, y=center.y;
+      const hl=feetToLocalMapMeters(center, lFt)/2, hw=feetToLocalMapMeters(center, wFt)/2, x=center.x, y=center.y;
       return new Polygon({
         spatialReference:center.spatialReference,
         rings:[[[x-hl,y-hw],[x+hl,y-hw],[x+hl,y+hw],[x-hl,y+hw],[x-hl,y-hw]]]
@@ -990,7 +1043,8 @@ view.ui.add(parcelSearch, {
       syncPolygonEdgeLabels(g);
       sketch.update([g],{tool:'transform',toggleToolOnClick:false});
       const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
-      if (shouldSkipShapeMeasurement(g)) hideMeasure();
+      if (shouldShowSelectedShapeOnly(g)) showSelectedShapeOnly(extraProps.__label || 'Shape');
+      else if (shouldSkipShapeMeasurement(g)) hideMeasure();
       else showMeasure(extraProps.__label||'Shape', Math.round(sq).toLocaleString()+' sq ft', lFt+' × '+wFt+' ft');
     }
 
@@ -1087,7 +1141,7 @@ view.ui.add(parcelSearch, {
         const w=parseFloat(document.getElementById('septic-w').value)||10;
         const h=view.on('click',ev=>{
           h.remove(); deactivateAll();
-          placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__skipEdgeLabels:true,__skipMeasure:true,__label:'Septic tank'});
+          placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__skipEdgeLabels:true,__showSelectedShapeOnly:true,__label:'Septic tank'});
           setStatus('Septic tank placed ('+l+' × '+w+' ft). Rotate or move as needed.');
         });
         setStatus('Click to place the septic tank.');
@@ -1301,7 +1355,7 @@ view.ui.add(parcelSearch, {
         g.__twoSideLabels=true;
         resizedToMinimum = enforceMinimumRect(g, pt==='existing' ? 'Existing structure' : 'Proposed structure');
       } else if (pt==='septic') {
-        g.symbol=SYM.septic; g.__isSepticTank=true; g.__skipEdgeLabels=true; g.__skipMeasure=true;
+        g.symbol=SYM.septic; g.__isSepticTank=true; g.__skipEdgeLabels=true; g.__showSelectedShapeOnly=true;
       } else if (pt==='drainfield'||pt==='reserve') {
         const isRes = pt==='reserve';
         // Guard against near-zero freehand draws — enforce a 10×30 ft minimum
@@ -1346,7 +1400,9 @@ view.ui.add(parcelSearch, {
 
       if (g.geometry.type==='polygon') {
         syncPolygonEdgeLabels(g);
-        if (shouldSkipShapeMeasurement(g)) {
+        if (shouldShowSelectedShapeOnly(g)) {
+          showSelectedShapeOnly(g.__label || 'Shape');
+        } else if (shouldSkipShapeMeasurement(g)) {
           hideMeasure();
         } else {
           const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
@@ -1383,7 +1439,9 @@ view.ui.add(parcelSearch, {
       if (g.geometry.type==='polygon') {
         enforceMinimumRect(g, g.__label || (g.__structureType === 'existing' ? 'Existing structure' : g.__structureType === 'proposed' ? 'Proposed structure' : 'Shape'));
         syncPolygonEdgeLabels(g);
-        if (shouldSkipShapeMeasurement(g)) {
+        if (shouldShowSelectedShapeOnly(g)) {
+          showSelectedShapeOnly(g.__label || 'Shape');
+        } else if (shouldSkipShapeMeasurement(g)) {
           hideMeasure();
         } else {
           const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
