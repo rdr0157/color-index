@@ -878,8 +878,20 @@ view.ui.add(parcelSearch, {
     }
 
     // ── Print text scaling ────────────────────────────────────
-    function getPrintTextSize(scale) { return 9; }
-    function getPrintHaloSize(scale) { return 2; }
+    function getPrintTextSize(scale) {
+      // Scale labels down on larger print extents so 11 x 17 prints remain legible
+      // without overwhelming larger parcels. Smaller parcels keep the prior 9px size.
+      if (scale >= 6000) return 6;
+      if (scale >= 3000) return 7;
+      if (scale >= 1500) return 8;
+      return 9;
+    }
+    function getPrintHaloSize(scale) {
+      if (scale >= 6000) return 1;
+      if (scale >= 3000) return 1.25;
+      if (scale >= 1500) return 1.5;
+      return 2;
+    }
 
     function applyPrintTextStyles() {
       const scale = view.scale, size = getPrintTextSize(scale), halo = getPrintHaloSize(scale);
