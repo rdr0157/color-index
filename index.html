@@ -948,6 +948,107 @@ view.ui.add(parcelSearch, {
       }
     }
 
+
+    // ── Live drawing measurement preview ─────────────────────
+    // Temporary label shown only while actively drawing a polygon/polyline.
+    // It is removed when the sketch is completed or cancelled, then normal
+    // static labels are created by the existing polygon/line label functions.
+    let liveMeasureGraphic = null;
+
+    function shouldShowLiveDrawingMeasure(pendingType) {
+      return ['drawTool', 'grading', 'easement', 'setback', 'line', 'septicline'].includes(pendingType);
+    }
+
+    function clearLiveMeasurePreview() {
+      if (liveMeasureGraphic) {
+        previewLayer.remove(liveMeasureGraphic);
+        liveMeasureGraphic = null;
+      }
+    }
+
+    function coordsAreClose(a, b) {
+      if (!a || !b) return false;
+      return Math.abs(a[0] - b[0]) < 0.0001 && Math.abs(a[1] - b[1]) < 0.0001;
+    }
+
+    function activeSegmentFromSketchGeometry(geometry) {
+      if (!geometry) return null;
+      let pts = null;
+
+      if (geometry.type === 'polyline' && geometry.paths && geometry.paths[0]) {
+        pts = geometry.paths[0].slice();
+      } else if (geometry.type === 'polygon' && geometry.rings && geometry.rings[0]) {
+        pts = geometry.rings[0].slice();
+        // During polygon creation, Sketch commonly keeps the ring closed by
+        // repeating the first vertex as the last coordinate. Remove that closing
+        // coordinate so the live label follows only the active segment.
+        if (pts.length > 2 && coordsAreClose(pts[0], pts[pts.length - 1])) pts.pop();
+      }
+
+      if (!pts || pts.length < 2) return null;
+      const from = pts[pts.length - 2];
+      const to   = pts[pts.length - 1];
+      if (!from || !to || coordsAreClose(from, to)) return null;
+
+      return {
+        from,
+        to,
+        spatialReference: geometry.spatialReference
+      };
+    }
+
+    function updateLiveMeasurePreview(ev) {
+      const pendingType = sketch._pendingType;
+      if (!shouldShowLiveDrawingMeasure(pendingType)) {
+        clearLiveMeasurePreview();
+        return;
+      }
+      const seg = activeSegmentFromSketchGeometry(ev && ev.graphic && ev.graphic.geometry);
+      if (!seg) {
+        clearLiveMeasurePreview();
+        return;
+      }
+
+      const lineGeom = {
+        type: 'polyline',
+        spatialReference: seg.spatialReference,
+        paths: [[ seg.from, seg.to ]]
+      };
+      const len = Math.abs(geometryEngine.geodesicLength(lineGeom, 'feet'));
+      if (!isFinite(len) || len < 0.25) {
+        clearLiveMeasurePreview();
+        return;
+      }
+
+      const mid = {
+        type: 'point',
+        x: (seg.from[0] + seg.to[0]) / 2,
+        y: (seg.from[1] + seg.to[1]) / 2,
+        spatialReference: seg.spatialReference
+      };
+      const labelText = len.toFixed(1) + "'";
+
+      if (liveMeasureGraphic) {
+        liveMeasureGraphic.geometry = mid;
+        liveMeasureGraphic.symbol.text = labelText;
+      } else {
+        liveMeasureGraphic = new Graphic({
+          geometry: mid,
+          symbol: {
+            type: 'text',
+            text: labelText,
+            color: [0, 0, 0, 1],
+            haloColor: [255, 255, 255, 1],
+            haloSize: 1.5,
+            font: { size: 8, weight: 'bold', family: 'Calibri, Segoe UI, Arial, sans-serif' },
+            yoffset: -8
+          }
+        });
+        liveMeasureGraphic.__liveMeasurementPreview = true;
+        previewLayer.add(liveMeasureGraphic);
+      }
+    }
+
     // ── Ground-distance geometry builders ────────────────────
     // The map draws in Web Mercator. At Walla Walla County's latitude, one
     // Web Mercator map meter is only about 0.69 ground meters. Without this
@@ -1074,6 +1175,7 @@ view.ui.add(parcelSearch, {
 
     function cancelAndReset(btnId) {
       clearCalloutPreview();
+      clearLiveMeasurePreview();
       deactivateAll();
       if (sketch.state!=='idle') sketch.cancel();
       if (btnId) activateBtn(btnId);
@@ -1360,7 +1462,20 @@ view.ui.add(parcelSearch, {
 
     // ── Sketch events ─────────────────────────────────────────
     sketch.on('create', ev => {
+      if (ev.state === 'start') {
+        clearLiveMeasurePreview();
+        return;
+      }
+      if (ev.state === 'active') {
+        updateLiveMeasurePreview(ev);
+        return;
+      }
+      if (ev.state === 'cancel') {
+        clearLiveMeasurePreview();
+        return;
+      }
       if (ev.state!=='complete') return;
+      clearLiveMeasurePreview();
       const g=ev.graphic;
       const pt=sketch._pendingType;
       sketch._pendingType=null;
@@ -1507,7 +1622,7 @@ view.ui.add(parcelSearch, {
     });
 
     document.addEventListener('keydown', e => {
-      if (e.key==='Escape') { clearCalloutPreview(); if(sketch.state!=='idle')sketch.cancel(); }
+      if (e.key==='Escape') { clearCalloutPreview(); clearLiveMeasurePreview(); if(sketch.state!=='idle')sketch.cancel(); }
       if ((e.key==='Delete'||e.key==='Backspace')&&sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
     });
 
@@ -1633,7 +1748,7 @@ view.ui.add(parcelSearch, {
     };
 
     window.clearAll = function () {
-      clearCalloutPreview(); sketch.cancel();
+      clearCalloutPreview(); clearLiveMeasurePreview(); sketch.cancel();
       drawLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
