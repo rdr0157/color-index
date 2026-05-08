@@ -70,7 +70,7 @@
     #main { flex:1; display:flex; min-height:0; overflow:hidden; }
 
     /* Sidebar */
-    #sidebar { width:240px; background:#fff; border-right:1px solid #d7dce3; overflow:auto; display:flex; flex-direction:column; }
+    #sidebar { width:300px; background:#fff; border-right:1px solid #d7dce3; overflow:auto; display:flex; flex-direction:column; }
     .section-head {
       background:#0b2d4c; color:#fff; font-size:12px;
       text-transform:uppercase; letter-spacing:.09em; padding:7px 12px; font-weight:700;
@@ -90,7 +90,23 @@
     .dim-sep   { font-size:12px; color:#000; }
     .size-lbl  { font-size:12px; color:#000; flex:1; cursor:pointer; }
 
-    .toggle-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; font-size:12px; }
+    .toggle-row {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:7px 8px; margin:3px 0; font-size:12px;
+      border:1px solid transparent; border-radius:4px; cursor:pointer;
+      user-select:none;
+    }
+    .toggle-row:hover { background:#f5f7fa; border-color:#d5dbe3; }
+    .toggle-row span { flex:1; cursor:pointer; }
+    .toggle-row input { cursor:pointer; margin:0; }
+    .edit-mode-row { display:flex; align-items:stretch; gap:5px; margin-bottom:8px; }
+    .edit-mode-row .tool-btn + .tool-btn { margin-top:0; }
+    .edit-mode-btn {
+      flex:1; margin:0; text-align:center; height:34px; min-height:0;
+      padding:0 8px; line-height:1; display:flex; align-items:center;
+      justify-content:center; font-weight:400;
+    }
+    .edit-mode-btn.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; font-weight:400; }
 
     /* Map */
     #map-wrap { flex:1; position:relative; min-width:0; }
@@ -194,6 +210,23 @@
   <main role="main" style="flex:1;display:flex;flex-direction:column;min-height:0;">
   <div id="main">
     <div id="sidebar">
+
+      <!-- EDITING -->
+      <div class="section-head">Editing</div>
+      <div class="section-body">
+        <div class="edit-mode-row" role="group" aria-label="Object editing mode">
+          <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-reshape" aria-pressed="true" title="Reshape / edit points" onclick="setEditMode('reshape')">Reshape (Edit points)</button>
+          <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-resize" aria-pressed="false" title="Resize object" onclick="setEditMode('resize')">Resize</button>
+        </div>
+        <label class="toggle-row" for="snap-toggle" title="Toggle snapping while drawing and editing">
+          <span>Snapping on</span>
+          <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
+        </label>
+        <label class="toggle-row" for="print-parcel" title="Toggle whether printing uses the selected parcel extent">
+          <span>Print to parcel extent</span>
+          <input type="checkbox" id="print-parcel" checked onchange="setPrintExtent('parcel', this.checked)" />
+        </label>
+      </div>
 
       <!-- STRUCTURES -->
       <div class="section-head">Structures</div>
@@ -370,19 +403,6 @@
             <td style="padding:3px 4px;vertical-align:middle;">Easement</td>
           </tr>
         </table>
-      </div>
-
-      <!-- EDITING -->
-      <div class="section-head">Editing</div>
-      <div class="section-body">
-        <div class="toggle-row">
-          <label for="snap-toggle">Snapping on</label>
-          <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
-        </div>
-        <div class="toggle-row">
-          <label for="print-parcel">Print to parcel extent</label>
-          <input type="checkbox" id="print-parcel" checked onchange="setPrintExtent('parcel', this.checked)" />
-        </div>
       </div>
 
       <div class="section-head">Instructions</div>
@@ -601,25 +621,80 @@ view.ui.add(parcelSearch, {
     }
 
 
-    // ── Automatic vertex editing for user-drawn polygons ─────
-    // For public-facing use, freehand polygons, grading areas, and non-fixed
-    // easements open directly in reshape mode when selected. Fixed-size
-    // easements and rectangles keep the normal transform behavior.
+    // ── Selection edit mode controls ──────────────────────────
+    // Reshape mode opens supported polygons in vertex-edit mode. Resize mode
+    // keeps the standard transform handles. Only one mode is active at a time,
+    // and reshape is the default for public-facing polygon edits.
+    let selectedEditMode = 'reshape';
+
     function sketchActiveToolName() {
       return (sketch && sketch.activeTool) ||
         (sketch && sketch.viewModel && sketch.viewModel.activeTool) ||
         '';
     }
 
-    function shouldUseVertexEdit(graphic) {
+    function getCurrentUpdateGraphic() {
+      const ug = sketch && sketch.updateGraphics;
+      if (!ug) return null;
+      if (typeof ug.toArray === 'function') return ug.toArray()[0] || null;
+      if (typeof ug.getItemAt === 'function') return ug.getItemAt(0) || null;
+      return ug[0] || null;
+    }
+
+    function isEditModeControlledGraphic(graphic) {
       if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return false;
-      if (graphic.__isFixedObject || graphic.__isDrawRectangle) return false;
       if (graphic.__isDrainfield || graphic.__isSepticTank || graphic.__wellRole) return false;
+      if (graphic.__isDrawRectangle) return false;
+      // Drainfields, reserve drainfields, and septic tanks remain transform-only.
+      // Fixed-size proposed structures, existing structures, and easements are
+      // intentionally included so staff can reshape or resize them after placement.
       return !!(
+        graphic.__structureType ||
         graphic.__isGrading ||
         graphic.__isEasement ||
         (graphic.__isDrawTool && !graphic.__isDrawRectangle)
       );
+    }
+
+    function shouldUseVertexEdit(graphic) {
+      return selectedEditMode === 'reshape' && isEditModeControlledGraphic(graphic);
+    }
+
+    function updateEditModeButtons() {
+      const resize = document.getElementById('edit-mode-resize');
+      const reshape = document.getElementById('edit-mode-reshape');
+      if (resize) {
+        const active = selectedEditMode === 'resize';
+        resize.classList.toggle('active', active);
+        resize.setAttribute('aria-pressed', active ? 'true' : 'false');
+      }
+      if (reshape) {
+        const active = selectedEditMode === 'reshape';
+        reshape.classList.toggle('active', active);
+        reshape.setAttribute('aria-pressed', active ? 'true' : 'false');
+      }
+    }
+
+    function openTransformEdit(graphic) {
+      if (!graphic || graphic.__openingTransformEdit) return false;
+      graphic.__openingTransformEdit = true;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before transform edit.', err);
+      }
+
+      setTimeout(() => {
+        try {
+          sketch.update([graphic], { tool:'transform', enableRotation:true, enableScaling:true, preserveAspectRatio:false, toggleToolOnClick:false });
+          setStatus('Resize object enabled. Move, resize, or rotate the selected shape.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to start resize mode for this shape.', false);
+        }
+        setTimeout(() => { graphic.__openingTransformEdit = false; }, 750);
+      }, 0);
+      return true;
     }
 
     function openVertexEdit(graphic) {
@@ -634,15 +709,32 @@ view.ui.add(parcelSearch, {
       setTimeout(() => {
         try {
           sketch.update([graphic], { tool:'reshape', toggleToolOnClick:false });
-          setStatus('Vertex editing enabled. Drag individual points to reshape the polygon.');
+          setStatus('Reshape enabled. Drag individual points to edit the selected shape.');
         } catch (err) {
           console.error(err);
-          setStatus('Unable to start vertex editing for this shape.', false);
+          setStatus('Unable to start reshape mode for this shape.', false);
         }
         setTimeout(() => { graphic.__openingVertexEdit = false; }, 750);
       }, 0);
       return true;
     }
+
+    window.setEditMode = function (mode) {
+      selectedEditMode = mode === 'resize' ? 'resize' : 'reshape';
+      updateEditModeButtons();
+
+      const g = getCurrentUpdateGraphic();
+      if (isEditModeControlledGraphic(g)) {
+        if (selectedEditMode === 'reshape') openVertexEdit(g);
+        else openTransformEdit(g);
+      } else {
+        setStatus(selectedEditMode === 'reshape'
+          ? 'Edit mode: Reshape selected polygons by moving individual points.'
+          : 'Edit mode: Resize selected objects using move, resize, and rotate handles.', true);
+      }
+    };
+
+    updateEditModeButtons();
 
     // ── Symbols ───────────────────────────────────────────────
     const SYM = {
@@ -1756,12 +1848,18 @@ view.ui.add(parcelSearch, {
       if (!ev.graphics||!ev.graphics.length) return;
       const g=ev.graphics[0];
 
-      // Open supported user-drawn polygons directly in vertex-edit/reshape
-      // mode. This keeps fixed-size objects, rectangles, septic, drainfields,
-      // and structures in their existing transform workflow.
-      if (ev.state === 'start' && shouldUseVertexEdit(g) && sketchActiveToolName() !== 'reshape' && !g.__openingVertexEdit) {
-        openVertexEdit(g);
-        return;
+      // Apply the selected edit mode when supported polygons are selected.
+      // Reshape is the default; Resize object can be selected from the Editing panel.
+      if (ev.state === 'start' && isEditModeControlledGraphic(g) && !g.__openingVertexEdit && !g.__openingTransformEdit) {
+        const activeTool = sketchActiveToolName();
+        if (selectedEditMode === 'reshape' && activeTool !== 'reshape') {
+          openVertexEdit(g);
+          return;
+        }
+        if (selectedEditMode === 'resize' && activeTool !== 'transform') {
+          openTransformEdit(g);
+          return;
+        }
       }
 
       // Well buffer/spoke graphics are support graphics only. If selected,
