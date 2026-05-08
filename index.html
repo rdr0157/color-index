@@ -1009,6 +1009,22 @@ view.ui.add(parcelSearch, {
       });
     }
 
+    // Static calibration applied only to fixed-size placements. These
+    // multipliers correct the small residual difference between requested
+    // fixed dimensions and ArcGIS geodesic measurements after the local
+    // Web Mercator scale adjustment above. Based on county-scale testing:
+    // 1000 × 1000 ft was reading about 1001.8 × 998.5 ft.
+    const FIXED_SIZE_LENGTH_CORRECTION = 0.9982; // east/west side
+    const FIXED_SIZE_WIDTH_CORRECTION  = 1.0015; // north/south side
+
+    function buildFixedRect(center, lFt, wFt) {
+      return buildRect(
+        center,
+        lFt * FIXED_SIZE_LENGTH_CORRECTION,
+        wFt * FIXED_SIZE_WIDTH_CORRECTION
+      );
+    }
+
     function polygonCenter(polygon) {
       if (!polygon) return null;
       return polygon.extent ? polygon.extent.center : (polygon.centroid || null);
@@ -1030,7 +1046,7 @@ view.ui.add(parcelSearch, {
       if (isFinite(area) && area >= 1) return false;
       const center = polygonCenter(graphic.geometry);
       if (!center) return false;
-      graphic.geometry = buildRect(center, 10, 10);
+      graphic.geometry = buildFixedRect(center, 10, 10);
       graphic.__twoSideLabels = true;
       setStatus((label || 'Shape') + ' was too small — resized to 10 × 10 ft. Resize or rotate as needed.', true);
       return true;
@@ -1038,7 +1054,7 @@ view.ui.add(parcelSearch, {
 
     function placeFixed(center, lFt, wFt, symbol, extraProps) {
       extraProps = extraProps || {};
-      const rect = buildRect(center, lFt, wFt);
+      const rect = buildFixedRect(center, lFt, wFt);
       const g = new Graphic({geometry:rect, symbol});
       Object.assign(g, { __isFixedObject:true, __twoSideLabels:true }, extraProps);
       drawLayer.add(g);
@@ -1171,7 +1187,7 @@ view.ui.add(parcelSearch, {
         if (!isFinite(l)||!isFinite(w)||l<=0||w<=0) { setStatus('Enter valid dimensions first.',false); deactivateAll(); return; }
         const h=view.on('click',ev=>{
           h.remove(); deactivateAll();
-          const rect=buildRect(ev.mapPoint,l,w);
+          const rect=buildFixedRect(ev.mapPoint,l,w);
           const dfId='df_'+Date.now()+'_'+Math.random().toString(36).slice(2);
           const g=new Graphic({geometry:rect,symbol:sym});
           g.__isDrainfield=isReserve?'reserve':'primary';
@@ -1364,7 +1380,7 @@ view.ui.add(parcelSearch, {
         const area = Math.abs(geometryEngine.geodesicArea(g.geometry, 'square-feet'));
         if (area < 100) {
           const center = g.geometry.extent ? g.geometry.extent.center : g.geometry.centroid;
-          g.geometry = buildRect(center, 30, 10);
+          g.geometry = buildFixedRect(center, 30, 10);
           setStatus('Shape was too small — resized to minimum 10 × 30 ft. Resize as needed.');
         }
         g.symbol=drainfieldSym(isRes);
