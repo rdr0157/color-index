@@ -551,7 +551,10 @@
 
     const view = new MapView({
       container:'viewDiv', map, ui:{components:['zoom']},
-      popup:{autoOpenEnabled:false}, center:cfg.map.center, zoom:12
+      popup:{autoOpenEnabled:false}, center:cfg.map.center, zoom:12,
+      // Allow fractional zoom levels so print-to-parcel can fit more tightly
+      // instead of snapping out to a coarser Esri zoom increment.
+      constraints:{ snapToZoom:false }
     });
     view.ui.add(new Home({ view }), 'top-left');
     view.ui.add(new ScaleBar({ view, unit:'dual' }), 'bottom-right');
@@ -2063,6 +2066,19 @@ view.ui.add(parcelSearch, {
     const PRINT_SCREENSHOT_HEIGHT = 2140;
     const PARCEL_PRINT_PADDING_FACTOR = 1.005;
 
+    // After the parcel extent is fitted, gently tighten the scale for larger
+    // rural parcels. This addresses cases where the view settles with too much
+    // unused map area around the selected parcel. A smaller factor means a
+    // closer zoom. Keep these conservative to avoid clipping parcel edges.
+    function getParcelPrintTightenFactor(scale) {
+      if (!isFinite(scale)) return 1;
+      if (scale >= 10000) return 0.90;
+      if (scale >= 6000)  return 0.92;
+      if (scale >= 3000)  return 0.94;
+      if (scale >= 1500)  return 0.97;
+      return 1;
+    }
+
     function getOptimizedParcelPrintExtent() {
       if (!selectedParcelGeometry || !selectedParcelGeometry.extent) return null;
       return selectedParcelGeometry.extent.expand(PARCEL_PRINT_PADDING_FACTOR);
@@ -2512,8 +2528,27 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
         try { view.resize(); } catch (e) {}
         setTimeout(() => {
           view.goTo(ext, { duration:0 }).then(() => {
-            const wait = () => { if (!view.updating && view.stationary) setTimeout(captureAndOpen, 250); else requestAnimationFrame(wait); };
-            wait();
+            const tighten = getParcelPrintTightenFactor(view.scale);
+            const tightenView = () => {
+              if (tighten < 0.999 && view.scale) {
+                return view.goTo({ center:view.center, scale:view.scale * tighten }, { duration:0 });
+              }
+              return Promise.resolve();
+            };
+
+            tightenView().then(() => {
+              const wait = () => {
+                if (!view.updating && view.stationary) setTimeout(captureAndOpen, 250);
+                else requestAnimationFrame(wait);
+              };
+              wait();
+            }).catch(() => {
+              const wait = () => {
+                if (!view.updating && view.stationary) setTimeout(captureAndOpen, 250);
+                else requestAnimationFrame(wait);
+              };
+              wait();
+            });
           }).catch(() => setTimeout(captureAndOpen, 300));
         }, 150);
 
