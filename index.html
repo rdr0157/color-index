@@ -2056,6 +2056,18 @@ view.ui.add(parcelSearch, {
     // 'parcel' | null (current view)
     let printExtentMode = 'parcel';
 
+    // Match the print screenshot ratio to the 11×17 map frame and keep the
+    // parcel-print zoom tight. The previous 1.03 buffer could leave noticeable
+    // unused space on some parcel shapes/extents, especially on 11×17 output.
+    const PRINT_SCREENSHOT_WIDTH  = 3400;
+    const PRINT_SCREENSHOT_HEIGHT = 2140;
+    const PARCEL_PRINT_PADDING_FACTOR = 1.005;
+
+    function getOptimizedParcelPrintExtent() {
+      if (!selectedParcelGeometry || !selectedParcelGeometry.extent) return null;
+      return selectedParcelGeometry.extent.expand(PARCEL_PRINT_PADDING_FACTOR);
+    }
+
     window.setPrintExtent = function (mode, checked) {
       printExtentMode = checked ? mode : null;
     };
@@ -2079,6 +2091,8 @@ view.ui.add(parcelSearch, {
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
       const prePrintBasemap = map.basemap;
+      const prePrintPadding = view.padding ? Object.assign({}, view.padding) : null;
+      view.padding = { top: 0, right: 0, bottom: 0, left: 0 };
       map.basemap = 'topo-vector';
 
       function escHtml(value) {
@@ -2478,11 +2492,12 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
         }
         const mapScale = view.scale || 2400;
         const orig = applyPrintTextStyles();
-        view.takeScreenshot({ format:'png', quality:100, width:3400, height:2140 })
+        view.takeScreenshot({ format:'png', quality:100, width:PRINT_SCREENSHOT_WIDTH, height:PRINT_SCREENSHOT_HEIGHT })
           .then(r => openPrintWindow(r.dataUrl, mapScale))
           .catch(err => { console.error(err); setStatus('Screenshot failed.', false); })
           .finally(() => {
             restoreTextStyles(orig);
+            if (prePrintPadding) view.padding = prePrintPadding;
             if (prePrintBasemap) map.basemap = prePrintBasemap;
             if (prePrintViewpoint) view.goTo(prePrintViewpoint, { duration:0 }).catch(() => {});
           });
@@ -2490,10 +2505,10 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
 
       if (printExtentMode === 'parcel') {
         // ── Zoom to parcel boundary ────────────────────────────
-        if (!selectedParcelGeometry || !selectedParcelGeometry.extent) {
+        const ext = getOptimizedParcelPrintExtent();
+        if (!ext) {
           setTimeout(captureAndOpen, 250); return;
         }
-        const ext = selectedParcelGeometry.extent.expand(1.03);
         try { view.resize(); } catch (e) {}
         setTimeout(() => {
           view.goTo(ext, { duration:0 }).then(() => {
