@@ -1,3 +1,80 @@
+I'm currently working on a site plan builder, however, it is up to about 2100 lines of code on an html file, alongside an additional config file which are hosted on a github.
+
+What is the best way to provide that, and have you that provided it to me as a complete output?
+Thought for 8s
+
+The best way is to upload the actual files directly here:
+
+Upload your full index.html
+Upload your config.js
+Tell me what you want changed or reviewed
+
+That is much better than pasting 2,100 lines into chat, because I can read the whole file without missing sections or formatting.
+
+For the output, the best options are:
+
+Best option: I provide the revised files back to you as complete downloadable files, for example:
+
+index.html
+config.js
+
+That way you can download them and upload directly to GitHub without copying thousands of lines from the chat.
+
+Second-best option: I provide the full revised code in the chat inside copyable code blocks, but for 2,100 lines that can get messy and may be harder to copy cleanly.
+
+Third option: You can send me the GitHub link, especially if the repository is public. I can review the structure and tell you exactly what to replace, though uploading the files here is still cleaner if you want a complete rewritten output.
+
+So for your site plan builder, I would recommend uploading both files here and saying something like:
+
+Please review these two files and provide me with complete revised versions of both files. Do not abbreviate the code.
+
+Then I can work from the full existing version and return complete replacement files.
+
+config (8).js
+JavaScript
+index (17).html
+File
+Here are currently the two files. This is a site plan builder which is functioning entirely off a github. I create the files for the parcel data on ArcGIS Pro / AGOL.
+
+Let me know if you have any questions, but here are the current changes that need to be made.
+
+- Remove the measurement / labels on Septic Tank.
+
+-Some times existing structure, structure, and rectangle will accidently click or appear as a 0 sq ft / 0.00 ac. When they do this maybe have them bump up the size to a 10 x 10 sq ft, after which the user can resize where needed? Essentially looking for a failsafe for this glitch.
+
+-For rectangles, existing structures, structures, and fixed objects, we only need measurements on 2 sides, as they would be equal on the parallel line.
+
+-Let's also have the Deleted and Clear in the header show up as a Black Text with a white background
+
+-If possible let's have the print to parcel extent on by default instead of turned off by default.
+
+
+
+Provide a revised HTML file and I will review it, upload it to github to test out and provide more updates for you. The output should be a new HTML file or something akin to a notepad document.
+
+I’ll work from the uploaded index.html and leave config.js unchanged unless the HTML depends on a config adjustment. I’m going to make the requested behavior changes directly in a revised copy and return it as a downloadable HTML file.
+
+I found the main sections that need the changes: the polygon edge-label function, fixed rectangle placement, sketch create/update handling, header button CSS, and the print extent toggle. The config file looks like it can remain as-is.
+
+Thought for 3m 33s
+
+Done — I revised the uploaded HTML and left the config.js unchanged. Built from your current index.html and existing config setup.
+
+Download the revised file here:
+
+Download revised HTML
+
+Changes made:
+
+Removed septic tank measurement/edge labels.
+Added a 10 × 10 ft fallback for accidental near-zero proposed structures, existing structures, and rectangles.
+Limited rectangle/fixed-object measurements to two sides instead of all four sides.
+Changed Delete selected and Clear all header buttons to black text on a white background.
+Set Print to parcel extent to be checked/on by default.
+Ran a JavaScript syntax check on the revised inline script.
+
+When uploading to GitHub, rename this file back to index.html so GitHub Pages serves it correctly.
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,6 +112,10 @@
       color:#fff; border-radius:4px; padding:7px 10px; cursor:pointer; font:inherit; font-size:14px;
     }
     .hdr-btn:hover { background:rgba(255,255,255,.18); }
+    .hdr-btn.light {
+      background:#fff; color:#000; border:1px solid #fff; font-weight:700;
+    }
+    .hdr-btn.light:hover { background:#f3f4f6; border-color:#d1d5db; }
     .hdr-btn.gold {
       background:#F2EDDC; color:#000; border:1px solid #869d5c;
       font-weight:700; display:flex; align-items:center; gap:7px; font-size:14px;
@@ -178,8 +259,8 @@
       <div id="agency"></div>
       <div id="title"></div>
     </div>
-    <button class="hdr-btn" onclick="deleteSelected()" aria-label="Delete selected graphic">Delete selected</button>
-    <button class="hdr-btn" onclick="clearAll()" aria-label="Clear all graphics">Clear all</button>
+    <button class="hdr-btn light" onclick="deleteSelected()" aria-label="Delete selected graphic">Delete selected</button>
+    <button class="hdr-btn light" onclick="clearAll()" aria-label="Clear all graphics">Clear all</button>
     <button class="hdr-btn gold" onclick="printPlan()" aria-label="Print or save PDF of site plan">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print / Save PDF
@@ -377,7 +458,7 @@
         </div>
         <div class="toggle-row">
           <label for="print-parcel">Print to parcel extent</label>
-          <input type="checkbox" id="print-parcel" onchange="setPrintExtent('parcel', this.checked)" />
+          <input type="checkbox" id="print-parcel" checked onchange="setPrintExtent('parcel', this.checked)" />
         </div>
       </div>
 
@@ -795,6 +876,10 @@ view.ui.add(parcelSearch, {
       document.getElementById('measure-box').style.display = 'block';
     }
 
+    function hideMeasure() {
+      document.getElementById('measure-box').style.display = 'none';
+    }
+
     // ── Line labels (setback / distance) ─────────────────────
     function createOrUpdateLineLabel(graphic) {
       if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline') return;
@@ -826,12 +911,13 @@ view.ui.add(parcelSearch, {
     // boundary by design). Labels sync on create/update/delete/clearAll.
     const polyEdgeLabelMap = new Map();
 
-    function calcPolygonEdgeLabels(polygon) {
+    function calcPolygonEdgeLabels(polygon, twoSidesOnly) {
       if (!polygon || !polygon.rings || !polygon.rings[0]) return [];
       const ring = polygon.rings[0];
       const sr   = polygon.spatialReference;
       const out  = [];
-      for (let i = 0; i < ring.length - 1; i++) {
+      const edgeCount = twoSidesOnly ? Math.min(2, ring.length - 1) : ring.length - 1;
+      for (let i = 0; i < edgeCount; i++) {
         const x1 = ring[i][0],   y1 = ring[i][1];
         const x2 = ring[i+1][0], y2 = ring[i+1][1];
         const seg = {
@@ -849,11 +935,35 @@ view.ui.add(parcelSearch, {
       return out;
     }
 
+    function shouldUseTwoSideLabels(graphic) {
+      return !!(graphic && (
+        graphic.__twoSideLabels ||
+        graphic.__structureType ||
+        graphic.__isDrawRectangle ||
+        graphic.__isFixedObject
+      ));
+    }
+
+    function shouldSkipPolygonEdgeLabels(graphic) {
+      return !!(graphic && (
+        graphic.__wellRole === 'buffer' ||
+        graphic.__isDrainfield ||
+        graphic.__isSepticTank ||
+        graphic.__skipEdgeLabels
+      ));
+    }
+
+    function shouldSkipShapeMeasurement(graphic) {
+      return !!(graphic && (graphic.__isSepticTank || graphic.__skipMeasure));
+    }
+
     function syncPolygonEdgeLabels(graphic) {
       if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
-      // Skip layouts that would be cluttered or visually disconnected
-      if (graphic.__wellRole === 'buffer') return;
-      if (graphic.__isDrainfield) return;
+      // Skip layouts that would be cluttered, redundant, or visually disconnected.
+      if (shouldSkipPolygonEdgeLabels(graphic)) {
+        removePolygonEdgeLabels(graphic);
+        return;
+      }
 
       const id = graphic.__sitePlanId ||
         ('poly_' + Date.now() + '_' + Math.random().toString(36).slice(2));
@@ -863,7 +973,7 @@ view.ui.add(parcelSearch, {
       const existing = polyEdgeLabelMap.get(id);
       if (existing) existing.forEach(g => labelLayer.remove(g));
 
-      const created = calcPolygonEdgeLabels(graphic.geometry).map(spec => {
+      const created = calcPolygonEdgeLabels(graphic.geometry, shouldUseTwoSideLabels(graphic)).map(spec => {
         const lbl = new Graphic({
           geometry: { type:'point', x: spec.mid.x, y: spec.mid.y, spatialReference: spec.sr },
           symbol: {
@@ -921,15 +1031,44 @@ view.ui.add(parcelSearch, {
       });
     }
 
+    function polygonCenter(polygon) {
+      if (!polygon) return null;
+      return polygon.extent ? polygon.extent.center : (polygon.centroid || null);
+    }
+
+    function shouldEnforceMinimumRect(graphic) {
+      if (!graphic || graphic.__isSepticTank) return false;
+      return !!(
+        graphic.__structureType ||
+        graphic.__isDrawRectangle ||
+        graphic.__isFixedObject
+      );
+    }
+
+    function enforceMinimumRect(graphic, label) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return false;
+      if (!shouldEnforceMinimumRect(graphic)) return false;
+      const area = Math.abs(geometryEngine.geodesicArea(graphic.geometry, 'square-feet'));
+      if (isFinite(area) && area >= 1) return false;
+      const center = polygonCenter(graphic.geometry);
+      if (!center) return false;
+      graphic.geometry = buildRect(center, 10, 10);
+      graphic.__twoSideLabels = true;
+      setStatus((label || 'Shape') + ' was too small — resized to 10 × 10 ft. Resize or rotate as needed.', true);
+      return true;
+    }
+
     function placeFixed(center, lFt, wFt, symbol, extraProps) {
+      extraProps = extraProps || {};
       const rect = buildRect(center, lFt, wFt);
       const g = new Graphic({geometry:rect, symbol});
-      Object.assign(g, extraProps);
+      Object.assign(g, { __isFixedObject:true, __twoSideLabels:true }, extraProps);
       drawLayer.add(g);
       syncPolygonEdgeLabels(g);
       sketch.update([g],{tool:'transform',toggleToolOnClick:false});
       const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
-      showMeasure(extraProps.__label||'Shape', Math.round(sq).toLocaleString()+' sq ft', lFt+' × '+wFt+' ft');
+      if (shouldSkipShapeMeasurement(g)) hideMeasure();
+      else showMeasure(extraProps.__label||'Shape', Math.round(sq).toLocaleString()+' sq ft', lFt+' × '+wFt+' ft');
     }
 
     // ── Tool helpers ──────────────────────────────────────────
@@ -1025,7 +1164,7 @@ view.ui.add(parcelSearch, {
         const w=parseFloat(document.getElementById('septic-w').value)||10;
         const h=view.on('click',ev=>{
           h.remove(); deactivateAll();
-          placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__label:'Septic tank'});
+          placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__skipEdgeLabels:true,__skipMeasure:true,__label:'Septic tank'});
           setStatus('Septic tank placed ('+l+' × '+w+' ft). Rotate or move as needed.');
         });
         setStatus('Click to place the septic tank.');
@@ -1141,7 +1280,7 @@ view.ui.add(parcelSearch, {
         setStatus('Click to place the rectangle.');
       } else {
         sketch.viewModel.polygonSymbol = SYM.drawPoly;
-        sketch._pendingType = 'drawTool';
+        sketch._pendingType = tool === 'rectangle' ? 'rectangle' : 'drawTool';
         sketch.create(tool);
         setStatus('Click to place. Double-click to finish. Escape to cancel.');
       }
@@ -1230,13 +1369,16 @@ view.ui.add(parcelSearch, {
       const g=ev.graphic;
       const pt=sketch._pendingType;
       sketch._pendingType=null;
+      let resizedToMinimum = false;
 
       // Apply correct symbol for freehand draws
       if (pt==='proposed'||pt==='existing') {
         g.symbol=pt==='existing'?SYM.existing:SYM.proposed;
         g.__structureType=pt;
+        g.__twoSideLabels=true;
+        resizedToMinimum = enforceMinimumRect(g, pt==='existing' ? 'Existing structure' : 'Proposed structure');
       } else if (pt==='septic') {
-        g.symbol=SYM.septic; g.__isSepticTank=true;
+        g.symbol=SYM.septic; g.__isSepticTank=true; g.__skipEdgeLabels=true; g.__skipMeasure=true;
       } else if (pt==='drainfield'||pt==='reserve') {
         const isRes = pt==='reserve';
         // Guard against near-zero freehand draws — enforce a 10×30 ft minimum
@@ -1267,15 +1409,26 @@ view.ui.add(parcelSearch, {
       } else if (pt==='easement') {
         g.symbol=SYM.easement;
         g.__isEasement=true;
-      } else {
-        // drawTool polygon/rectangle
+      } else if (pt==='rectangle') {
         g.symbol=SYM.drawPoly;
+        g.__isDrawTool=true;
+        g.__isDrawRectangle=true;
+        g.__twoSideLabels=true;
+        resizedToMinimum = enforceMinimumRect(g, 'Rectangle');
+      } else {
+        // drawTool polygon
+        g.symbol=SYM.drawPoly;
+        g.__isDrawTool=true;
       }
 
       if (g.geometry.type==='polygon') {
         syncPolygonEdgeLabels(g);
-        const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
-        showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
+        if (shouldSkipShapeMeasurement(g)) {
+          hideMeasure();
+        } else {
+          const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
+          showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
+        }
       } else if (g.geometry.type==='polyline') {
         const len=Math.abs(geometryEngine.geodesicLength(g.geometry,'feet'));
         if (!g.__isLine) {
@@ -1285,7 +1438,7 @@ view.ui.add(parcelSearch, {
           showMeasure(lbl, len.toFixed(1)+' ft', null);
         }
       }
-      setStatus('Shape placed. Click to select and edit.');
+      if (!resizedToMinimum) setStatus('Shape placed. Click to select and edit.');
     });
 
     sketch.on('update', ev => {
@@ -1305,9 +1458,14 @@ view.ui.add(parcelSearch, {
       if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
       if (g.geometry.type==='polygon') {
+        enforceMinimumRect(g, g.__label || (g.__structureType === 'existing' ? 'Existing structure' : g.__structureType === 'proposed' ? 'Proposed structure' : 'Shape'));
         syncPolygonEdgeLabels(g);
-        const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
-        showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
+        if (shouldSkipShapeMeasurement(g)) {
+          hideMeasure();
+        } else {
+          const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
+          showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
+        }
       } else if (g.geometry.type==='polyline') {
         const len=Math.abs(geometryEngine.geodesicLength(g.geometry,'feet'));
         if (!g.__isLine) {
@@ -1459,7 +1617,7 @@ view.ui.add(parcelSearch, {
 
     // ── Print extent mode ─────────────────────────────────────
     // 'parcel' | null (current view)
-    let printExtentMode = null;
+    let printExtentMode = 'parcel';
 
     window.setPrintExtent = function (mode, checked) {
       printExtentMode = checked ? mode : null;
