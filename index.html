@@ -600,6 +600,50 @@ view.ui.add(parcelSearch, {
       ];
     }
 
+
+    // ── Automatic vertex editing for user-drawn polygons ─────
+    // For public-facing use, freehand polygons, grading areas, and non-fixed
+    // easements open directly in reshape mode when selected. Fixed-size
+    // easements and rectangles keep the normal transform behavior.
+    function sketchActiveToolName() {
+      return (sketch && sketch.activeTool) ||
+        (sketch && sketch.viewModel && sketch.viewModel.activeTool) ||
+        '';
+    }
+
+    function shouldUseVertexEdit(graphic) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return false;
+      if (graphic.__isFixedObject || graphic.__isDrawRectangle) return false;
+      if (graphic.__isDrainfield || graphic.__isSepticTank || graphic.__wellRole) return false;
+      return !!(
+        graphic.__isGrading ||
+        graphic.__isEasement ||
+        (graphic.__isDrawTool && !graphic.__isDrawRectangle)
+      );
+    }
+
+    function openVertexEdit(graphic) {
+      if (!graphic || graphic.__openingVertexEdit) return false;
+      graphic.__openingVertexEdit = true;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before vertex edit.', err);
+      }
+
+      setTimeout(() => {
+        try {
+          sketch.update([graphic], { tool:'reshape', toggleToolOnClick:false });
+          setStatus('Vertex editing enabled. Drag individual points to reshape the polygon.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to start vertex editing for this shape.', false);
+        }
+        setTimeout(() => { graphic.__openingVertexEdit = false; }, 750);
+      }, 0);
+      return true;
+    }
+
     // ── Symbols ───────────────────────────────────────────────
     const SYM = {
       proposed: {
@@ -956,6 +1000,7 @@ view.ui.add(parcelSearch, {
     // temporary labels are cleared and the normal final labels take over.
     let liveMeasureGraphics = [];
     let liveActiveMeasureGraphic = null;
+    let liveClosingMeasureGraphic = null;
     let liveCommittedSegmentKeys = new Set();
 
     function shouldShowLiveDrawingMeasure(pendingType) {
@@ -966,6 +1011,8 @@ view.ui.add(parcelSearch, {
       if (!graphic) return;
       previewLayer.remove(graphic);
       liveMeasureGraphics = liveMeasureGraphics.filter(g => g !== graphic);
+      if (graphic === liveActiveMeasureGraphic) liveActiveMeasureGraphic = null;
+      if (graphic === liveClosingMeasureGraphic) liveClosingMeasureGraphic = null;
     }
 
     function clearLiveMeasurePreview() {
@@ -974,6 +1021,7 @@ view.ui.add(parcelSearch, {
       }
       liveMeasureGraphics = [];
       liveActiveMeasureGraphic = null;
+      liveClosingMeasureGraphic = null;
       liveCommittedSegmentKeys = new Set();
     }
 
@@ -992,8 +1040,17 @@ view.ui.add(parcelSearch, {
         pts = geometry.rings[0].slice();
         // During polygon creation, Sketch commonly keeps the ring closed by
         // repeating the first vertex as the last coordinate. Remove that closing
-        // coordinate so preview labels follow only actively drawn sides.
+        // coordinate first.
         if (pts.length > 2 && coordsAreClose(pts[0], pts[pts.length - 1])) pts.pop();
+
+        // ArcGIS Sketch often stores the in-progress polygon ring as:
+        //   [start, live-cursor, last placed vertex, previous vertex, ...]
+        // which makes the first segment look like a misleading measurement back
+        // to the origin. Rebuild the live-preview order as:
+        //   [start, first placed vertex, second placed vertex, ..., live-cursor]
+        // This affects only the temporary labels while drawing; final labels are
+        // still generated from the completed geometry.
+        if (pts.length > 2) pts = [pts[0]].concat(pts.slice(1).reverse());
       }
 
       if (!pts || pts.length < 2) return null;
@@ -1022,6 +1079,20 @@ view.ui.add(parcelSearch, {
         segments.push({ from, to, spatialReference: sr });
       }
       return segments;
+    }
+
+    function polygonClosingSegmentFromSketchGeometry(geometry) {
+      if (!geometry || geometry.type !== 'polygon') return null;
+      const pts = sketchPointsFromGeometry(geometry);
+      if (!pts || pts.length < 3) return null;
+
+      // This is the potential closing leg from the live cursor/current point
+      // back to the first vertex. It is intentionally kept temporary only and
+      // is never committed as a static label until the polygon is completed.
+      const from = pts[pts.length - 1];
+      const to = pts[0];
+      if (!from || !to || coordsAreClose(from, to)) return null;
+      return { from, to, spatialReference: geometry.spatialReference };
     }
 
     function liveSegmentKey(seg) {
@@ -1118,6 +1189,24 @@ view.ui.add(parcelSearch, {
       }
     }
 
+    function updateClosingLiveSegmentLabel(seg) {
+      const spec = seg ? liveMeasureLabelSpec(seg) : null;
+      if (!spec) {
+        if (liveClosingMeasureGraphic) removeLiveMeasureGraphic(liveClosingMeasureGraphic);
+        return;
+      }
+
+      if (!liveClosingMeasureGraphic) {
+        liveClosingMeasureGraphic = makeLiveMeasureLabel(seg);
+        if (!liveClosingMeasureGraphic) return;
+        liveClosingMeasureGraphic.__liveClosingSegment = true;
+        previewLayer.add(liveClosingMeasureGraphic);
+        liveMeasureGraphics.push(liveClosingMeasureGraphic);
+      } else {
+        applyLiveMeasureLabelSpec(liveClosingMeasureGraphic, spec);
+      }
+    }
+
     function updateLiveMeasurePreview(ev) {
       const pendingType = sketch._pendingType;
       if (!shouldShowLiveDrawingMeasure(pendingType)) {
@@ -1136,10 +1225,8 @@ view.ui.add(parcelSearch, {
       // segment's start coordinate changes during cursor updates; that caused
       // streams of stacked measurements along the cursor path.
       if (eventType === 'vertex-add') {
-        if (liveActiveMeasureGraphic) {
-          removeLiveMeasureGraphic(liveActiveMeasureGraphic);
-          liveActiveMeasureGraphic = null;
-        }
+        if (liveActiveMeasureGraphic) removeLiveMeasureGraphic(liveActiveMeasureGraphic);
+        if (liveClosingMeasureGraphic) removeLiveMeasureGraphic(liveClosingMeasureGraphic);
         segments.forEach(seg => commitLiveSegmentLabel(seg));
         return;
       }
@@ -1154,6 +1241,12 @@ view.ui.add(parcelSearch, {
       const activeSeg = segments[segments.length - 1];
       if (!activeSeg || !activeSeg.from || !activeSeg.to) return;
       updateActiveLiveSegmentLabel(activeSeg);
+
+      // For polygons only, also show a temporary closing-leg measurement from
+      // the live cursor/current point back to the first vertex. This recreates
+      // the useful v7 preview without committing that closing leg as a static
+      // label during drawing.
+      updateClosingLiveSegmentLabel(polygonClosingSegmentFromSketchGeometry(geometry));
     }
 
     // ── Ground-distance geometry builders ────────────────────
@@ -1662,6 +1755,14 @@ view.ui.add(parcelSearch, {
     sketch.on('update', ev => {
       if (!ev.graphics||!ev.graphics.length) return;
       const g=ev.graphics[0];
+
+      // Open supported user-drawn polygons directly in vertex-edit/reshape
+      // mode. This keeps fixed-size objects, rectangles, septic, drainfields,
+      // and structures in their existing transform workflow.
+      if (ev.state === 'start' && shouldUseVertexEdit(g) && sketchActiveToolName() !== 'reshape' && !g.__openingVertexEdit) {
+        openVertexEdit(g);
+        return;
+      }
 
       // Well buffer/spoke graphics are support graphics only. If selected,
       // redirect editing to the center marker and suppress any distance measurement.
