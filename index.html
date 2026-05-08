@@ -195,32 +195,6 @@
   <div id="main">
     <div id="sidebar">
 
-      <!-- EDITING -->
-      <div class="section-head">Editing</div>
-      <div class="section-body">
-        <div class="toggle-row">
-          <label for="snap-toggle">Snapping on</label>
-          <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
-        </div>
-        <div class="toggle-row">
-          <label for="dbd-toggle">Draw-by-distance</label>
-          <input type="checkbox" id="dbd-toggle" onchange="toggleDrawByDistance(this.checked)" />
-        </div>
-        <div class="size-row" id="dbd-distance-row">
-          <label for="dbd-distance" class="size-lbl">Segment</label>
-          <input id="dbd-distance" type="number" min="1" step="1" placeholder="ft" class="dim-input" style="width:64px;" />
-          <span class="dim-sep">ft</span>
-        </div>
-        <button class="tool-btn" id="dbd-finish" onclick="finishDrawByDistance()" style="margin-top:5px;display:none;">Finish shape</button>
-        <div style="font-size:11px;line-height:1.35;color:#000;margin-top:5px;">
-          For proposed/existing structures only. Click a first corner, enter a segment length, then click to place each next corner.
-        </div>
-        <div class="toggle-row" style="margin-top:6px;">
-          <label for="print-parcel">Print to parcel extent</label>
-          <input type="checkbox" id="print-parcel" checked onchange="setPrintExtent('parcel', this.checked)" />
-        </div>
-      </div>
-
       <!-- STRUCTURES -->
       <div class="section-head">Structures</div>
       <div class="section-body">
@@ -396,6 +370,19 @@
             <td style="padding:3px 4px;vertical-align:middle;">Easement</td>
           </tr>
         </table>
+      </div>
+
+      <!-- EDITING -->
+      <div class="section-head">Editing</div>
+      <div class="section-body">
+        <div class="toggle-row">
+          <label for="snap-toggle">Snapping on</label>
+          <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
+        </div>
+        <div class="toggle-row">
+          <label for="print-parcel">Print to parcel extent</label>
+          <input type="checkbox" id="print-parcel" checked onchange="setPrintExtent('parcel', this.checked)" />
+        </div>
       </div>
 
       <div class="section-head">Instructions</div>
@@ -936,7 +923,7 @@ view.ui.add(parcelSearch, {
     function shouldUseTwoSideLabels(graphic) {
       return !!(graphic && (
         graphic.__twoSideLabels ||
-        (graphic.__structureType && !graphic.__drawByDistanceStructure) ||
+        graphic.__structureType ||
         graphic.__isDrawRectangle ||
         graphic.__isFixedObject
       ));
@@ -1380,264 +1367,6 @@ view.ui.add(parcelSearch, {
       else showPolygonAreaMeasure(g, extraProps.__measureLabel || extraProps.__label || 'Selected shape');
     }
 
-    // ── Draw-by-distance structure tool ───────────────────────
-    let activeDrawByDistance = null;
-
-    function drawByDistanceEnabled() {
-      const el = document.getElementById('dbd-toggle');
-      return !!(el && el.checked);
-    }
-
-    window.toggleDrawByDistance = function (enabled) {
-      if (!enabled) cancelDrawByDistance('Draw-by-distance off.');
-      else setStatus('Draw-by-distance enabled for proposed/existing structures.', true);
-    };
-
-    function setDrawByDistanceFinishVisible(visible) {
-      const btn = document.getElementById('dbd-finish');
-      if (btn) btn.style.display = visible ? 'block' : 'none';
-    }
-
-    function getDrawByDistanceFeet() {
-      const el = document.getElementById('dbd-distance');
-      const ft = parseFloat(el && el.value);
-      return isFinite(ft) && ft > 0 ? ft : null;
-    }
-
-    function pointToArray(point) {
-      return [point.x, point.y];
-    }
-
-    function makePointFromArray(arr, sr) {
-      return { type:'point', x:arr[0], y:arr[1], spatialReference:sr };
-    }
-
-    function lineBetweenArrays(from, to, sr) {
-      return { type:'polyline', spatialReference:sr, paths:[[from, to]] };
-    }
-
-    function segmentLengthFeet(from, to, sr) {
-      const line = lineBetweenArrays(from, to, sr);
-      return Math.abs(geometryEngine.geodesicLength(line, 'feet'));
-    }
-
-    function pointAtGroundDistance(startPoint, cursorPoint, feet) {
-      if (!startPoint || !cursorPoint || !isFinite(feet) || feet <= 0) return null;
-      const dx = cursorPoint.x - startPoint.x;
-      const dy = cursorPoint.y - startPoint.y;
-      const rawLen = Math.hypot(dx, dy);
-      if (!isFinite(rawLen) || rawLen <= 0) return null;
-
-      const sr = startPoint.spatialReference || cursorPoint.spatialReference;
-      let targetMapDistance = feetToLocalMapMeters(startPoint, feet);
-      let tx = startPoint.x + (dx / rawLen) * targetMapDistance;
-      let ty = startPoint.y + (dy / rawLen) * targetMapDistance;
-
-      // Iteratively correct the local map distance so the geodesic/on-ground
-      // measurement matches the requested segment length more closely. This is
-      // the same idea as the fixed-size correction, but works in any direction.
-      const from = [startPoint.x, startPoint.y];
-      for (let i = 0; i < 3; i++) {
-        const measured = segmentLengthFeet(from, [tx, ty], sr);
-        if (!isFinite(measured) || measured <= 0) break;
-        const factor = feet / measured;
-        tx = startPoint.x + (tx - startPoint.x) * factor;
-        ty = startPoint.y + (ty - startPoint.y) * factor;
-        if (Math.abs(measured - feet) < 0.05) break;
-      }
-
-      return { type:'point', x:tx, y:ty, spatialReference:sr };
-    }
-
-    function drawByDistanceText(text, yoffset) {
-      return {
-        type:'text', text, color:[0,0,0,1], haloColor:[255,255,255,1], haloSize:1.5,
-        font:{size:8,weight:'bold',family:'Calibri, Segoe UI, Arial, sans-serif'},
-        yoffset: yoffset == null ? -8 : yoffset
-      };
-    }
-
-    function makeDrawByDistanceLabel(from, to, sr, text) {
-      return new Graphic({
-        geometry:{ type:'point', x:(from[0]+to[0])/2, y:(from[1]+to[1])/2, spatialReference:sr },
-        symbol:drawByDistanceText(text || (segmentLengthFeet(from, to, sr).toFixed(1) + "'"))
-      });
-    }
-
-    function clearDrawByDistancePreview() {
-      if (!activeDrawByDistance) return;
-      (activeDrawByDistance.previewGraphics || []).forEach(g => previewLayer.remove(g));
-      activeDrawByDistance.previewGraphics = [];
-      activeDrawByDistance.activeLine = null;
-      activeDrawByDistance.activeLabel = null;
-      activeDrawByDistance.previewFill = null;
-    }
-
-    function addDrawByDistancePreviewGraphic(graphic) {
-      if (!activeDrawByDistance || !graphic) return;
-      previewLayer.add(graphic);
-      activeDrawByDistance.previewGraphics.push(graphic);
-    }
-
-    function rebuildDrawByDistanceCommittedLabels() {
-      if (!activeDrawByDistance) return;
-      // Remove only committed labels, keeping the active preview graphics intact.
-      (activeDrawByDistance.committedLabels || []).forEach(g => previewLayer.remove(g));
-      activeDrawByDistance.committedLabels = [];
-
-      const pts = activeDrawByDistance.points || [];
-      const sr = activeDrawByDistance.spatialReference;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const lbl = makeDrawByDistanceLabel(pts[i], pts[i+1], sr);
-        lbl.__drawByDistanceCommittedLabel = true;
-        previewLayer.add(lbl);
-        activeDrawByDistance.committedLabels.push(lbl);
-      }
-    }
-
-    function updateDrawByDistancePreview(cursorPoint) {
-      if (!activeDrawByDistance || !cursorPoint || !activeDrawByDistance.points.length) return;
-      const feet = getDrawByDistanceFeet();
-      if (!feet) {
-        clearDrawByDistancePreview();
-        setStatus('Enter a segment length in feet, then move the cursor and click to place the next corner.', false);
-        return;
-      }
-
-      const pts = activeDrawByDistance.points;
-      const sr = activeDrawByDistance.spatialReference || cursorPoint.spatialReference;
-      const lastPt = makePointFromArray(pts[pts.length - 1], sr);
-      const nextPt = pointAtGroundDistance(lastPt, cursorPoint, feet);
-      if (!nextPt) return;
-
-      activeDrawByDistance.currentPreviewPoint = nextPt;
-      clearDrawByDistancePreview();
-
-      const from = pts[pts.length - 1];
-      const to = pointToArray(nextPt);
-      const activeLine = new Graphic({
-        geometry: lineBetweenArrays(from, to, sr),
-        symbol:{ type:'simple-line', color:[0,0,0,1], width:1.5, style:'short-dash' }
-      });
-      activeLine.__drawByDistancePreview = true;
-      addDrawByDistancePreviewGraphic(activeLine);
-
-      const activeLabel = makeDrawByDistanceLabel(from, to, sr, feet.toFixed(feet % 1 === 0 ? 0 : 1) + "'");
-      activeLabel.__drawByDistancePreview = true;
-      addDrawByDistancePreviewGraphic(activeLabel);
-
-      if (pts.length >= 2) {
-        const ring = pts.concat([to, pts[0]]);
-        const previewFill = new Graphic({
-          geometry:new Polygon({ rings:[ring], spatialReference:sr }),
-          symbol:{
-            type:'simple-fill', color:[0,0,0,0.04],
-            outline:{type:'simple-line', color:[0,0,0,0.55], width:1, style:'short-dash'}
-          }
-        });
-        previewFill.__drawByDistancePreview = true;
-        addDrawByDistancePreviewGraphic(previewFill);
-      }
-    }
-
-    function cancelDrawByDistance(message) {
-      if (!activeDrawByDistance) return;
-      if (activeDrawByDistance.clickHandle) activeDrawByDistance.clickHandle.remove();
-      if (activeDrawByDistance.moveHandle) activeDrawByDistance.moveHandle.remove();
-      if (activeDrawByDistance.doubleClickHandle) activeDrawByDistance.doubleClickHandle.remove();
-      (activeDrawByDistance.previewGraphics || []).forEach(g => previewLayer.remove(g));
-      (activeDrawByDistance.committedLabels || []).forEach(g => previewLayer.remove(g));
-      activeDrawByDistance = null;
-      setDrawByDistanceFinishVisible(false);
-      if (message) setStatus(message, true);
-    }
-
-    window.finishDrawByDistance = function () {
-      if (!activeDrawByDistance) {
-        setStatus('No draw-by-distance shape is active.', false);
-        return;
-      }
-      const pts = activeDrawByDistance.points || [];
-      if (pts.length < 3) {
-        setStatus('Place at least three corners before finishing the structure.', false);
-        return;
-      }
-
-      const sr = activeDrawByDistance.spatialReference;
-      const ring = pts.concat([pts[0]]);
-      const g = new Graphic({
-        geometry:new Polygon({ rings:[ring], spatialReference:sr }),
-        symbol:activeDrawByDistance.symbol
-      });
-      g.__structureType = activeDrawByDistance.type;
-      g.__label = (activeDrawByDistance.type === 'existing' ? 'Existing' : 'Proposed') + ' structure';
-      g.__drawByDistanceStructure = true;
-      g.__isDrawByDistance = true;
-      drawLayer.add(g);
-
-      const label = g.__label;
-      cancelDrawByDistance();
-      deactivateAll();
-      syncPolygonEdgeLabels(g);
-      showPolygonAreaMeasure(g, 'Selected shape');
-      sketch.update([g], { tool:'transform', toggleToolOnClick:false });
-      setStatus(label + ' placed. Click to select and edit.', true);
-    };
-
-    function startDrawByDistanceStructure(type, symbol) {
-      cancelDrawByDistance();
-      clearLiveMeasurePreview();
-      if (sketch.state !== 'idle') sketch.cancel();
-
-      activeDrawByDistance = {
-        type,
-        symbol,
-        points:[],
-        spatialReference:null,
-        previewGraphics:[],
-        committedLabels:[],
-        currentPreviewPoint:null
-      };
-      setDrawByDistanceFinishVisible(true);
-
-      activeDrawByDistance.clickHandle = view.on('click', ev => {
-        if (!activeDrawByDistance) return;
-        ev.stopPropagation();
-
-        if (!activeDrawByDistance.points.length) {
-          activeDrawByDistance.spatialReference = ev.mapPoint.spatialReference;
-          activeDrawByDistance.points.push(pointToArray(ev.mapPoint));
-          rebuildDrawByDistanceCommittedLabels();
-          setStatus('First corner placed. Enter a segment length, move the cursor to set direction, then click to place the next corner. Use Finish shape when done.');
-          return;
-        }
-
-        const feet = getDrawByDistanceFeet();
-        if (!feet) {
-          setStatus('Enter a segment length in feet before placing the next corner.', false);
-          return;
-        }
-
-        const pts = activeDrawByDistance.points;
-        const sr = activeDrawByDistance.spatialReference || ev.mapPoint.spatialReference;
-        const lastPt = makePointFromArray(pts[pts.length - 1], sr);
-        const nextPt = pointAtGroundDistance(lastPt, ev.mapPoint, feet);
-        if (!nextPt) return;
-        pts.push(pointToArray(nextPt));
-        rebuildDrawByDistanceCommittedLabels();
-        updateDrawByDistancePreview(ev.mapPoint);
-        setStatus('Corner placed at ' + feet + "'. Change the segment length if needed, then click to place the next corner or finish the shape.", true);
-      });
-
-      activeDrawByDistance.moveHandle = view.on('pointer-move', ev => {
-        if (!activeDrawByDistance || !activeDrawByDistance.points.length) return;
-        const mapPoint = view.toMap({ x:ev.x, y:ev.y });
-        if (mapPoint) updateDrawByDistancePreview(mapPoint);
-      });
-
-      setStatus('Draw-by-distance active. Click the first corner of the ' + (type === 'existing' ? 'existing' : 'proposed') + ' structure.');
-    }
-
     // ── Tool helpers ──────────────────────────────────────────
     function deactivateAll() {
       document.querySelectorAll('.draw-tool-btn').forEach(b=>b.classList.remove('active'));
@@ -1645,7 +1374,6 @@ view.ui.add(parcelSearch, {
     function activateBtn(id) { const b=document.getElementById(id); if(b)b.classList.add('active'); }
 
     function cancelAndReset(btnId) {
-      cancelDrawByDistance();
       clearCalloutPreview();
       clearLiveMeasurePreview();
       deactivateAll();
@@ -1669,8 +1397,6 @@ view.ui.add(parcelSearch, {
           setStatus((type==='existing'?'Existing':'Proposed')+' structure placed. Resize or rotate as needed.');
         });
         setStatus('Click to place the '+(type==='existing'?'existing':'proposed')+' structure.');
-      } else if (drawByDistanceEnabled()) {
-        startDrawByDistanceStructure(type, sym);
       } else {
         sketch.viewModel.polygonSymbol = sym;
         sketch._pendingType = type;
@@ -2104,8 +1830,7 @@ view.ui.add(parcelSearch, {
     });
 
     document.addEventListener('keydown', e => {
-      if (e.key==='Escape') { cancelDrawByDistance('Draw-by-distance cancelled.'); clearCalloutPreview(); clearLiveMeasurePreview(); if(sketch.state!=='idle')sketch.cancel(); }
-      if (e.key==='Enter' && activeDrawByDistance) { e.preventDefault(); finishDrawByDistance(); }
+      if (e.key==='Escape') { clearCalloutPreview(); clearLiveMeasurePreview(); if(sketch.state!=='idle')sketch.cancel(); }
       if ((e.key==='Delete'||e.key==='Backspace')&&sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
     });
 
@@ -2130,7 +1855,7 @@ view.ui.add(parcelSearch, {
       const basicHtml = `
         <div class="ip-row">
           <span class="ip-label">Parcel Number</span>
-          <span class="ip-value">${f(attrs[pf.parcelNumber])}</span>
+          <span class="ip-value">${f(resolveParcelNumber(attrs))}</span>
         </div>
         <div class="ip-row">
           <span class="ip-label">Site Address</span>
@@ -2231,7 +1956,6 @@ view.ui.add(parcelSearch, {
     };
 
     window.clearAll = function () {
-      cancelDrawByDistance();
       clearCalloutPreview(); clearLiveMeasurePreview(); sketch.cancel();
       drawLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
@@ -2300,7 +2024,12 @@ view.ui.add(parcelSearch, {
 
       function openPrintWindow(dataUrl, mapScale) {
         const attrs = currentParcelAttrs || {};
-        const geo   = fmt(geoParam);
+        // Prefer the active parcel feature's geo_id value for printing/file naming.
+        // geoParam is only populated when the tool is launched from Experience Builder;
+        // parcels loaded through the embedded search rely on currentParcelAttrs instead.
+        const parcelNumberForPrint = resolveParcelNumber(attrs);
+        const geo   = fmt(parcelNumberForPrint, '—');
+        const geoForTitle = sanitizeFileToken(parcelNumberForPrint || geoParam || 'Unknown');
         const addr  = fmt(attrs[pf.siteAddress], 'Address not on file');
         const owner = fmt(attrs[pf.ownerName]);
         const zoning = fmt(attrs[pf.zoningAbbrev] || attrs[pf.zoningName]);
@@ -2326,7 +2055,7 @@ view.ui.add(parcelSearch, {
         const legendHtml = buildLegendItems();
 
         const now2 = new Date();
-        const printTitle = 'WWCCDD Site Plan APN ' + (geoParam||'Unknown') + ' ' +
+        const printTitle = 'WWCCDD Site Plan APN ' + geoForTitle + ' ' +
           now2.getFullYear() + '.' +
           String(now2.getDate()).padStart(2,'0') + '.' +
           String(now2.getMonth()+1).padStart(2,'0');
@@ -2669,9 +2398,40 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
       }
     };
   // ── Parcel loading helpers ────────────────────────────────
+  function firstUsableValue(values) {
+    for (const value of values) {
+      const s = value == null ? '' : String(value).trim();
+      if (s && s !== '0' && s.toLowerCase() !== 'null' && s !== '—') return s;
+    }
+    return '';
+  }
+
+  function resolveParcelNumber(attrs) {
+    attrs = attrs || {};
+    return firstUsableValue([
+      attrs[pf.parcelNumber],
+      attrs.geo_id,
+      attrs.GEO_ID,
+      attrs.Geo_ID,
+      attrs.geoid,
+      attrs.GEOID,
+      attrs.PARCEL_NUMBER,
+      attrs.parcel_number,
+      attrs.PARCELNO,
+      attrs.PARCEL_NO,
+      attrs.APN,
+      geoParam
+    ]);
+  }
+
+  function sanitizeFileToken(value) {
+    const s = firstUsableValue([value, 'Unknown']);
+    return s.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'Unknown';
+  }
+
   function getParcelDisplayValues(attrs) {
     return {
-      parcel: fmt(attrs[pf.parcelNumber], '—'),
+      parcel: fmt(resolveParcelNumber(attrs), '—'),
       address: fmt(attrs[pf.siteAddress], 'Address not on file'),
       owner: fmt(attrs[pf.ownerName], '')
     };
