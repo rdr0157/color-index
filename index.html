@@ -36,11 +36,11 @@
     }
     .hdr-btn:hover { background:rgba(255,255,255,.18); }
     .hdr-btn.light {
-      background:#fff; color:#000; border:1px solid #fff; font-weight:700;
+      background:#fff; color:#000; border:1px solid #000; font-weight:700;
     }
-    .hdr-btn.light:hover { background:#f3f4f6; border-color:#d1d5db; }
+    .hdr-btn.light:hover { background:#f3f4f6; border-color:#000; }
     .hdr-btn.gold {
-      background:#F2EDDC; color:#000; border:1px solid #869d5c;
+      background:#F2EDDC; color:#000; border:1px solid #000;
       font-weight:700; display:flex; align-items:center; gap:7px; font-size:14px;
     }
     .hdr-btn.gold:hover { background:#DEDAC3; }
@@ -815,24 +815,15 @@ view.ui.add(parcelSearch, {
       if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
       const sq = Math.abs(geometryEngine.geodesicArea(graphic.geometry, 'square-feet'));
       const main = Math.round(sq).toLocaleString() + ' sq ft';
-      let sub = (sq / 43560).toFixed(2) + ' ac';
-
-      // Rectangular objects are more useful with side dimensions than acreage.
-      if (graphic.__isSepticTank || shouldUseTwoSideLabels(graphic)) {
-        const dims = getFirstTwoSideLengths(graphic.geometry);
-        if (dims) {
-          const a = formatFeetValue(dims[0]);
-          const b = formatFeetValue(dims[1]);
-          if (a && b) sub = a + ' × ' + b + ' ft';
-        }
-      }
-
+      const sub = (sq / 43560).toFixed(2) + ' ac';
       showMeasure(graphic.__measureLabel || fallbackLabel || 'Selected shape', main, sub);
     }
 
     // ── Line labels (setback / distance) ─────────────────────
     function createOrUpdateLineLabel(graphic) {
       if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline') return;
+      // Well spokes are support graphics only; they should never create distance labels.
+      if (graphic.__wellId) { removeLineLabel(graphic); return; }
       const id = graphic.__sitePlanId || ('line_'+Date.now()+'_'+Math.random().toString(36).slice(2));
       graphic.__sitePlanId = id;
       const length = Math.abs(geometryEngine.geodesicLength(graphic.geometry,'feet')).toFixed(1)+"'";
@@ -1056,7 +1047,7 @@ view.ui.add(parcelSearch, {
       const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
       if (shouldShowSelectedShapeOnly(g)) showSelectedShapeOnly(extraProps.__label || 'Shape');
       else if (shouldSkipShapeMeasurement(g)) hideMeasure();
-      else showMeasure(extraProps.__measureLabel || extraProps.__label || 'Shape', Math.round(sq).toLocaleString()+' sq ft', lFt+' × '+wFt+' ft');
+      else showPolygonAreaMeasure(g, extraProps.__measureLabel || extraProps.__label || 'Selected shape');
     }
 
     // ── Tool helpers ──────────────────────────────────────────
@@ -1103,7 +1094,7 @@ view.ui.add(parcelSearch, {
         h.remove(); deactivateAll();
         const center=ev.mapPoint;
         const wellId='well_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-        const r=100*0.3048; // 100 ft in metres
+        const r=feetToLocalMapMeters(center, 100); // local map distance for 100 ground feet
 
         const marker=new Graphic({geometry:center,symbol:{
           type:'simple-marker',style:'circle',color:[255,255,255,1],size:10,
@@ -1434,16 +1425,23 @@ view.ui.add(parcelSearch, {
       if (!ev.graphics||!ev.graphics.length) return;
       const g=ev.graphics[0];
 
-      // If the user clicks a well's buffer circle or spoke directly,
-      // cancel and redirect to moving the center marker so the whole
-      // group stays together — prevents partial-move on outer elements.
-      if (ev.state==='start' && g.__wellId && g.__wellRole!=='center') {
-        sketch.cancel();
-        const center = drawLayer.graphics.find(x=>x.__wellId===g.__wellId&&x.__wellRole==='center');
-        if (center) sketch.update([center],{tool:'move',toggleToolOnClick:false});
+      // Well buffer/spoke graphics are support graphics only. If selected,
+      // redirect editing to the center marker and suppress any distance measurement.
+      if (g.__wellId) {
+        removeLineLabel(g);
+        if (g.__wellRole !== 'center') {
+          if (ev.state === 'start') {
+            sketch.cancel();
+            const center = drawLayer.graphics.find(x=>x.__wellId===g.__wellId&&x.__wellRole==='center');
+            if (center) sketch.update([center],{tool:'move',toggleToolOnClick:false});
+          }
+          hideMeasure();
+          return;
+        }
+        syncWell(g.geometry, g.__wellId);
+        hideMeasure();
         return;
       }
-      if (g.__wellRole==='center') syncWell(g.geometry, g.__wellId);
       if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
       if (g.geometry.type==='polygon') {
@@ -1631,6 +1629,8 @@ view.ui.add(parcelSearch, {
     window.printPlan = function () {
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
+      const prePrintBasemap = map.basemap;
+      map.basemap = 'topo-vector';
 
       function escHtml(value) {
         return String(value == null ? '' : value)
@@ -2018,6 +2018,10 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
       }
 
       function captureAndOpen() {
+        if (view.updating || !view.stationary) {
+          requestAnimationFrame(captureAndOpen);
+          return;
+        }
         const mapScale = view.scale || 2400;
         const orig = applyPrintTextStyles();
         view.takeScreenshot({ format:'png', quality:100, width:3400, height:2140 })
@@ -2025,6 +2029,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
           .catch(err => { console.error(err); setStatus('Screenshot failed.', false); })
           .finally(() => {
             restoreTextStyles(orig);
+            if (prePrintBasemap) map.basemap = prePrintBasemap;
             if (prePrintViewpoint) view.goTo(prePrintViewpoint, { duration:0 }).catch(() => {});
           });
       }
