@@ -398,7 +398,7 @@
 
   <!-- Basemap toggle -->
   <div id="basemap-toggle">
-    <button class="bm-btn active" id="bm-streets" onclick="switchBasemap('streets-vector',this)" title="Streets">
+    <button class="bm-btn active" id="bm-osm" onclick="switchBasemap('streets-vector',this)" title="Streets">
       <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
         <rect width="64" height="64" fill="#e8e0d0"/>
         <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
@@ -826,6 +826,80 @@ view.ui.add(parcelSearch, {
       if (lbl) { labelLayer.remove(lbl); lineLabelMap.delete(id); }
     }
 
+    // ── Polygon edge labels ───────────────────────────────────
+    // For every edge of a user-drawn polygon, place an 8px text label at
+    // the midpoint showing geodesic length in feet. Skipped for well
+    // buffers (72-sided circle approximation) and drainfields (invisible
+    // boundary by design). Labels sync on create/update/delete/clearAll.
+    const polyEdgeLabelMap = new Map();
+
+    function calcPolygonEdgeLabels(polygon) {
+      if (!polygon || !polygon.rings || !polygon.rings[0]) return [];
+      const ring = polygon.rings[0];
+      const sr   = polygon.spatialReference;
+      const out  = [];
+      for (let i = 0; i < ring.length - 1; i++) {
+        const x1 = ring[i][0],   y1 = ring[i][1];
+        const x2 = ring[i+1][0], y2 = ring[i+1][1];
+        const seg = {
+          type: 'polyline',
+          spatialReference: sr,
+          paths: [[ [x1, y1], [x2, y2] ]]
+        };
+        const len = Math.abs(geometryEngine.geodesicLength(seg, 'feet'));
+        out.push({
+          mid:  { x: (x1 + x2) / 2, y: (y1 + y2) / 2 },
+          text: len.toFixed(1) + "'",
+          sr:   sr
+        });
+      }
+      return out;
+    }
+
+    function syncPolygonEdgeLabels(graphic) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
+      // Skip layouts that would be cluttered or visually disconnected
+      if (graphic.__wellRole === 'buffer') return;
+      if (graphic.__isDrainfield) return;
+
+      const id = graphic.__sitePlanId ||
+        ('poly_' + Date.now() + '_' + Math.random().toString(36).slice(2));
+      graphic.__sitePlanId = id;
+
+      // Tear down any existing labels for this polygon
+      const existing = polyEdgeLabelMap.get(id);
+      if (existing) existing.forEach(g => labelLayer.remove(g));
+
+      const created = calcPolygonEdgeLabels(graphic.geometry).map(spec => {
+        const lbl = new Graphic({
+          geometry: { type:'point', x: spec.mid.x, y: spec.mid.y, spatialReference: spec.sr },
+          symbol: {
+            type: 'text',
+            text: spec.text,
+            color: [0, 0, 0, 1],
+            haloColor: [255, 255, 255, 1],
+            haloSize: 1.5,
+            font: { size: 8, weight: 'bold', family: 'Calibri, Segoe UI, Arial, sans-serif' }
+          }
+        });
+        lbl.__polyEdgeLabelOf = id;
+        labelLayer.add(lbl);
+        return lbl;
+      });
+
+      polyEdgeLabelMap.set(id, created);
+    }
+
+    function removePolygonEdgeLabels(graphic) {
+      const id = graphic && graphic.__sitePlanId;
+      if (!id) return;
+      const labels = polyEdgeLabelMap.get(id);
+      if (labels) {
+        labels.forEach(g => labelLayer.remove(g));
+        polyEdgeLabelMap.delete(id);
+      }
+    }
+
     // ── Circle builder (well buffer) ──────────────────────────
     function circlePolygon(center, radiusFt) {
       const r=radiusFt*0.3048, n=72, rings=[];
@@ -859,6 +933,7 @@ view.ui.add(parcelSearch, {
       const g = new Graphic({geometry:rect, symbol});
       Object.assign(g, extraProps);
       drawLayer.add(g);
+      syncPolygonEdgeLabels(g);
       sketch.update([g],{tool:'transform',toggleToolOnClick:false});
       const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
       showMeasure(extraProps.__label||'Shape', Math.round(sq).toLocaleString()+' sq ft', lFt+' × '+wFt+' ft');
@@ -1205,6 +1280,7 @@ view.ui.add(parcelSearch, {
       }
 
       if (g.geometry.type==='polygon') {
+        syncPolygonEdgeLabels(g);
         const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
         showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
       } else if (g.geometry.type==='polyline') {
@@ -1236,6 +1312,7 @@ view.ui.add(parcelSearch, {
       if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
       if (g.geometry.type==='polygon') {
+        syncPolygonEdgeLabels(g);
         const sq=Math.abs(geometryEngine.geodesicArea(g.geometry,'square-feet'));
         showMeasure('Selected shape', Math.round(sq).toLocaleString()+' sq ft', (sq/43560).toFixed(2)+' ac');
       } else if (g.geometry.type==='polyline') {
@@ -1253,6 +1330,7 @@ view.ui.add(parcelSearch, {
     sketch.on('delete', ev => {
       ev.graphics.forEach(g => {
         removeLineLabel(g);
+        removePolygonEdgeLabels(g);
         if (g.__wellId) {
           const wid=g.__wellId;
           drawLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
@@ -1403,6 +1481,7 @@ view.ui.add(parcelSearch, {
       clearCalloutPreview(); sketch.cancel();
       drawLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
+      polyEdgeLabelMap.clear();
       document.getElementById('measure-box').style.display='none';
       setStatus('All items cleared.');
     };
@@ -1480,7 +1559,7 @@ view.ui.add(parcelSearch, {
         const formsUrl = escHtml(cfg.branding.formsUrl || '');
         const disclaimer = 'MAP DISCLAIMER: This site plan was generated using data obtained from the Walla Walla County Community Development Department and the County GIS. The presence or absence of mapped critical areas does not constitute a formal determination. Additional review, mitigation, or information may be required prior to development; this map does not preclude the County from requesting revisions to plans.';
 
-        const maxBarPx = 130; // max ~1.35in in the sidebar
+        const maxBarPx = 200; // ~2.08in in the wider sidebar
         const niceDistsFt = [10,20,25,50,100,200,500,1000,2000];
         let barFt = 10, barInches = 0;
         for (const d of niceDistsFt) {
@@ -1499,12 +1578,12 @@ view.ui.add(parcelSearch, {
         const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>${escHtml(printTitle)}</title>
 <style>
-@page { size: letter landscape; margin: 0; }
+@page { size: tabloid landscape; margin: 0; }
 html, body {
   margin: 0;
   padding: 0;
-  width: 11in;
-  height: 8.5in;
+  width: 17in;
+  height: 11in;
   overflow: hidden;
   background: #ffffff;
   font-family: Calibri, Arial, Helvetica, sans-serif;
@@ -1512,8 +1591,8 @@ html, body {
 }
 #sheet {
   position: relative;
-  width: 11in;
-  height: 8.5in;
+  width: 17in;
+  height: 11in;
   overflow: hidden;
   background: #fff;
 }
@@ -1530,8 +1609,8 @@ html, body {
   position: absolute;
   left: 0.18in;
   top: 0.18in;
-  width: 8.78in;
-  height: 6.82in;
+  width: 13.5in;
+  height: 8.5in;
   border: 1.4px solid #000;
   box-sizing: border-box;
   background: #fff;
@@ -1568,15 +1647,15 @@ html, body {
   position: absolute;
   right: 0.18in;
   top: 0.18in;
-  width: 1.82in;
-  height: 6.82in;
+  width: 3.0in;
+  height: 8.5in;
 }
 #legend-box {
   position: absolute;
   left: 0;
   top: 0;
   width: 100%;
-  height: 2.46in;
+  height: 3.5in;
   border: none;
   box-sizing: border-box;
   padding: 0.06in 0.06in 0.05in;
@@ -1585,9 +1664,9 @@ html, body {
 #property-box {
   position: absolute;
   left: 0;
-  top: 2.46in;
+  top: 3.5in;
   width: 100%;
-  height: 2.44in;
+  height: 3.5in;
   border-top: 1.4px solid #000;
   box-sizing: border-box;
   padding: 0.05in 0.05in 0.03in;
@@ -1598,7 +1677,7 @@ html, body {
   left: 0.05in;
   bottom: 0.10in;
   width: calc(100% - 0.05in);
-  height: 1.60in;
+  height: 1.50in;
   box-sizing: border-box;
 }
 #legend-title {
@@ -1704,9 +1783,9 @@ html, body {
 #footer-left {
   position: absolute;
   left: 0.18in;
-  top: 7.03in;
-  width: 8.78in;
-  height: 1.08in;
+  top: 8.85in;
+  width: 13.5in;
+  height: 1.95in;
   box-sizing: border-box;
   font-size: 10px;
   line-height: 1.25;
@@ -1805,7 +1884,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   function captureAndOpen() {
     const mapScale = view.scale || 2400;
     const orig = applyPrintTextStyles();
-    view.takeScreenshot({ format:'png', quality:100, width:2200, height:1500 })
+    view.takeScreenshot({ format:'png', quality:100, width:3400, height:2140 })
       .then(r => openPrintWindow(r.dataUrl, mapScale))
       .catch(err => { console.error(err); setStatus('Screenshot failed.', false); })
       .finally(() => {
@@ -1976,12 +2055,12 @@ searchInputObserver.observe(document.body, { childList: true, subtree: true });
 
 // Sync active basemap button to config
 const basemapBtnMap = {
-‘streets-vector’: ‘bm-streets’,
+‘streets-vector’: ‘bm-osm’,
 ‘topo-vector’: ‘bm-topo-vector’,
 ‘satellite’: ‘bm-satellite’
 };
 
-const initBtnId = basemapBtnMap[cfg.map.basemap] || ‘bm-streets’;
+const initBtnId = basemapBtnMap[cfg.map.basemap] || ‘bm-osm’;
 const initBtn = document.getElementById(initBtnId);
 
 if (initBtn) {
