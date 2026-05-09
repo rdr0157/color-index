@@ -2298,7 +2298,7 @@ view.ui.add(parcelSearch, {
     };
     const SETBACK_SNAP_TOLERANCE_PX = 14;
     const SETBACK_PERP_TOLERANCE_PX = 8;
-    const SETBACK_RIGHT_ANGLE_SIZE_PX = 12;
+    const SETBACK_RIGHT_ANGLE_SIZE_PX = 18;
     const SETBACK_PREVIEW_ORANGE = [242, 140, 40, 1];
 
     function setbackPreviewOrangeCss(alpha) {
@@ -2536,22 +2536,30 @@ view.ui.add(parcelSearch, {
     }
 
     function computeSmartPerpendicularSetbackEnd(startPt, boundarySegment, rawPoint) {
-      const fallback = snapSetbackPoint(rawPoint);
+      const fallbackInfo = snapSetbackPointInfo(rawPoint);
+      const fallback = fallbackInfo.point;
+      const fallbackResult = {
+        point: fallback,
+        perpendicular: false,
+        angleSpec: null,
+        snapped: !!(fallbackInfo && fallbackInfo.snapped),
+        snapSegment: fallbackInfo && fallbackInfo.segment ? fallbackInfo.segment : null
+      };
       if (!startPt || !boundarySegment || !rawPoint || !view || typeof view.toScreen !== 'function' || typeof view.toMap !== 'function') {
-        return { point:fallback, perpendicular:false, angleSpec:null };
+        return fallbackResult;
       }
 
       const s = view.toScreen(startPt);
       const c = view.toScreen(rawPoint);
       const a = boundarySegment.aScreen;
       const b = boundarySegment.bScreen;
-      if (!s || !c || !a || !b) return { point:fallback, perpendicular:false, angleSpec:null };
-      if (![s.x,s.y,c.x,c.y,a.x,a.y,b.x,b.y].every(isFinite)) return { point:fallback, perpendicular:false, angleSpec:null };
+      if (!s || !c || !a || !b) return fallbackResult;
+      if (![s.x,s.y,c.x,c.y,a.x,a.y,b.x,b.y].every(isFinite)) return fallbackResult;
 
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const segLen = Math.hypot(dx, dy);
-      if (!isFinite(segLen) || segLen <= 0) return { point:fallback, perpendicular:false, angleSpec:null };
+      if (!isFinite(segLen) || segLen <= 0) return fallbackResult;
 
       const tx = dx / segLen;
       const ty = dy / segLen;
@@ -2561,17 +2569,17 @@ view.ui.add(parcelSearch, {
       const vx = c.x - s.x;
       const vy = c.y - s.y;
       const proj = vx * nx + vy * ny;
-      if (!isFinite(proj) || Math.abs(proj) < 4) return { point:fallback, perpendicular:false, angleSpec:null };
+      if (!isFinite(proj) || Math.abs(proj) < 4) return fallbackResult;
 
       const px = s.x + proj * nx;
       const py = s.y + proj * ny;
       const off = Math.hypot(c.x - px, c.y - py);
       if (!isFinite(off) || off > SETBACK_PERP_TOLERANCE_PX) {
-        return { point:fallback, perpendicular:false, angleSpec:null };
+        return fallbackResult;
       }
 
       const constrained = view.toMap({ x:px, y:py });
-      if (!constrained) return { point:fallback, perpendicular:false, angleSpec:null };
+      if (!constrained) return fallbackResult;
 
       const sign = proj >= 0 ? 1 : -1;
       return {
@@ -2582,7 +2590,9 @@ view.ui.add(parcelSearch, {
           t: { x:tx, y:ty },
           n: { x:nx * sign, y:ny * sign },
           spatialReference: startPt.spatialReference
-        }
+        },
+        snapped: false,
+        snapSegment: null
       };
     }
 
@@ -2685,6 +2695,7 @@ view.ui.add(parcelSearch, {
       let pStartSnapPoint = null;
       let pHoverBoundary = null;
       let pHoverSnapPoint = null;
+      let pEndBoundaryHighlight = null;
       let firstMoveHandle = null;
       let secondMoveHandle = null;
 
@@ -2766,10 +2777,24 @@ view.ui.add(parcelSearch, {
             const nextPt = result.point;
             pLine.geometry = setbackLineGeometry(startPt, nextPt);
             pPt.geometry = nextPt;
-            pPt.symbol = result && result.perpendicular ? setbackSnapPointSym() : previewPtSym();
+            pPt.symbol = (result && result.snapped && !result.perpendicular) ? setbackSnapPointSym() : previewPtSym();
+
+            if (result && result.snapped && !result.perpendicular && result.snapSegment) {
+              pEndBoundaryHighlight = makeOrUpdatePreviewGraphic(
+                pEndBoundaryHighlight,
+                setbackSnapSegmentGeometry(result.snapSegment),
+                setbackBoundaryHighlightSym()
+              );
+            } else if (pEndBoundaryHighlight) {
+              previewLayer.remove(pEndBoundaryHighlight);
+              pEndBoundaryHighlight = null;
+            }
+
             showOrHideRightAnglePreview(result);
             if (result && result.perpendicular) {
               setStatus('Perpendicular setback snap active. Click to place the second point.');
+            } else if (result && result.snapped) {
+              setStatus('Setback endpoint will snap to the highlighted parcel boundary or drawing edge. Click to place the second point.');
             } else {
               setStatus('Click the second setback point. Snaps to parcel/drawing edges, and snaps perpendicular when close to 90 degrees.');
             }
