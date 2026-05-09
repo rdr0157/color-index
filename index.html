@@ -2296,6 +2296,115 @@ view.ui.add(parcelSearch, {
       sketch.create('polyline');
       setStatus('Click to start septic line. Double-click to finish.');
     };
+    const SETBACK_SNAP_TOLERANCE_PX = 14;
+    let setbackShiftDown = false;
+
+    window.addEventListener('keydown', function (ev) {
+      if (ev && ev.key === 'Shift') setbackShiftDown = true;
+    });
+    window.addEventListener('keyup', function (ev) {
+      if (ev && ev.key === 'Shift') setbackShiftDown = false;
+    });
+    window.addEventListener('blur', function () { setbackShiftDown = false; });
+
+    function nearestParcelBoundarySnapInfo(point, tolerancePx) {
+      if (!point || !selectedParcelGeometry || !selectedParcelGeometry.rings || !selectedParcelGeometry.rings.length) {
+        return { point: point, snapped: false, segment: null };
+      }
+      if (!view || typeof view.toScreen !== 'function' || typeof view.toMap !== 'function') {
+        return { point: point, snapped: false, segment: null };
+      }
+
+      const clickScreen = view.toScreen(point);
+      if (!clickScreen || !isFinite(clickScreen.x) || !isFinite(clickScreen.y)) {
+        return { point: point, snapped: false, segment: null };
+      }
+
+      let best = null;
+      const sr = selectedParcelGeometry.spatialReference || point.spatialReference;
+      const tol = isFinite(tolerancePx) ? tolerancePx : SETBACK_SNAP_TOLERANCE_PX;
+
+      selectedParcelGeometry.rings.forEach(ring => {
+        if (!ring || ring.length < 2) return;
+        for (let i = 0; i < ring.length - 1; i++) {
+          const a = ring[i];
+          const b = ring[i + 1];
+          if (!a || !b) continue;
+
+          const aMap = { type:'point', x:a[0], y:a[1], spatialReference:sr };
+          const bMap = { type:'point', x:b[0], y:b[1], spatialReference:sr };
+          const aScreen = view.toScreen(aMap);
+          const bScreen = view.toScreen(bMap);
+          if (!aScreen || !bScreen || !isFinite(aScreen.x) || !isFinite(aScreen.y) || !isFinite(bScreen.x) || !isFinite(bScreen.y)) continue;
+
+          const vx = bScreen.x - aScreen.x;
+          const vy = bScreen.y - aScreen.y;
+          const len2 = vx * vx + vy * vy;
+          if (!isFinite(len2) || len2 <= 0) continue;
+
+          let t = ((clickScreen.x - aScreen.x) * vx + (clickScreen.y - aScreen.y) * vy) / len2;
+          t = Math.max(0, Math.min(1, t));
+          const sx = aScreen.x + t * vx;
+          const sy = aScreen.y + t * vy;
+          const dx = clickScreen.x - sx;
+          const dy = clickScreen.y - sy;
+          const dist2 = dx * dx + dy * dy;
+
+          if (!best || dist2 < best.dist2) {
+            best = { x:sx, y:sy, dist2, segment:{ a:aMap, b:bMap } };
+          }
+        }
+      });
+
+      if (!best || Math.sqrt(best.dist2) > tol) {
+        return { point: point, snapped: false, segment: null };
+      }
+      const snapped = view.toMap({ x:best.x, y:best.y }) || point;
+      return { point: snapped, snapped: true, segment: best.segment };
+    }
+
+    function snapPointToSelectedParcelBoundary(point, tolerancePx) {
+      return nearestParcelBoundarySnapInfo(point, tolerancePx).point || point;
+    }
+
+    function snapSetbackPointInfo(point) {
+      return nearestParcelBoundarySnapInfo(point, SETBACK_SNAP_TOLERANCE_PX);
+    }
+
+    function constrainSetbackPointPerpendicular(anchorPt, cursorPt, boundarySegment) {
+      if (!anchorPt || !cursorPt || !boundarySegment || !boundarySegment.a || !boundarySegment.b) return cursorPt;
+      const sx = boundarySegment.b.x - boundarySegment.a.x;
+      const sy = boundarySegment.b.y - boundarySegment.a.y;
+      const segLen = Math.hypot(sx, sy);
+      if (!isFinite(segLen) || segLen <= 0) return cursorPt;
+
+      // Perpendicular unit vector in map coordinates.
+      const px = -sy / segLen;
+      const py = sx / segLen;
+      const vx = cursorPt.x - anchorPt.x;
+      const vy = cursorPt.y - anchorPt.y;
+      const along = vx * px + vy * py;
+      if (!isFinite(along)) return cursorPt;
+
+      return {
+        type: 'point',
+        x: anchorPt.x + along * px,
+        y: anchorPt.y + along * py,
+        spatialReference: cursorPt.spatialReference || anchorPt.spatialReference
+      };
+    }
+
+    function setbackPlacementPoint(rawPoint, anchorPt, boundarySegment) {
+      if (setbackShiftDown && anchorPt && boundarySegment) {
+        return constrainSetbackPointPerpendicular(anchorPt, rawPoint, boundarySegment);
+      }
+      return snapSetbackPoint(rawPoint);
+    }
+
+    function snapSetbackPoint(point) {
+      return snapPointToSelectedParcelBoundary(point, SETBACK_SNAP_TOLERANCE_PX);
+    }
+
     function clearSetbackPreview() {
       if (activeSetbackPreview && activeSetbackPreview.moveHandle) activeSetbackPreview.moveHandle.remove();
       activeSetbackPreview = null;
@@ -2354,30 +2463,34 @@ view.ui.add(parcelSearch, {
     window.startSetbackTool = function () {
       cancelAndReset('btn-setback');
       let startPt = null;
+      let startBoundarySegment = null;
       const h = view.on('click', ev => {
         if (!startPt) {
-          startPt = ev.mapPoint;
+          const startInfo = snapSetbackPointInfo(ev.mapPoint);
+          startPt = startInfo.point;
+          startBoundarySegment = startInfo.snapped ? startInfo.segment : null;
           const pLine = new Graphic({ geometry: setbackLineGeometry(startPt, startPt), symbol: SYM.setback });
           const pPt = new Graphic({ geometry: startPt, symbol: previewPtSym() });
           previewLayer.addMany([pLine, pPt]);
           const mh = view.on('pointer-move', me => {
-            const mp = view.toMap({ x: me.x, y: me.y });
+            let mp = view.toMap({ x: me.x, y: me.y });
             if (!mp) return;
+            mp = setbackPlacementPoint(mp, startPt, startBoundarySegment);
             pLine.geometry = setbackLineGeometry(startPt, mp);
             pPt.geometry = mp;
           });
           activeSetbackPreview = { moveHandle: mh };
-          setStatus('Click the second setback point.');
+          setStatus('Click the second setback point. Hold Shift to constrain perpendicular to the parcel boundary.');
           return;
         }
-        const endPt = ev.mapPoint;
+        const endPt = setbackPlacementPoint(ev.mapPoint, startPt, startBoundarySegment);
         clearActivePlacementHandle();
         clearSetbackPreview();
         deactivateAll();
         createSetbackObject(startPt, endPt);
       });
       setActivePlacementHandle(h);
-      setStatus('Click the first setback point.');
+      setStatus('Click the first setback point. Snaps to the selected parcel boundary when close.');
     };
 
     window.startLineTool = function () {
