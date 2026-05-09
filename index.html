@@ -44,6 +44,14 @@
       font-weight:700; display:flex; align-items:center; gap:7px; font-size:14px;
     }
     .hdr-btn.gold:hover { background:#DEDAC3; }
+    .hdr-btn.clear-all-btn {
+      background:#fff; color:#d32f2f; border:1px solid #d32f2f; font-weight:700;
+      display:flex; align-items:center; gap:7px; margin-right:8px;
+    }
+    .hdr-btn.clear-all-btn:hover {
+      background:#fff5f5; border-color:#b71c1c; color:#b71c1c;
+    }
+    .hdr-btn.clear-all-btn svg { flex-shrink:0; }
 
     /* Basemap toggle */
     #basemap-toggle {
@@ -91,14 +99,14 @@
     .size-lbl  { font-size:12px; color:#000; flex:1; cursor:pointer; }
 
     .toggle-row {
-      display:flex; align-items:center; justify-content:space-between; gap:8px;
-      padding:7px 8px; margin:3px 0; font-size:12px;
-      border:1px solid transparent; border-radius:4px; cursor:pointer;
+      display:flex; align-items:center; justify-content:flex-start; gap:6px;
+      padding:4px 0; margin:3px 0; font-size:12px;
+      border:0; border-radius:0; cursor:pointer;
       user-select:none;
     }
-    .toggle-row:hover { background:#f5f7fa; border-color:#d5dbe3; }
-    .toggle-row span { flex:1; cursor:pointer; }
-    .toggle-row input { cursor:pointer; margin:0; }
+    .toggle-row:hover { background:transparent; }
+    .toggle-row input { cursor:pointer; margin:0; flex-shrink:0; }
+    .toggle-row span { cursor:pointer; }
     .edit-mode-row { display:flex; align-items:stretch; gap:5px; margin-bottom:8px; }
     .edit-mode-row .tool-btn + .tool-btn { margin-top:0; }
     .edit-mode-btn {
@@ -197,10 +205,52 @@
       border:1px solid #9ca3af;
       border-radius:6px;
       box-shadow:0 2px 7px rgba(0,0,0,.18);
-      pointer-events:auto;
+      /* Let the map keep receiving clicks except directly on the buttons. */
+      pointer-events:none;
     }
     #selection-toolbar.visible { display:flex; }
+
+
+    /* Clear-all confirmation modal */
+    #clear-modal {
+      position:fixed; inset:0; z-index:9999;
+      display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.55); padding:20px;
+    }
+    #clear-modal.visible { display:flex; }
+    .clear-modal-panel {
+      width:min(520px, calc(100vw - 40px)); background:#fff; color:#111827;
+      border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+      border:1px solid rgba(0,0,0,.18); overflow:hidden;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif;
+    }
+    .clear-modal-header {
+      padding:20px 24px 10px; font-size:22px; font-weight:700;
+      color:#111827; line-height:1.2;
+    }
+    .clear-modal-body {
+      padding:8px 24px 22px; font-size:16px; line-height:1.45;
+      color:#1f2937;
+    }
+    .clear-modal-actions {
+      display:flex; justify-content:flex-end; gap:12px;
+      padding:0 24px 24px;
+    }
+    .clear-modal-btn {
+      min-width:130px; border-radius:5px; border:1px solid #0b2d4c;
+      padding:11px 18px; font:inherit; font-size:15px; font-weight:700;
+      cursor:pointer;
+    }
+    .clear-modal-btn.cancel {
+      background:#0b2d4c; color:#fff; border-color:#0b2d4c;
+    }
+    .clear-modal-btn.cancel:hover { background:#123f68; }
+    .clear-modal-btn.danger {
+      background:#d32f2f; color:#fff; border-color:#d32f2f;
+    }
+    .clear-modal-btn.danger:hover { background:#b71c1c; border-color:#b71c1c; }
     .selection-tool-btn {
+      pointer-events:auto;
       width:28px;
       height:28px;
       padding:0;
@@ -217,10 +267,21 @@
     }
     .selection-tool-btn:hover { background:#deeeff; border-color:#0b2d4c; }
     .selection-tool-btn svg { width:16px; height:16px; display:block; }
-    .selection-tool-btn.delete { font-size:22px; }
   </style>
 </head>
 <body>
+<div id="clear-modal" role="dialog" aria-modal="true" aria-labelledby="clear-modal-title" aria-hidden="true" onclick="if(event.target===this) closeClearAllModal();">
+  <div class="clear-modal-panel">
+    <div class="clear-modal-header" id="clear-modal-title">Clear all drawings?</div>
+    <div class="clear-modal-body">
+      This will remove every drawing, label, and measurement from the map. This action cannot be undone.
+    </div>
+    <div class="clear-modal-actions">
+      <button type="button" class="clear-modal-btn cancel" onclick="closeClearAllModal()">Cancel</button>
+      <button type="button" class="clear-modal-btn danger" onclick="confirmClearAllModal()">Clear Map</button>
+    </div>
+  </div>
+</div>
 <div id="app">
 
   <header role="banner">
@@ -233,8 +294,16 @@
       <div id="agency"></div>
       <div id="title"></div>
     </div>
-    <button class="hdr-btn light" onclick="deleteSelected()" aria-label="Delete selected graphic">Delete selected</button>
-    <button class="hdr-btn light" onclick="clearAll()" aria-label="Clear all graphics">Clear all</button>
+    <button class="hdr-btn light clear-all-btn" onclick="clearAll()" title="Clear all drawn site plan items" aria-label="Clear all drawn site plan items">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+      </svg>
+      Clear Drawings
+    </button>
     <button class="hdr-btn gold" onclick="printPlan()" aria-label="Print or save PDF of site plan">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print / Save PDF
@@ -254,12 +323,12 @@
           <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-resize" aria-pressed="false" title="Resize object" onclick="setEditMode('resize')">Resize</button>
         </div>
         <label class="toggle-row" for="snap-toggle" title="Toggle snapping while drawing and editing">
-          <span>Snapping on</span>
           <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
+          <span>Snapping on</span>
         </label>
         <label class="toggle-row" for="print-parcel" title="Toggle whether printing uses the selected parcel extent">
-          <span>Print to parcel extent</span>
           <input type="checkbox" id="print-parcel" checked onchange="setPrintExtent('parcel', this.checked)" />
+          <span>Print to parcel extent</span>
         </label>
       </div>
 
@@ -505,7 +574,15 @@
             <rect x="8" y="4" width="12" height="12" rx="2"/>
           </svg>
         </button>
-        <button type="button" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">&times;</button>
+        <button type="button" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -850,6 +927,36 @@ view.ui.add(parcelSearch, {
       selectedToolbarGraphic = null;
     }
 
+    function graphicCollectionContains(collection, graphic) {
+      if (!collection || !graphic) return false;
+      if (typeof collection.includes === 'function' && collection.includes(graphic)) return true;
+      if (typeof collection.find === 'function' && collection.find(g => g === graphic)) return true;
+      if (typeof collection.toArray === 'function') return collection.toArray().some(g => g === graphic);
+      if (typeof collection.length === 'number') {
+        for (let i = 0; i < collection.length; i++) {
+          const item = typeof collection.getItemAt === 'function' ? collection.getItemAt(i) : collection[i];
+          if (item === graphic) return true;
+        }
+      }
+      return false;
+    }
+
+    function graphicIsStillInSketchUpdate(graphic) {
+      return graphicCollectionContains(sketch && sketch.updateGraphics, graphic) ||
+        graphicCollectionContains(sketch && sketch.viewModel && sketch.viewModel.updateGraphics, graphic);
+    }
+
+    function showToolbarAfterEditIfStillSelected(graphic, delay) {
+      if (!isSelectableDrawGraphic(graphic)) return;
+      setTimeout(() => {
+        if (!isSelectableDrawGraphic(graphic)) return;
+        // Only re-show after moving/resizing/reshaping if Sketch still considers
+        // the item selected. This keeps empty-map clicks from making the toolbar
+        // feel stuck, while bringing it back after a completed edit.
+        if (graphicIsStillInSketchUpdate(graphic)) showSelectionToolbar(graphic);
+      }, delay == null ? 120 : delay);
+    }
+
     const toolbar = toolbarElement();
     if (toolbar) {
       ['pointerdown','mousedown','touchstart','click','dblclick'].forEach(evtName => {
@@ -860,8 +967,25 @@ view.ui.add(parcelSearch, {
       });
     }
 
+    // Hide the floating toolbar when the user clicks empty map space. This keeps
+    // the toolbar from feeling like it is stuck after deselecting a drawing.
+    view.on('click', ev => {
+      if (!selectedToolbarGraphic) return;
+      // Give Sketch a moment to process its own hit-test/update first.
+      setTimeout(() => {
+        if (!selectedToolbarGraphic) return;
+        view.hitTest(ev).then(response => {
+          const hitEditable = (response.results || []).some(result =>
+            result && result.graphic && isSelectableDrawGraphic(result.graphic)
+          );
+          if (!hitEditable) hideSelectionToolbar();
+        }).catch(() => {});
+      }, 0);
+    });
+
     view.watch('extent', () => {
-      if (selectedToolbarGraphic) requestAnimationFrame(positionSelectionToolbar);
+      const bar = toolbarElement();
+      if (selectedToolbarGraphic && bar && bar.classList.contains('visible')) requestAnimationFrame(positionSelectionToolbar);
     });
 
     function cloneSymbol(symbol) {
@@ -2154,8 +2278,25 @@ view.ui.add(parcelSearch, {
     sketch.on('update', ev => {
       if (!ev.graphics||!ev.graphics.length) { hideSelectionToolbar(); return; }
       const g=ev.graphics[0];
-      if (ev.state === 'cancel') hideSelectionToolbar();
-      else if (isSelectableDrawGraphic(g)) showSelectionToolbar(g);
+
+      // Keep the icon toolbar passive so it does not compete with Sketch handles.
+      // Show it when an item is first selected, hide it while the user is actively
+      // moving/resizing/reshaping, then bring it back after the edit finishes if
+      // Sketch still considers that same graphic selected.
+      const updateToolType = ev.toolEventInfo && ev.toolEventInfo.type ? ev.toolEventInfo.type : '';
+      if (ev.state === 'start') {
+        if (isSelectableDrawGraphic(g)) showSelectionToolbar(g);
+      } else if (ev.state === 'active') {
+        hideSelectionToolbar();
+        if (/(move|scale|rotate|reshape)-stop$/.test(updateToolType)) {
+          showToolbarAfterEditIfStillSelected(g, 140);
+        }
+      } else if (ev.state === 'complete') {
+        hideSelectionToolbar();
+        showToolbarAfterEditIfStillSelected(g, 140);
+      } else if (ev.state === 'cancel') {
+        hideSelectionToolbar();
+      }
 
       // Apply the selected edit mode when supported polygons are selected.
       // Reshape is the default; Resize object can be selected from the Editing panel.
@@ -2462,17 +2603,57 @@ view.ui.add(parcelSearch, {
       else setStatus('Click an item to select it first.');
     };
 
-    window.clearAll = function () {
+    function performClearAll() {
       clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); sketch.cancel();
       drawLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
       document.getElementById('measure-box').style.display='none';
       setStatus('All items cleared.');
+    }
+
+    window.openClearAllModal = function () {
+      const modal = document.getElementById('clear-modal');
+      if (!modal) { performClearAll(); return; }
+      modal.classList.add('visible');
+      modal.setAttribute('aria-hidden', 'false');
+      setTimeout(() => {
+        const cancelBtn = modal.querySelector('.clear-modal-btn.cancel');
+        if (cancelBtn) cancelBtn.focus();
+      }, 0);
     };
+
+    window.closeClearAllModal = function () {
+      const modal = document.getElementById('clear-modal');
+      if (!modal) return;
+      modal.classList.remove('visible');
+      modal.setAttribute('aria-hidden', 'true');
+      setStatus('Clear all cancelled.');
+    };
+
+    window.confirmClearAllModal = function () {
+      const modal = document.getElementById('clear-modal');
+      if (modal) {
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      performClearAll();
+    };
+
+    window.clearAll = function (skipConfirm) {
+      if (skipConfirm) { performClearAll(); return; }
+      window.openClearAllModal();
+    };
+
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Escape') return;
+      const modal = document.getElementById('clear-modal');
+      if (modal && modal.classList.contains('visible')) window.closeClearAllModal();
+    });
 
     // ── Print ─────────────────────────────────────────────────
     window.printPlan = function () {
+      hideSelectionToolbar();
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
       const prePrintBasemap = map.basemap;
