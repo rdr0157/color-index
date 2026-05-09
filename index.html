@@ -2581,9 +2581,17 @@ view.ui.add(parcelSearch, {
       const constrained = view.toMap({ x:px, y:py });
       if (!constrained) return fallbackResult;
 
+      // If the perpendicular-constrained endpoint is also close to a valid
+      // snap target, honor that snap target too. This gives users an orange
+      // endpoint/edge cue only when the perpendicular line is actually landing
+      // on another parcel boundary or eligible drawing edge, rather than every
+      // time the endpoint is merely moving along the perpendicular guide.
+      const constrainedSnapInfo = snapPointToSetbackSnapTargetsInfo(constrained, SETBACK_SNAP_TOLERANCE_PX);
+      const finalPoint = (constrainedSnapInfo && constrainedSnapInfo.snapped) ? constrainedSnapInfo.point : constrained;
+
       const sign = proj >= 0 ? 1 : -1;
       return {
-        point: constrained,
+        point: finalPoint,
         perpendicular: true,
         angleSpec: {
           origin: s,
@@ -2591,8 +2599,8 @@ view.ui.add(parcelSearch, {
           n: { x:nx * sign, y:ny * sign },
           spatialReference: startPt.spatialReference
         },
-        snapped: false,
-        snapSegment: null
+        snapped: !!(constrainedSnapInfo && constrainedSnapInfo.snapped),
+        snapSegment: constrainedSnapInfo && constrainedSnapInfo.segment ? constrainedSnapInfo.segment : null
       };
     }
 
@@ -2777,9 +2785,9 @@ view.ui.add(parcelSearch, {
             const nextPt = result.point;
             pLine.geometry = setbackLineGeometry(startPt, nextPt);
             pPt.geometry = nextPt;
-            pPt.symbol = (result && result.snapped && !result.perpendicular) ? setbackSnapPointSym() : previewPtSym();
+            pPt.symbol = (result && result.snapped) ? setbackSnapPointSym() : previewPtSym();
 
-            if (result && result.snapped && !result.perpendicular && result.snapSegment) {
+            if (result && result.snapped && result.snapSegment) {
               pEndBoundaryHighlight = makeOrUpdatePreviewGraphic(
                 pEndBoundaryHighlight,
                 setbackSnapSegmentGeometry(result.snapSegment),
@@ -2791,7 +2799,9 @@ view.ui.add(parcelSearch, {
             }
 
             showOrHideRightAnglePreview(result);
-            if (result && result.perpendicular) {
+            if (result && result.perpendicular && result.snapped) {
+              setStatus('Perpendicular setback snap active and endpoint will snap to the highlighted boundary or drawing edge. Click to place the second point.');
+            } else if (result && result.perpendicular) {
               setStatus('Perpendicular setback snap active. Click to place the second point.');
             } else if (result && result.snapped) {
               setStatus('Setback endpoint will snap to the highlighted parcel boundary or drawing edge. Click to place the second point.');
