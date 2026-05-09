@@ -2297,28 +2297,16 @@ view.ui.add(parcelSearch, {
       setStatus('Click to start septic line. Double-click to finish.');
     };
     const SETBACK_SNAP_TOLERANCE_PX = 14;
-    let setbackShiftDown = false;
+    const SETBACK_PERP_TOLERANCE_PX = 8;
+    const SETBACK_RIGHT_ANGLE_SIZE_PX = 12;
 
-    window.addEventListener('keydown', function (ev) {
-      if (ev && ev.key === 'Shift') setbackShiftDown = true;
-    });
-    window.addEventListener('keyup', function (ev) {
-      if (ev && ev.key === 'Shift') setbackShiftDown = false;
-    });
-    window.addEventListener('blur', function () { setbackShiftDown = false; });
-
-    function nearestParcelBoundarySnapInfo(point, tolerancePx) {
-      if (!point || !selectedParcelGeometry || !selectedParcelGeometry.rings || !selectedParcelGeometry.rings.length) {
-        return { point: point, snapped: false, segment: null };
-      }
-      if (!view || typeof view.toScreen !== 'function' || typeof view.toMap !== 'function') {
-        return { point: point, snapped: false, segment: null };
-      }
+    function snapPointToSelectedParcelBoundaryInfo(point, tolerancePx) {
+      const unsnapped = { point, snapped:false, segment:null };
+      if (!point || !selectedParcelGeometry || !selectedParcelGeometry.rings || !selectedParcelGeometry.rings.length) return unsnapped;
+      if (!view || typeof view.toScreen !== 'function' || typeof view.toMap !== 'function') return unsnapped;
 
       const clickScreen = view.toScreen(point);
-      if (!clickScreen || !isFinite(clickScreen.x) || !isFinite(clickScreen.y)) {
-        return { point: point, snapped: false, segment: null };
-      }
+      if (!clickScreen || !isFinite(clickScreen.x) || !isFinite(clickScreen.y)) return unsnapped;
 
       let best = null;
       const sr = selectedParcelGeometry.spatialReference || point.spatialReference;
@@ -2351,58 +2339,121 @@ view.ui.add(parcelSearch, {
           const dist2 = dx * dx + dy * dy;
 
           if (!best || dist2 < best.dist2) {
-            best = { x:sx, y:sy, dist2, segment:{ a:aMap, b:bMap } };
+            best = {
+              x:sx, y:sy, dist2,
+              aMap, bMap, aScreen, bScreen,
+              snapScreen:{ x:sx, y:sy }
+            };
           }
         }
       });
 
-      if (!best || Math.sqrt(best.dist2) > tol) {
-        return { point: point, snapped: false, segment: null };
-      }
-      const snapped = view.toMap({ x:best.x, y:best.y }) || point;
-      return { point: snapped, snapped: true, segment: best.segment };
-    }
-
-    function snapPointToSelectedParcelBoundary(point, tolerancePx) {
-      return nearestParcelBoundarySnapInfo(point, tolerancePx).point || point;
-    }
-
-    function snapSetbackPointInfo(point) {
-      return nearestParcelBoundarySnapInfo(point, SETBACK_SNAP_TOLERANCE_PX);
-    }
-
-    function constrainSetbackPointPerpendicular(anchorPt, cursorPt, boundarySegment) {
-      if (!anchorPt || !cursorPt || !boundarySegment || !boundarySegment.a || !boundarySegment.b) return cursorPt;
-      const sx = boundarySegment.b.x - boundarySegment.a.x;
-      const sy = boundarySegment.b.y - boundarySegment.a.y;
-      const segLen = Math.hypot(sx, sy);
-      if (!isFinite(segLen) || segLen <= 0) return cursorPt;
-
-      // Perpendicular unit vector in map coordinates.
-      const px = -sy / segLen;
-      const py = sx / segLen;
-      const vx = cursorPt.x - anchorPt.x;
-      const vy = cursorPt.y - anchorPt.y;
-      const along = vx * px + vy * py;
-      if (!isFinite(along)) return cursorPt;
-
+      if (!best || Math.sqrt(best.dist2) > tol) return unsnapped;
+      const snapped = view.toMap({ x:best.x, y:best.y });
       return {
-        type: 'point',
-        x: anchorPt.x + along * px,
-        y: anchorPt.y + along * py,
-        spatialReference: cursorPt.spatialReference || anchorPt.spatialReference
+        point: snapped || point,
+        snapped: !!snapped,
+        segment: {
+          aMap: best.aMap,
+          bMap: best.bMap,
+          aScreen: best.aScreen,
+          bScreen: best.bScreen,
+          snapScreen: best.snapScreen
+        }
       };
     }
 
-    function setbackPlacementPoint(rawPoint, anchorPt, boundarySegment) {
-      if (setbackShiftDown && anchorPt && boundarySegment) {
-        return constrainSetbackPointPerpendicular(anchorPt, rawPoint, boundarySegment);
-      }
-      return snapSetbackPoint(rawPoint);
+    function snapPointToSelectedParcelBoundary(point, tolerancePx) {
+      return snapPointToSelectedParcelBoundaryInfo(point, tolerancePx).point;
     }
 
     function snapSetbackPoint(point) {
       return snapPointToSelectedParcelBoundary(point, SETBACK_SNAP_TOLERANCE_PX);
+    }
+
+    function snapSetbackPointInfo(point) {
+      return snapPointToSelectedParcelBoundaryInfo(point, SETBACK_SNAP_TOLERANCE_PX);
+    }
+
+    function computeSmartPerpendicularSetbackEnd(startPt, boundarySegment, rawPoint) {
+      const fallback = snapSetbackPoint(rawPoint);
+      if (!startPt || !boundarySegment || !rawPoint || !view || typeof view.toScreen !== 'function' || typeof view.toMap !== 'function') {
+        return { point:fallback, perpendicular:false, angleSpec:null };
+      }
+
+      const s = view.toScreen(startPt);
+      const c = view.toScreen(rawPoint);
+      const a = boundarySegment.aScreen;
+      const b = boundarySegment.bScreen;
+      if (!s || !c || !a || !b) return { point:fallback, perpendicular:false, angleSpec:null };
+      if (![s.x,s.y,c.x,c.y,a.x,a.y,b.x,b.y].every(isFinite)) return { point:fallback, perpendicular:false, angleSpec:null };
+
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const segLen = Math.hypot(dx, dy);
+      if (!isFinite(segLen) || segLen <= 0) return { point:fallback, perpendicular:false, angleSpec:null };
+
+      const tx = dx / segLen;
+      const ty = dy / segLen;
+      const nx = -ty;
+      const ny = tx;
+
+      const vx = c.x - s.x;
+      const vy = c.y - s.y;
+      const proj = vx * nx + vy * ny;
+      if (!isFinite(proj) || Math.abs(proj) < 4) return { point:fallback, perpendicular:false, angleSpec:null };
+
+      const px = s.x + proj * nx;
+      const py = s.y + proj * ny;
+      const off = Math.hypot(c.x - px, c.y - py);
+      if (!isFinite(off) || off > SETBACK_PERP_TOLERANCE_PX) {
+        return { point:fallback, perpendicular:false, angleSpec:null };
+      }
+
+      const constrained = view.toMap({ x:px, y:py });
+      if (!constrained) return { point:fallback, perpendicular:false, angleSpec:null };
+
+      const sign = proj >= 0 ? 1 : -1;
+      return {
+        point: constrained,
+        perpendicular: true,
+        angleSpec: {
+          origin: s,
+          t: { x:tx, y:ty },
+          n: { x:nx * sign, y:ny * sign },
+          spatialReference: startPt.spatialReference
+        }
+      };
+    }
+
+    function rightAnglePreviewGeometry(spec) {
+      if (!spec || !spec.origin || !spec.t || !spec.n) return null;
+      const s = spec.origin;
+      const t = spec.t;
+      const n = spec.n;
+      const size = SETBACK_RIGHT_ANGLE_SIZE_PX;
+      const screenPts = [
+        { x:s.x + t.x * size,              y:s.y + t.y * size },
+        { x:s.x + t.x * size + n.x * size, y:s.y + t.y * size + n.y * size },
+        { x:s.x + n.x * size,              y:s.y + n.y * size }
+      ];
+      const mapPts = screenPts.map(pt => view.toMap(pt));
+      if (mapPts.some(pt => !pt || !isFinite(pt.x) || !isFinite(pt.y))) return null;
+      return {
+        type: 'polyline',
+        spatialReference: mapPts[0].spatialReference || spec.spatialReference,
+        paths: [mapPts.map(pt => [pt.x, pt.y])]
+      };
+    }
+
+    function updateRightAnglePreview(graphic, angleSpec) {
+      if (!graphic) return;
+      const geom = rightAnglePreviewGeometry(angleSpec);
+      if (!geom) {
+        previewLayer.remove(graphic);
+        return;
+      }
+      graphic.geometry = geom;
     }
 
     function clearSetbackPreview() {
@@ -2464,26 +2515,54 @@ view.ui.add(parcelSearch, {
       cancelAndReset('btn-setback');
       let startPt = null;
       let startBoundarySegment = null;
+      let pLine = null;
+      let pPt = null;
+      let pRightAngle = null;
+
+      function getSetbackPreviewEnd(rawPoint) {
+        return computeSmartPerpendicularSetbackEnd(startPt, startBoundarySegment, rawPoint);
+      }
+
+      function showOrHideRightAnglePreview(result) {
+        if (result && result.perpendicular && result.angleSpec) {
+          if (!pRightAngle) {
+            pRightAngle = new Graphic({
+              geometry: rightAnglePreviewGeometry(result.angleSpec),
+              symbol: { type:'simple-line', color:[0,0,0,1], width:1.25, style:'solid' }
+            });
+            if (pRightAngle.geometry) previewLayer.add(pRightAngle);
+          } else {
+            updateRightAnglePreview(pRightAngle, result.angleSpec);
+            if (!previewLayer.graphics.includes(pRightAngle) && pRightAngle.geometry) previewLayer.add(pRightAngle);
+          }
+        } else if (pRightAngle) {
+          previewLayer.remove(pRightAngle);
+        }
+      }
+
       const h = view.on('click', ev => {
         if (!startPt) {
-          const startInfo = snapSetbackPointInfo(ev.mapPoint);
-          startPt = startInfo.point;
-          startBoundarySegment = startInfo.snapped ? startInfo.segment : null;
-          const pLine = new Graphic({ geometry: setbackLineGeometry(startPt, startPt), symbol: SYM.setback });
-          const pPt = new Graphic({ geometry: startPt, symbol: previewPtSym() });
+          const snapInfo = snapSetbackPointInfo(ev.mapPoint);
+          startPt = snapInfo.point;
+          startBoundarySegment = snapInfo.segment;
+          pLine = new Graphic({ geometry: setbackLineGeometry(startPt, startPt), symbol: SYM.setback });
+          pPt = new Graphic({ geometry: startPt, symbol: previewPtSym() });
           previewLayer.addMany([pLine, pPt]);
           const mh = view.on('pointer-move', me => {
-            let mp = view.toMap({ x: me.x, y: me.y });
+            const mp = view.toMap({ x: me.x, y: me.y });
             if (!mp) return;
-            mp = setbackPlacementPoint(mp, startPt, startBoundarySegment);
-            pLine.geometry = setbackLineGeometry(startPt, mp);
-            pPt.geometry = mp;
+            const result = getSetbackPreviewEnd(mp);
+            const nextPt = result.point;
+            pLine.geometry = setbackLineGeometry(startPt, nextPt);
+            pPt.geometry = nextPt;
+            showOrHideRightAnglePreview(result);
           });
           activeSetbackPreview = { moveHandle: mh };
-          setStatus('Click the second setback point. Hold Shift to constrain perpendicular to the parcel boundary.');
+          setStatus('Click the second setback point. Snaps to the parcel boundary, and snaps perpendicular when close to 90 degrees.');
           return;
         }
-        const endPt = setbackPlacementPoint(ev.mapPoint, startPt, startBoundarySegment);
+        const result = getSetbackPreviewEnd(ev.mapPoint);
+        const endPt = result.point;
         clearActivePlacementHandle();
         clearSetbackPreview();
         deactivateAll();
