@@ -2412,12 +2412,127 @@ view.ui.add(parcelSearch, {
       return snapPointToSelectedParcelBoundaryInfo(point, tolerancePx).point;
     }
 
+    // ── Setback snap targets ─────────────────────────────────
+    // Setback placement can snap to the selected parcel boundary and to
+    // eligible drawn polygon edges. Kept intentionally narrow so annotation
+    // helpers, callouts, wells, septic/drainfield items, and labels do not
+    // become snap targets.
+    function isSetbackSnapTargetGraphic(graphic) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return false;
+      if (graphic.__isDrainfield || graphic.__isSepticTank || graphic.__wellId || graphic.__calloutId || graphic.__setbackId) return false;
+      return !!(
+        graphic.__structureType ||
+        graphic.__isDrawRectangle ||
+        graphic.__isDrawTool
+      );
+    }
+
+    function scanSetbackSnapRings(point, rings, spatialReference, tolerancePx, source, graphic, best) {
+      if (!point || !rings || !rings.length || !view || typeof view.toScreen !== 'function') return best;
+      const clickScreen = view.toScreen(point);
+      if (!clickScreen || !isFinite(clickScreen.x) || !isFinite(clickScreen.y)) return best;
+      const sr = spatialReference || point.spatialReference;
+
+      rings.forEach(ring => {
+        if (!ring || ring.length < 2) return;
+        for (let i = 0; i < ring.length - 1; i++) {
+          const a = ring[i];
+          const b = ring[i + 1];
+          if (!a || !b) continue;
+
+          const aMap = { type:'point', x:a[0], y:a[1], spatialReference:sr };
+          const bMap = { type:'point', x:b[0], y:b[1], spatialReference:sr };
+          const aScreen = view.toScreen(aMap);
+          const bScreen = view.toScreen(bMap);
+          if (!aScreen || !bScreen || !isFinite(aScreen.x) || !isFinite(aScreen.y) || !isFinite(bScreen.x) || !isFinite(bScreen.y)) continue;
+
+          const vx = bScreen.x - aScreen.x;
+          const vy = bScreen.y - aScreen.y;
+          const len2 = vx * vx + vy * vy;
+          if (!isFinite(len2) || len2 <= 0) continue;
+
+          let t = ((clickScreen.x - aScreen.x) * vx + (clickScreen.y - aScreen.y) * vy) / len2;
+          t = Math.max(0, Math.min(1, t));
+          const sx = aScreen.x + t * vx;
+          const sy = aScreen.y + t * vy;
+          const dx = clickScreen.x - sx;
+          const dy = clickScreen.y - sy;
+          const dist2 = dx * dx + dy * dy;
+
+          if (!best || dist2 < best.dist2) {
+            best = {
+              x:sx, y:sy, dist2,
+              aMap, bMap, aScreen, bScreen,
+              snapScreen:{ x:sx, y:sy },
+              source: source || 'drawing',
+              graphic: graphic || null
+            };
+          }
+        }
+      });
+
+      return best;
+    }
+
+    function snapPointToSetbackSnapTargetsInfo(point, tolerancePx) {
+      const unsnapped = { point, snapped:false, segment:null };
+      if (!point || !view || typeof view.toScreen !== 'function' || typeof view.toMap !== 'function') return unsnapped;
+      const tol = isFinite(tolerancePx) ? tolerancePx : SETBACK_SNAP_TOLERANCE_PX;
+      let best = null;
+
+      // Parcel boundary remains an eligible snap target.
+      if (selectedParcelGeometry && selectedParcelGeometry.rings && selectedParcelGeometry.rings.length) {
+        best = scanSetbackSnapRings(
+          point,
+          selectedParcelGeometry.rings,
+          selectedParcelGeometry.spatialReference || point.spatialReference,
+          tol,
+          'parcel',
+          null,
+          best
+        );
+      }
+
+      // Eligible drawn polygon edges: proposed structure, existing structure,
+      // rectangle, and general polygon drawings.
+      drawLayer.graphics.toArray().forEach(graphic => {
+        if (!isSetbackSnapTargetGraphic(graphic)) return;
+        const geom = graphic.geometry;
+        if (!geom || !geom.rings || !geom.rings.length) return;
+        best = scanSetbackSnapRings(
+          point,
+          geom.rings,
+          geom.spatialReference || point.spatialReference,
+          tol,
+          'drawing',
+          graphic,
+          best
+        );
+      });
+
+      if (!best || Math.sqrt(best.dist2) > tol) return unsnapped;
+      const snapped = view.toMap({ x:best.x, y:best.y });
+      return {
+        point: snapped || point,
+        snapped: !!snapped,
+        segment: {
+          aMap: best.aMap,
+          bMap: best.bMap,
+          aScreen: best.aScreen,
+          bScreen: best.bScreen,
+          snapScreen: best.snapScreen,
+          source: best.source,
+          graphic: best.graphic
+        }
+      };
+    }
+
     function snapSetbackPoint(point) {
-      return snapPointToSelectedParcelBoundary(point, SETBACK_SNAP_TOLERANCE_PX);
+      return snapSetbackPointInfo(point).point;
     }
 
     function snapSetbackPointInfo(point) {
-      return snapPointToSelectedParcelBoundaryInfo(point, SETBACK_SNAP_TOLERANCE_PX);
+      return snapPointToSetbackSnapTargetsInfo(point, SETBACK_SNAP_TOLERANCE_PX);
     }
 
     function computeSmartPerpendicularSetbackEnd(startPt, boundarySegment, rawPoint) {
@@ -2590,11 +2705,11 @@ view.ui.add(parcelSearch, {
             snapInfo.point,
             setbackSnapPointSym()
           );
-          setStatus('Setback start will snap to the highlighted parcel boundary segment. Click to place the first point.');
+          setStatus('Setback start will snap to the highlighted parcel boundary or drawing edge. Click to place the first point.');
         } else {
           if (pHoverBoundary) { previewLayer.remove(pHoverBoundary); pHoverBoundary = null; }
           if (pHoverSnapPoint) { previewLayer.remove(pHoverSnapPoint); pHoverSnapPoint = null; }
-          setStatus('Click the first setback point. Snaps to the selected parcel boundary when close.');
+          setStatus('Click the first setback point. Snaps to parcel boundaries and eligible drawing edges when close.');
         }
         return snapInfo;
       }
@@ -2656,11 +2771,11 @@ view.ui.add(parcelSearch, {
             if (result && result.perpendicular) {
               setStatus('Perpendicular setback snap active. Click to place the second point.');
             } else {
-              setStatus('Click the second setback point. Snaps to the parcel boundary, and snaps perpendicular when close to 90 degrees.');
+              setStatus('Click the second setback point. Snaps to parcel/drawing edges, and snaps perpendicular when close to 90 degrees.');
             }
           });
           activeSetbackPreview = { moveHandle: secondMoveHandle, firstMoveHandle };
-          setStatus('Click the second setback point. Snaps to the parcel boundary, and snaps perpendicular when close to 90 degrees.');
+          setStatus('Click the second setback point. Snaps to parcel/drawing edges, and snaps perpendicular when close to 90 degrees.');
           return;
         }
         const result = getSetbackPreviewEnd(ev.mapPoint);
@@ -2672,7 +2787,7 @@ view.ui.add(parcelSearch, {
       });
       setActivePlacementHandle(h);
       activeSetbackPreview = { firstMoveHandle };
-      setStatus('Click the first setback point. Snaps to the selected parcel boundary when close.');
+      setStatus('Click the first setback point. Snaps to parcel boundaries and eligible drawing edges when close.');
     };
 
     window.startLineTool = function () {
