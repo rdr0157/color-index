@@ -93,6 +93,21 @@
     .tool-btn:hover  { background:#f5f7fa; }
     .tool-btn.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
 
+    .tool-btn.icon-btn {
+      display:flex; align-items:center; gap:8px;
+    }
+    .tool-btn.icon-btn .tool-icon {
+      width:28px; min-width:28px; height:18px;
+      display:inline-flex; align-items:center; justify-content:center;
+      flex-shrink:0;
+    }
+    .tool-btn.icon-btn .tool-label {
+      flex:1; min-width:0;
+    }
+    .tool-btn.icon-btn .tool-icon svg {
+      width:28px; height:18px; display:block; overflow:visible;
+    }
+
     .size-row { display:flex; align-items:center; gap:4px; padding:3px 0 1px; }
     .dim-input { width:44px; padding:4px; border:1px solid #d5dbe3; border-radius:4px; font:inherit; font-size:11px; text-align:center; }
     .dim-sep   { font-size:12px; color:#000; }
@@ -335,7 +350,7 @@
       <!-- STRUCTURES -->
       <div class="section-head">Structures</div>
       <div class="section-body">
-        <button class="tool-btn draw-tool-btn" id="btn-proposed" onclick="startStructure('proposed')">Proposed structure</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-proposed" onclick="startStructure('proposed')"><span class="tool-icon icon-proposed"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(200,0,0,0.12)" stroke="#c80000" stroke-width="2.2"/></svg></span><span class="tool-label">Proposed structure</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-proposed" />
           <label for="chk-proposed" class="size-lbl">Fixed size</label>
@@ -344,7 +359,7 @@
           <input id="proposed-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
           <span class="dim-sep">ft</span>
         </div>
-        <button class="tool-btn draw-tool-btn" id="btn-existing" onclick="startStructure('existing')" style="margin-top:7px;">Existing structure</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-existing" onclick="startStructure('existing')" style="margin-top:7px;"><span class="tool-icon icon-existing"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(0,0,0,0.04)" stroke="#444" stroke-width="2" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Existing structure</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-existing" />
           <label for="chk-existing" class="size-lbl">Fixed size</label>
@@ -358,9 +373,9 @@
       <!-- WELL & SEPTIC -->
       <div class="section-head">Well &amp; Septic</div>
       <div class="section-body">
-        <button class="tool-btn draw-tool-btn" id="btn-well" onclick="startWellTool()">Well + 100&apos; buffer</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-well" onclick="startWellTool()"><span class="tool-icon icon-well"><svg viewBox="0 0 28 18" aria-hidden="true"><circle cx="14" cy="9" r="7" fill="none" stroke="#666" stroke-width="1.4" stroke-dasharray="2 2"/><circle cx="14" cy="9" r="3" fill="#fff" stroke="#000" stroke-width="1.8"/></svg></span><span class="tool-label">Well + 100&apos; buffer</span></button>
 
-        <button class="tool-btn draw-tool-btn" id="btn-septic" onclick="startSepticTool()" style="margin-top:7px;">Septic tank</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-septic" onclick="startSepticTool()" style="margin-top:7px;"><span class="tool-icon icon-septic"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(0,140,60,0.22)" stroke="#005a1e" stroke-width="1.8"/></svg></span><span class="tool-label">Septic tank</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-septic" checked />
           <label for="chk-septic" class="size-lbl">Fixed size</label>
@@ -370,7 +385,7 @@
           <span class="dim-sep">ft</span>
         </div>
 
-        <button class="tool-btn draw-tool-btn" id="btn-drainfield" onclick="startDrainfieldTool(false)" style="margin-top:7px;">Drainfield</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-drainfield" onclick="startDrainfieldTool(false)" style="margin-top:7px;"><span class="tool-icon icon-drainfield"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4"/></svg></span><span class="tool-label">Drainfield</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-drainfield" />
           <label for="chk-drainfield" class="size-lbl">Fixed size</label>
@@ -380,7 +395,7 @@
           <span class="dim-sep">ft</span>
         </div>
 
-        <button class="tool-btn draw-tool-btn" id="btn-reserve" onclick="startDrainfieldTool(true)" style="margin-top:7px;">Reserve drainfield</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-reserve" onclick="startDrainfieldTool(true)" style="margin-top:7px;"><span class="tool-icon icon-reserve"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8" stroke-dasharray="4 2"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Reserve drainfield</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-reserve" />
           <label for="chk-reserve" class="size-lbl">Fixed size</label>
@@ -390,18 +405,18 @@
           <span class="dim-sep">ft</span>
         </div>
 
-        <button class="tool-btn draw-tool-btn" id="btn-septicline" onclick="startSepticLineTool()" style="margin-top:7px;">Septic line</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-septicline" onclick="startSepticLineTool()" style="margin-top:7px;"><span class="tool-icon icon-septicline"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#006e2d" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="tool-label">Septic line</span></button>
       </div>
 
       <!-- DRAW TOOLS -->
       <div class="section-head">Draw tools</div>
       <div class="section-body">
 
-        <button class="tool-btn draw-tool-btn" id="btn-setback" onclick="startSetbackTool()">Setback</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-setback" onclick="startSetbackTool()"><span class="tool-icon icon-setback"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="9" x2="21" y2="9" stroke="#000" stroke-width="1.6" stroke-dasharray="3 2"/><path d="M4 9l5-3v6z" fill="#000"/><path d="M24 9l-5-3v6z" fill="#000"/></svg></span><span class="tool-label">Setback</span></button>
 
-        <button class="tool-btn draw-tool-btn" id="btn-grading" onclick="startGradingTool()" style="margin-top:5px;">Proposed Grading</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-grading" onclick="startGradingTool()" style="margin-top:5px;"><span class="tool-icon icon-grading"><svg viewBox="0 0 28 18" aria-hidden="true"><defs><pattern id="ui-grade" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(160,100,0,0.75)" stroke-width="2"/></pattern></defs><rect x="5" y="4" width="18" height="10" rx="1" fill="url(#ui-grade)" stroke="#6e4100" stroke-width="1.6"/></svg></span><span class="tool-label">Proposed Grading</span></button>
 
-        <button class="tool-btn draw-tool-btn" id="btn-easement" onclick="startEasementTool()" style="margin-top:5px;">Easement</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-easement" onclick="startEasementTool()" style="margin-top:5px;"><span class="tool-icon icon-easement"><svg viewBox="0 0 28 18" aria-hidden="true"><defs><pattern id="ui-ease" patternUnits="userSpaceOnUse" width="5" height="5"><line x1="0" y1="1" x2="5" y2="1" stroke="rgba(0,80,180,0.55)" stroke-width="2"/></pattern></defs><rect x="5" y="4" width="18" height="10" rx="1" fill="url(#ui-ease)" stroke="#003296" stroke-width="1.6"/></svg></span><span class="tool-label">Easement</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-easement" />
           <label for="chk-easement" class="size-lbl">Fixed size</label>
@@ -411,11 +426,11 @@
           <span class="dim-sep">ft</span>
         </div>
 
-        <button class="tool-btn draw-tool-btn" id="btn-line" onclick="startLineTool()" style="margin-top:5px;">Line</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-line" onclick="startLineTool()" style="margin-top:5px;"><span class="tool-icon icon-line"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="tool-label">Line</span></button>
 
-        <button class="tool-btn draw-tool-btn" id="btn-polygon" onclick="startDrawTool('polygon')" style="margin-top:5px;">Polygon</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-polygon" onclick="startDrawTool('polygon')" style="margin-top:5px;"><span class="tool-icon icon-polygon"><svg viewBox="0 0 28 18" aria-hidden="true"><polygon points="6,13 10,4 21,5 23,12 14,15" fill="rgba(0,0,0,0.03)" stroke="#000" stroke-width="1.6"/></svg></span><span class="tool-label">Polygon</span></button>
 
-        <button class="tool-btn draw-tool-btn" id="btn-rectangle" onclick="startDrawTool('rectangle')" style="margin-top:5px;">Rectangle</button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-rectangle" onclick="startDrawTool('rectangle')" style="margin-top:5px;"><span class="tool-icon icon-rectangle"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="none" stroke="#000" stroke-width="1.6"/></svg></span><span class="tool-label">Rectangle</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-rect" />
           <label for="chk-rect" class="size-lbl">Fixed size</label>
@@ -426,88 +441,13 @@
         </div>
 
         <div style="display:flex;gap:5px;margin-top:5px;">
-          <button class="tool-btn draw-tool-btn" id="btn-callout" onclick="startCalloutTool()" style="flex:1;margin:0;">Callout</button>
-          <button class="tool-btn draw-tool-btn" id="btn-text"    onclick="startTextTool()"    style="flex:1;margin:0;">Text</button>
+          <button class="tool-btn draw-tool-btn icon-btn" id="btn-callout" onclick="startCalloutTool()" style="flex:1;margin:0;"><span class="tool-icon icon-callout"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="6" y1="13" x2="17" y2="6" stroke="#000" stroke-width="1.5"/><circle cx="6" cy="13" r="2.5" fill="#4DBD64" stroke="#000" stroke-width="0.7"/><rect x="16" y="3" width="8" height="6" rx="1" fill="#fff" stroke="#000" stroke-width="1"/></svg></span><span class="tool-label">Callout</span></button>
+          <button class="tool-btn draw-tool-btn icon-btn" id="btn-text"    onclick="startTextTool()"    style="flex:1;margin:0;"><span class="tool-icon icon-text"><svg viewBox="0 0 28 18" aria-hidden="true"><text x="14" y="14" text-anchor="middle" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#000">T</text></svg></span><span class="tool-label">Text</span></button>
         </div>
         <input id="text-input" type="text" placeholder="Text / callout label"
           style="width:100%;margin-top:5px;padding:7px 10px;border:1px solid #d5dbe3;border-radius:4px;font:inherit;font-size:12px;" />
       </div>
 
-
-      <!-- LEGEND -->
-      <div class="section-head">Legend</div>
-      <div class="section-body" style="font-size:12px;color:#000;padding:6px 10px;">
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:24px;height:0;border-top:3px solid #c80000;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Proposed structure</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:24px;height:0;border-top:2.5px dashed #444;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Existing structure</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:10px;height:10px;background:#fff;border:2px solid #000;border-radius:50%;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Well</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:24px;height:0;border-top:1.5px dashed #666;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">100' well buffer</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:18px;height:12px;background:rgba(0,140,60,0.22);border:1.5px solid #005a1e;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Septic tank</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <svg width="24" height="18" xmlns="http://www.w3.org/2000/svg">
-                <line x1="6"  y1="4" x2="18" y2="4"  stroke="#006e2d" stroke-width="1.5"/>
-                <line x1="6"  y1="4" x2="6"  y2="18" stroke="#006e2d" stroke-width="1"/>
-                <line x1="12" y1="4" x2="12" y2="18" stroke="#006e2d" stroke-width="1"/>
-                <line x1="18" y1="4" x2="18" y2="18" stroke="#006e2d" stroke-width="1"/>
-              </svg>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Drainfield</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <svg width="24" height="18" xmlns="http://www.w3.org/2000/svg">
-                <line x1="6"  y1="4" x2="18" y2="4"  stroke="#006e2d" stroke-width="1.5" stroke-dasharray="4,2"/>
-                <line x1="6"  y1="4" x2="6"  y2="18" stroke="#006e2d" stroke-width="1"   stroke-dasharray="4,2"/>
-                <line x1="12" y1="4" x2="12" y2="18" stroke="#006e2d" stroke-width="1"   stroke-dasharray="4,2"/>
-                <line x1="18" y1="4" x2="18" y2="18" stroke="#006e2d" stroke-width="1"   stroke-dasharray="4,2"/>
-              </svg>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Reserve drainfield</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:18px;height:12px;
-                background:repeating-linear-gradient(135deg,rgba(160,100,0,0.65) 0,rgba(160,100,0,0.65) 2px,transparent 2px,transparent 6px);
-                border:1.5px solid #6e4100;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Proposed Grading</td>
-          </tr>
-          <tr>
-            <td style="width:20%;padding:3px 4px;vertical-align:middle;">
-              <span style="display:inline-block;width:18px;height:12px;
-                background:repeating-linear-gradient(0deg,rgba(0,80,180,0.45) 0,rgba(0,80,180,0.45) 2px,transparent 2px,transparent 5px);
-                border:1.5px solid #003296;"></span>
-            </td>
-            <td style="padding:3px 4px;vertical-align:middle;">Easement</td>
-          </tr>
-        </table>
-      </div>
 
       <div class="section-head">Instructions</div>
       <div class="section-body" style="font-size:12px;line-height:1.45;color:#000;">
@@ -652,6 +592,8 @@
     let activeCalloutEditId    = null;
     let activeSetbackPreview   = null;
     let activeSetbackEditId    = null;
+    let activeSetbackPerpGuide = null;
+    let activeSetbackPerpGuideId = null;
     let activePlacementHandle  = null;
 
     function clearActivePlacementHandle() {
@@ -1183,6 +1125,11 @@ view.ui.add(parcelSearch, {
 
       originals.forEach(src => {
         const copy = cloneGraphicWithOffset(src, dx, dy, { __setbackId: newId });
+        if (copy.__setbackRole === 'leader') {
+          // Duplicated setbacks are no longer tied to the original snapped edge,
+          // so do not carry over the perpendicular guide source segment.
+          copy.__setbackPerpBaseSegment = null;
+        }
         if (copy.__setbackRole === 'start' || copy.__setbackRole === 'end') {
           copy.symbol = setbackHandleSym(false, false);
           updateParts.push(copy);
@@ -2138,6 +2085,7 @@ view.ui.add(parcelSearch, {
       clearActivePlacementHandle();
       clearCalloutPreview();
       clearSetbackPreview();
+      hideSetbackPerpendicularGuide();
       clearLiveMeasurePreview();
       hideSelectionToolbar();
       hideAllCalloutHandles();
@@ -2634,12 +2582,121 @@ view.ui.add(parcelSearch, {
       graphic.geometry = geom;
     }
 
+    function cloneSetbackSegmentForGuide(segment) {
+      if (!segment || !segment.aMap || !segment.bMap) return null;
+      return {
+        aMap: {
+          type:'point',
+          x: segment.aMap.x,
+          y: segment.aMap.y,
+          spatialReference: segment.aMap.spatialReference
+        },
+        bMap: {
+          type:'point',
+          x: segment.bMap.x,
+          y: segment.bMap.y,
+          spatialReference: segment.bMap.spatialReference
+        },
+        source: segment.source || null
+      };
+    }
+
+    function screenPointToSegmentDistance(pt, a, b) {
+      if (!pt || !a || !b) return Infinity;
+      const vx = b.x - a.x;
+      const vy = b.y - a.y;
+      const len2 = vx * vx + vy * vy;
+      if (!isFinite(len2) || len2 <= 0) return Infinity;
+      let t = ((pt.x - a.x) * vx + (pt.y - a.y) * vy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const sx = a.x + t * vx;
+      const sy = a.y + t * vy;
+      return Math.hypot(pt.x - sx, pt.y - sy);
+    }
+
+    function setbackPostPlacementAngleSpec(sid, activeRole) {
+      if (activeRole !== 'end') return null;
+      const parts = setbackParts(sid);
+      if (!parts || !parts.leader || !parts.start || !parts.end) return null;
+      const segment = parts.leader.__setbackPerpBaseSegment;
+      if (!segment || !segment.aMap || !segment.bMap || !view || typeof view.toScreen !== 'function') return null;
+
+      const s = view.toScreen(parts.start.geometry);
+      const e = view.toScreen(parts.end.geometry);
+      const a = view.toScreen(segment.aMap);
+      const b = view.toScreen(segment.bMap);
+      if (!s || !e || !a || !b) return null;
+      if (![s.x,s.y,e.x,e.y,a.x,a.y,b.x,b.y].every(isFinite)) return null;
+
+      // Conservative guard: only show the guide while the original starting
+      // endpoint is still close to the edge it snapped from. If the whole
+      // setback has been moved away, the box is intentionally hidden.
+      const startDist = screenPointToSegmentDistance(s, a, b);
+      if (!isFinite(startDist) || startDist > SETBACK_SNAP_TOLERANCE_PX + 2) return null;
+
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const segLen = Math.hypot(dx, dy);
+      if (!isFinite(segLen) || segLen <= 0) return null;
+
+      const tx = dx / segLen;
+      const ty = dy / segLen;
+      const nx0 = -ty;
+      const ny0 = tx;
+      const vx = e.x - s.x;
+      const vy = e.y - s.y;
+      const along = vx * tx + vy * ty;
+      const perp = vx * nx0 + vy * ny0;
+
+      // Only show the box when the adjusted endpoint remains close to a true
+      // perpendicular line. This is a guide, not a forced constraint.
+      if (!isFinite(along) || !isFinite(perp) || Math.abs(perp) < 4 || Math.abs(along) > SETBACK_PERP_TOLERANCE_PX + 2) return null;
+
+      const sign = perp >= 0 ? 1 : -1;
+      return {
+        origin: s,
+        t: { x: tx, y: ty },
+        n: { x: nx0 * sign, y: ny0 * sign },
+        spatialReference: parts.start.geometry.spatialReference
+      };
+    }
+
+    function hideSetbackPerpendicularGuide() {
+      if (activeSetbackPerpGuide) previewLayer.remove(activeSetbackPerpGuide);
+      activeSetbackPerpGuide = null;
+      activeSetbackPerpGuideId = null;
+    }
+
+    function updateSetbackPerpendicularGuide(sid, activeRole) {
+      const spec = setbackPostPlacementAngleSpec(sid, activeRole);
+      const geom = spec ? rightAnglePreviewGeometry(spec) : null;
+      if (!geom) {
+        hideSetbackPerpendicularGuide();
+        return;
+      }
+
+      if (!activeSetbackPerpGuide) {
+        activeSetbackPerpGuide = new Graphic({
+          geometry: geom,
+          symbol: { type:'simple-line', color:SETBACK_PREVIEW_ORANGE, width:2, style:'solid' }
+        });
+        activeSetbackPerpGuide.__setbackPerpendicularGuide = true;
+        previewLayer.add(activeSetbackPerpGuide);
+      } else {
+        activeSetbackPerpGuide.geometry = geom;
+        activeSetbackPerpGuide.symbol = { type:'simple-line', color:SETBACK_PREVIEW_ORANGE, width:2, style:'solid' };
+        if (!previewLayer.graphics.includes(activeSetbackPerpGuide)) previewLayer.add(activeSetbackPerpGuide);
+      }
+      activeSetbackPerpGuideId = sid;
+    }
+
     function clearSetbackPreview() {
       if (activeSetbackPreview) {
         if (activeSetbackPreview.moveHandle) activeSetbackPreview.moveHandle.remove();
         if (activeSetbackPreview.firstMoveHandle) activeSetbackPreview.firstMoveHandle.remove();
       }
       activeSetbackPreview = null;
+      hideSetbackPerpendicularGuide();
       // Only remove preview graphics when a setback preview is active.
       previewLayer.removeAll();
     }
@@ -2667,12 +2724,15 @@ view.ui.add(parcelSearch, {
       return isFinite(len) ? len.toFixed(1) + "'" : "—";
     }
 
-    function createSetbackObject(startPt, endPt) {
+    function createSetbackObject(startPt, endPt, options) {
       const sid = 'setback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       const leader = new Graphic({ geometry: setbackLineGeometry(startPt, endPt), symbol: SYM.setback });
       leader.__setbackId = sid;
       leader.__setbackRole = 'leader';
       leader.__label = 'Setback';
+      if (options && options.baseSegment) {
+        leader.__setbackPerpBaseSegment = cloneSetbackSegmentForGuide(options.baseSegment);
+      }
       const startHandle = new Graphic({ geometry: startPt, symbol: setbackHandleSym(false, false) });
       startHandle.__setbackId = sid;
       startHandle.__setbackRole = 'start';
@@ -2847,7 +2907,7 @@ view.ui.add(parcelSearch, {
         clearActivePlacementHandle();
         clearSetbackPreview();
         deactivateAll();
-        createSetbackObject(startPt, endPt);
+        createSetbackObject(startPt, endPt, { baseSegment: startBoundarySegment });
       });
       setActivePlacementHandle(h);
       activeSetbackPreview = { firstMoveHandle };
@@ -3166,6 +3226,7 @@ view.ui.add(parcelSearch, {
           g.symbol = setbackHandleSym(false, false);
         });
       if (!exceptSid || activeSetbackEditId !== exceptSid) activeSetbackEditId = null;
+      if (!exceptSid || activeSetbackPerpGuideId !== exceptSid) hideSetbackPerpendicularGuide();
     }
 
     function updateSetbackGraphics(sid) {
@@ -3495,6 +3556,7 @@ view.ui.add(parcelSearch, {
       // moves only that endpoint.
       if (g.__setbackId && g.__setbackRole === 'leader') {
         hideMeasure();
+        hideSetbackPerpendicularGuide();
         if (ev.state === 'start') {
           if (!g.__openingSetbackMove && sketchActiveToolName() !== 'move') {
             openSetbackMove(g.__setbackId, g);
@@ -3518,11 +3580,18 @@ view.ui.add(parcelSearch, {
         setSetbackHandlesVisible(g.__setbackId, true);
         setActiveSetbackHandle(g);
         updateSetbackGraphics(g.__setbackId);
+        if (g.__setbackRole === 'end') updateSetbackPerpendicularGuide(g.__setbackId, g.__setbackRole);
+        else hideSetbackPerpendicularGuide();
         if (ev.state === 'start') {
           showSelectionToolbar(g);
           setStatus('Setback handle selected. Drag to adjust the setback endpoint.');
+        } else if (ev.state === 'active') {
+          if (g.__setbackRole === 'end') updateSetbackPerpendicularGuide(g.__setbackId, g.__setbackRole);
         } else if (ev.state === 'complete') {
+          if (g.__setbackRole === 'end') updateSetbackPerpendicularGuide(g.__setbackId, g.__setbackRole);
           showToolbarAfterEditIfStillSelected(g, 140);
+        } else if (ev.state === 'cancel') {
+          hideSetbackPerpendicularGuide();
         }
         hideMeasure();
         return;
@@ -4026,6 +4095,7 @@ view.ui.add(parcelSearch, {
       const calloutToRestoreAfterPrint = activeCalloutEditId;
       const setbackToRestoreAfterPrint = activeSetbackEditId;
       hideAllCalloutHandles();
+      hideSetbackPerpendicularGuide();
       hideAllSetbackHandles();
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
