@@ -49,7 +49,7 @@
       display:flex; align-items:center; gap:7px; margin-right:8px;
     }
     .hdr-btn.clear-all-btn:hover {
-      background:#fff5f5; border-color:#b71c1c; color:#b71c1c;
+      background:#f5f7fa; border-color:#d32f2f; color:#d32f2f;
     }
     .hdr-btn.clear-all-btn svg { flex-shrink:0; }
 
@@ -397,7 +397,7 @@
       <div class="section-head">Draw tools</div>
       <div class="section-body">
 
-        <button class="tool-btn draw-tool-btn" id="btn-setback" onclick="startSetbackTool()">Setback / Distance</button>
+        <button class="tool-btn draw-tool-btn" id="btn-setback" onclick="startSetbackTool()">Setback</button>
 
         <button class="tool-btn draw-tool-btn" id="btn-grading" onclick="startGradingTool()" style="margin-top:5px;">Proposed Grading</button>
 
@@ -649,6 +649,22 @@
     let currentParcelAttrs     = null;
     let prePrintViewpoint      = null;
     let activeCalloutPreview   = null;
+    let activeCalloutEditId    = null;
+    let activeSetbackPreview   = null;
+    let activeSetbackEditId    = null;
+    let activePlacementHandle  = null;
+
+    function clearActivePlacementHandle() {
+      if (activePlacementHandle && typeof activePlacementHandle.remove === 'function') {
+        activePlacementHandle.remove();
+      }
+      activePlacementHandle = null;
+    }
+
+    function setActivePlacementHandle(handle) {
+      clearActivePlacementHandle();
+      activePlacementHandle = handle || null;
+    }
 
     const lineLabelMap = new Map();
 
@@ -661,6 +677,7 @@
       }}
     });
 
+    const wellLayer      = new GraphicsLayer({ title:'Well Buffers',    listMode:'hide' });
     const drawLayer      = new GraphicsLayer({ title:'Drawings' });
     const labelLayer     = new GraphicsLayer({ title:'Labels',         listMode:'hide' });
     const previewLayer   = new GraphicsLayer({ title:'Preview',        listMode:'hide' });
@@ -668,7 +685,9 @@
 
     const map = new EsriMap({
       basemap: cfg.map.basemap,
-      layers: [parcelLayer, highlightLayer, drawLayer, labelLayer, previewLayer]
+      // Well buffers are visible but kept outside the Sketch drawing layer so
+      // the 100-foot radius does not block selecting structures on small lots.
+      layers: [parcelLayer, highlightLayer, wellLayer, drawLayer, labelLayer, previewLayer]
     });
 
     const view = new MapView({
@@ -871,11 +890,28 @@ view.ui.add(parcelSearch, {
 
     function isSelectableDrawGraphic(graphic) {
       if (!graphic || !graphic.geometry) return false;
-      if (graphic.__liveMeasurementPreview || graphic.__polyEdgeLabelOf || graphic.__dfRole) return false;
+      if (graphic.__liveMeasurementPreview || graphic.__polyEdgeLabelOf || graphic.__dfRole || graphic.__lineHitTarget) return false;
       return !!drawLayer.graphics.find(g => g === graphic);
     }
 
+    function selectionToolbarGraphicFor(graphic) {
+      if (graphic && graphic.__calloutId) {
+        const leader = drawLayer.graphics.find(g =>
+          g.__calloutId === graphic.__calloutId && g.__calloutRole === 'leader'
+        );
+        if (leader) return leader;
+      }
+      if (graphic && graphic.__setbackId) {
+        const leader = drawLayer.graphics.find(g =>
+          g.__setbackId === graphic.__setbackId && g.__setbackRole === 'leader'
+        );
+        if (leader) return leader;
+      }
+      return graphic;
+    }
+
     function selectionToolbarAnchorPoint(graphic) {
+      graphic = selectionToolbarGraphicFor(graphic);
       if (!graphic || !graphic.geometry) return null;
       const geom = graphic.geometry;
       if (geom.type === 'point') return geom;
@@ -915,8 +951,9 @@ view.ui.add(parcelSearch, {
 
     function showSelectionToolbar(graphic) {
       const bar = toolbarElement();
-      if (!bar || !isSelectableDrawGraphic(graphic)) return;
-      selectedToolbarGraphic = graphic;
+      const normalized = selectionToolbarGraphicFor(graphic);
+      if (!bar || !isSelectableDrawGraphic(normalized)) return;
+      selectedToolbarGraphic = normalized;
       bar.classList.add('visible');
       requestAnimationFrame(positionSelectionToolbar);
     }
@@ -970,15 +1007,18 @@ view.ui.add(parcelSearch, {
     // Hide the floating toolbar when the user clicks empty map space. This keeps
     // the toolbar from feeling like it is stuck after deselecting a drawing.
     view.on('click', ev => {
-      if (!selectedToolbarGraphic) return;
+      if (!selectedToolbarGraphic && !activeCalloutEditId && !activeSetbackEditId) return;
       // Give Sketch a moment to process its own hit-test/update first.
       setTimeout(() => {
-        if (!selectedToolbarGraphic) return;
+        if (!selectedToolbarGraphic && !activeCalloutEditId && !activeSetbackEditId) return;
         view.hitTest(ev).then(response => {
-          const hitEditable = (response.results || []).some(result =>
-            result && result.graphic && isSelectableDrawGraphic(result.graphic)
-          );
-          if (!hitEditable) hideSelectionToolbar();
+          const hitEditable = (response.results || []).some(result => {
+            const hitGraphic = result && result.graphic;
+            if (!hitGraphic) return false;
+            const sourceGraphic = hitGraphic.__lineHitTarget ? sourceLineForHitTarget(hitGraphic) : hitGraphic;
+            return isSelectableDrawGraphic(sourceGraphic);
+          });
+          if (!hitEditable) { hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSetbackHandles(); }
         }).catch(() => {});
       }, 0);
     });
@@ -1074,6 +1114,7 @@ view.ui.add(parcelSearch, {
       if (!oldId) return false;
       const newId = 'well_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       const originals = drawLayer.graphics.filter(g => g.__wellId === oldId).toArray();
+      const supportGraphics = wellLayer.graphics.filter(g => g.__wellId === oldId).toArray();
       const labels = labelLayer.graphics.filter(g => g.__wellId === oldId).toArray();
       let newCenter = null;
 
@@ -1081,6 +1122,10 @@ view.ui.add(parcelSearch, {
         const copy = cloneGraphicWithOffset(src, dx, dy, { __wellId: newId });
         drawLayer.add(copy);
         if (copy.__wellRole === 'center') newCenter = copy;
+      });
+      supportGraphics.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __wellId: newId });
+        wellLayer.add(copy);
       });
       labels.forEach(src => {
         const copy = cloneGraphicWithOffset(src, dx, dy, { __wellId: newId });
@@ -1105,24 +1150,64 @@ view.ui.add(parcelSearch, {
 
       originals.forEach(src => {
         const copy = cloneGraphicWithOffset(src, dx, dy, { __calloutId: newId });
+        if (copy.__calloutRole === 'target' || copy.__calloutRole === 'anchor') {
+          copy.symbol = calloutHandleSym(false, copy.__calloutRole);
+          updateParts.push(copy);
+        }
         drawLayer.add(copy);
-        if (copy.__calloutRole === 'target' || copy.__calloutRole === 'anchor') updateParts.push(copy);
       });
       labels.forEach(src => {
         const copy = cloneGraphicWithOffset(src, dx, dy, { __calloutId: newId });
         labelLayer.add(copy);
       });
       updateCalloutGraphics(newId);
+      const newLeader = drawLayer.graphics.find(g => g.__calloutId === newId && g.__calloutRole === 'leader');
+      if (newLeader) createOrUpdateLineHitTarget(newLeader);
       if (updateParts.length) {
-        sketch.update(updateParts, { tool:'move', toggleToolOnClick:false });
-        showSelectionToolbar(updateParts[0]);
+        setCalloutHandlesVisible(newId, true);
+        sketch.update([updateParts.find(g => g.__calloutRole === 'anchor') || updateParts[0]], { tool:'move', toggleToolOnClick:false });
+        showSelectionToolbar(newLeader || updateParts[0]);
       }
       setStatus('Callout duplicated.');
       return true;
     }
 
+
+    function duplicateSetback(graphic, dx, dy) {
+      const oldId = graphic.__setbackId;
+      if (!oldId) return false;
+      const newId = 'setback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const originals = drawLayer.graphics.filter(g => g.__setbackId === oldId).toArray();
+      const labels = labelLayer.graphics.filter(g => g.__setbackId === oldId).toArray();
+      const updateParts = [];
+
+      originals.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __setbackId: newId });
+        if (copy.__setbackRole === 'start' || copy.__setbackRole === 'end') {
+          copy.symbol = setbackHandleSym(false, false);
+          updateParts.push(copy);
+        }
+        drawLayer.add(copy);
+      });
+      labels.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __setbackId: newId });
+        labelLayer.add(copy);
+      });
+      updateSetbackGraphics(newId);
+      const newLeader = drawLayer.graphics.find(g => g.__setbackId === newId && g.__setbackRole === 'leader');
+      if (newLeader) createOrUpdateLineHitTarget(newLeader);
+      if (updateParts.length) {
+        setSetbackHandlesVisible(newId, true);
+        sketch.update([updateParts.find(g => g.__setbackRole === 'end') || updateParts[0]], { tool:'move', toggleToolOnClick:false });
+        showSelectionToolbar(newLeader || updateParts[0]);
+      }
+      setStatus('Setback duplicated.');
+      return true;
+    }
+
     window.duplicateSelectedGraphic = function () {
-      const source = selectedToolbarGraphic || getCurrentUpdateGraphic();
+      let source = selectedToolbarGraphic || getCurrentUpdateGraphic();
+      if (source && source.__lineHitTarget) source = sourceLineForHitTarget(source) || source;
       if (!source || !source.geometry || !isSelectableDrawGraphic(source)) {
         setStatus('Click an item to select it first.');
         return;
@@ -1131,6 +1216,7 @@ view.ui.add(parcelSearch, {
       const dx = duplicateOffset();
       const dy = duplicateOffset();
 
+      if (source.__setbackId) { duplicateSetback(source, dx, dy); return; }
       if (source.__calloutId) { duplicateCallout(source, dx, dy); return; }
       if (source.__wellId) { duplicateWell(source, dx, dy); return; }
       if (source.__isDrainfield && source.__dfId) { duplicateDrainfield(source, dx, dy); return; }
@@ -1144,6 +1230,7 @@ view.ui.add(parcelSearch, {
         showPolygonAreaMeasure(copy, copy.__measureLabel || copy.__label || 'Selected shape');
       } else if (copy.geometry.type === 'polyline') {
         if (!copy.__isLine && !copy.__wellId) createOrUpdateLineLabel(copy);
+        createOrUpdateLineHitTarget(copy);
       }
 
       const tool = copy.geometry.type === 'point' ? 'move' :
@@ -1290,9 +1377,80 @@ view.ui.add(parcelSearch, {
         horizontalAlignment:'left', verticalAlignment:'bottom', xoffset:8, yoffset:8
       };
     }
+
+    function calloutHandleSym(visible, role, active) {
+      // Target and label-anchor handles are separate editable points. Keep them
+      // hidden until the callout is selected. Normal visible handles use distinct
+      // colors so users can tell the arrow end from the label end. The active
+      // handle turns cyan while it is selected.
+      if (visible) {
+        const isTarget = role === 'target';
+        const fill = active ? '#32d6df' : (isTarget ? '#4DBD64' : '#ED2121');
+        const stroke = active ? '#007c89' : (isTarget ? '#238a37' : '#a50f0f');
+        // 10 px visible endpoint circles inside a 12 px marker box.
+        // r 4.5 + 1 px stroke = approximately 10 px visible diameter.
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">' +
+          '<circle cx="6" cy="6" r="4.5" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1"/>' +
+          '</svg>';
+        return {
+          type:'picture-marker',
+          url:'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+          width:'12px',
+          height:'12px'
+        };
+      }
+      return {
+        type:'simple-marker',
+        style:'circle',
+        size:12,
+        color:[0,0,0,0.001],
+        outline:{ color:[0,0,0,0], width:0 }
+      };
+    }
+
+    function calloutTextHitSym(text) {
+      // Invisible selectable copy of the callout text. This lets users click
+      // directly on the label text to select/move the label endpoint without
+      // visually duplicating the label.
+      return {
+        type:'text', text, color:[0,0,0,0.001], haloColor:[255,255,255,0], haloSize:0,
+        font:{size:9,weight:'bold',family:'Calibri, Segoe UI, Arial, sans-serif'},
+        horizontalAlignment:'left', verticalAlignment:'bottom', xoffset:8, yoffset:8
+      };
+    }
+
     function previewPtSym() {
       return {type:'simple-marker',style:'circle',color:[80,80,80,1],size:9,outline:{color:[0,0,0,0.5],width:1}};
     }
+
+    function setbackHandleSym(visible, active) {
+      return visible ? {
+        type: 'simple-marker',
+        style: 'circle',
+        color: active ? [0, 188, 212, 1] : [255, 255, 255, 1],
+        size: 10,
+        outline: { color: [0, 0, 0, 1], width: 1.5 }
+      } : {
+        type: 'simple-marker',
+        style: 'circle',
+        color: [0, 0, 0, 0.001],
+        size: 12,
+        outline: { color: [0, 0, 0, 0], width: 0 }
+      };
+    }
+
+    function setbackMeasureSym(text) {
+      return {
+        type: 'text',
+        text: text || '',
+        color: [0, 0, 0, 1],
+        haloColor: [255, 255, 255, 1],
+        haloSize: 2,
+        font: { size: 9, weight: 'bold', family: 'Calibri, Segoe UI, Arial, sans-serif' },
+        yoffset: -10
+      };
+    }
+
 
     // ── Print text scaling ────────────────────────────────────
     function getPrintTextSize(scale) {
@@ -1314,7 +1472,7 @@ view.ui.add(parcelSearch, {
       const scale = view.scale, size = getPrintTextSize(scale), halo = getPrintHaloSize(scale);
       const originals = [];
       drawLayer.graphics.toArray().concat(labelLayer.graphics.toArray()).filter(g =>
-        g && g.geometry && g.geometry.type==='point' && g.symbol && g.symbol.type==='text'
+        g && g.geometry && g.geometry.type==='point' && g.symbol && g.symbol.type==='text' && g.__calloutRole !== 'textHit'
       ).forEach(g => {
         originals.push({ graphic:g, symbol:g.symbol.clone ? g.symbol.clone() : JSON.parse(JSON.stringify(g.symbol)) });
         const old = g.symbol;
@@ -1386,7 +1544,7 @@ view.ui.add(parcelSearch, {
 
     // ── Line labels (setback / distance) ─────────────────────
     function createOrUpdateLineLabel(graphic) {
-      if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline') return;
+      if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline'||graphic.__lineHitTarget) return;
       // Well spokes are support graphics only; they should never create distance labels.
       if (graphic.__wellId) { removeLineLabel(graphic); return; }
       const id = graphic.__sitePlanId || ('line_'+Date.now()+'_'+Math.random().toString(36).slice(2));
@@ -1408,6 +1566,86 @@ view.ui.add(parcelSearch, {
       const id = graphic.__sitePlanId;
       const lbl = lineLabelMap.get(id);
       if (lbl) { labelLayer.remove(lbl); lineLabelMap.delete(id); }
+    }
+
+    // ── Invisible line hit targets ────────────────────────────
+    // Thin lines can be difficult to select precisely. Keep the visible line
+    // styling unchanged, but add a very narrow transparent support line that
+    // is easier to click. Start conservatively at 5 px so nearby objects are
+    // not accidentally intercepted.
+    const LINE_HIT_TARGET_WIDTH_PX = 5;
+
+    function isLineHitTarget(graphic) {
+      return !!(graphic && graphic.__lineHitTarget);
+    }
+
+    function isLineHitEligible(graphic) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polyline') return false;
+      if (graphic.__lineHitTarget || graphic.__wellId || graphic.__dfId || graphic.__liveMeasurementPreview) return false;
+      if (graphic.__calloutId) return graphic.__calloutRole === 'leader';
+      return true;
+    }
+
+    function ensureSitePlanId(graphic, prefix) {
+      if (!graphic) return null;
+      if (!graphic.__sitePlanId) {
+        graphic.__sitePlanId = (prefix || 'sp') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      }
+      return graphic.__sitePlanId;
+    }
+
+    function cloneGeometryForSupport(geometry) {
+      if (!geometry) return null;
+      return geometry.clone ? geometry.clone() : JSON.parse(JSON.stringify(geometry));
+    }
+
+    function lineHitTargetFor(graphic) {
+      const id = graphic && graphic.__sitePlanId;
+      if (!id) return null;
+      return drawLayer.graphics.find(g => g.__lineHitTarget && g.__lineHitFor === id) || null;
+    }
+
+    function sourceLineForHitTarget(hitGraphic) {
+      if (!hitGraphic || !hitGraphic.__lineHitTarget || !hitGraphic.__lineHitFor) return null;
+      return drawLayer.graphics.find(g => !g.__lineHitTarget && g.__sitePlanId === hitGraphic.__lineHitFor) || null;
+    }
+
+    function createOrUpdateLineHitTarget(graphic) {
+      if (!isLineHitEligible(graphic)) return null;
+      const id = ensureSitePlanId(graphic, 'line');
+      let hit = lineHitTargetFor(graphic);
+      const geom = cloneGeometryForSupport(graphic.geometry);
+      if (!geom) return null;
+
+      const hitSymbol = {
+        type: 'simple-line',
+        color: [0, 0, 0, 0.001],
+        width: LINE_HIT_TARGET_WIDTH_PX,
+        style: 'solid'
+      };
+
+      if (hit) {
+        hit.geometry = geom;
+        hit.symbol = hitSymbol;
+        return hit;
+      }
+
+      hit = new Graphic({ geometry: geom, symbol: hitSymbol });
+      hit.__lineHitTarget = true;
+      hit.__lineHitFor = id;
+      hit.__skipMeasure = true;
+      hit.__label = 'Line selection area';
+      drawLayer.add(hit);
+      return hit;
+    }
+
+    function removeLineHitTarget(graphic) {
+      const id = graphic && (graphic.__lineHitTarget ? graphic.__lineHitFor : graphic.__sitePlanId);
+      if (!id) return;
+      drawLayer.graphics
+        .filter(g => g.__lineHitTarget && g.__lineHitFor === id)
+        .toArray()
+        .forEach(g => drawLayer.remove(g));
     }
 
     // ── Polygon edge labels ───────────────────────────────────
@@ -1813,9 +2051,11 @@ view.ui.add(parcelSearch, {
     // ── Well graphics sync (on move) ──────────────────────────
     function syncWell(center, wellId) {
       const r = feetToLocalMapMeters(center, 100);
-      const buf = drawLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='buffer');
+      const buf = wellLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='buffer');
       if (buf) buf.geometry = circlePolygon(center, 100);
-      const sp = drawLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='spoke_0');
+      const hit = drawLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='hitArea');
+      if (hit) hit.geometry = circlePolygon(center, 10);
+      const sp = wellLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='spoke_0');
       if (sp) sp.geometry = {type:'polyline',spatialReference:center.spatialReference,
         paths:[[[center.x,center.y],[center.x,center.y+r]]]};
       const lbl = labelLayer.graphics.find(x=>x.__wellId===wellId&&x.__wellRole==='bufferLabel');
@@ -1895,8 +2135,13 @@ view.ui.add(parcelSearch, {
     function activateBtn(id) { const b=document.getElementById(id); if(b)b.classList.add('active'); }
 
     function cancelAndReset(btnId) {
+      clearActivePlacementHandle();
       clearCalloutPreview();
+      clearSetbackPreview();
       clearLiveMeasurePreview();
+      hideSelectionToolbar();
+      hideAllCalloutHandles();
+      hideAllSetbackHandles();
       deactivateAll();
       if (sketch.state!=='idle') sketch.cancel();
       if (btnId) activateBtn(btnId);
@@ -1913,10 +2158,11 @@ view.ui.add(parcelSearch, {
         const w=parseFloat(document.getElementById(type+'-w').value);
         if (!isFinite(l)||!isFinite(w)||l<=0||w<=0) { setStatus('Enter valid dimensions first.',false); deactivateAll(); return; }
         const h=view.on('click',ev=>{
-          h.remove(); deactivateAll();
+          clearActivePlacementHandle(); deactivateAll();
           placeFixed(ev.mapPoint,l,w,sym,{__structureType:type,__label:(type==='existing'?'Existing':'Proposed')+' structure'});
           setStatus((type==='existing'?'Existing':'Proposed')+' structure placed. Resize or rotate as needed.');
         });
+        setActivePlacementHandle(h);
         setStatus('Click to place the '+(type==='existing'?'existing':'proposed')+' structure.');
       } else {
         sketch.viewModel.polygonSymbol = sym;
@@ -1930,7 +2176,7 @@ view.ui.add(parcelSearch, {
     window.startWellTool = function () {
       cancelAndReset('btn-well');
       const h=view.on('click',ev=>{
-        h.remove(); deactivateAll();
+        clearActivePlacementHandle(); deactivateAll();
         const center=ev.mapPoint;
         const wellId='well_'+Date.now()+'_'+Math.random().toString(36).slice(2);
         const r=feetToLocalMapMeters(center, 100); // local map distance for 100 ground feet
@@ -1939,7 +2185,15 @@ view.ui.add(parcelSearch, {
           type:'simple-marker',style:'circle',color:[255,255,255,1],size:10,
           outline:{color:[0,0,0,1],width:2.5}
         }});
-        marker.__wellId=wellId; marker.__wellRole='center';
+        marker.__wellId=wellId; marker.__wellRole='center'; marker.__label='Well'; marker.__skipMeasure=true;
+
+        // Invisible 10-foot hit area: keeps the well easy to select without
+        // making the full 100-foot buffer compete with structures for clicks.
+        const hitArea=new Graphic({geometry:circlePolygon(center,10),symbol:{
+          type:'simple-fill',color:[0,0,0,0.001],
+          outline:{type:'simple-line',color:[0,0,0,0],width:0}
+        }});
+        hitArea.__wellId=wellId; hitArea.__wellRole='hitArea'; hitArea.__label='Well'; hitArea.__skipMeasure=true;
 
         const buffer=new Graphic({geometry:circlePolygon(center,100),symbol:{
           type:'simple-fill',color:[0,0,0,0],
@@ -1964,11 +2218,13 @@ view.ui.add(parcelSearch, {
         });
         bufLbl.__wellId=wellId; bufLbl.__wellRole='bufferLabel';
 
-        drawLayer.addMany([marker,buffer,spoke]);
+        wellLayer.addMany([buffer,spoke]);
+        drawLayer.addMany([hitArea,marker]);
         labelLayer.add(bufLbl);
         sketch.update([marker],{tool:'move',toggleToolOnClick:false});
         setStatus("Well placed with 100' buffer. Drag the marker to reposition.");
       });
+      setActivePlacementHandle(h);
       setStatus('Click the map to place the well.');
     };
 
@@ -1981,10 +2237,11 @@ view.ui.add(parcelSearch, {
         const l=parseFloat(document.getElementById('septic-l').value)||5.5;
         const w=parseFloat(document.getElementById('septic-w').value)||10;
         const h=view.on('click',ev=>{
-          h.remove(); deactivateAll();
+          clearActivePlacementHandle(); deactivateAll();
           placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__skipEdgeLabels:true,__label:'Septic tank',__measureLabel:'Selected shape'});
           setStatus('Septic tank placed ('+l+' × '+w+' ft). Rotate or move as needed.');
         });
+        setActivePlacementHandle(h);
         setStatus('Click to place the septic tank.');
       } else {
         sketch.viewModel.polygonSymbol = SYM.septic;
@@ -2009,7 +2266,7 @@ view.ui.add(parcelSearch, {
         const w=parseFloat(document.getElementById(wId).value);
         if (!isFinite(l)||!isFinite(w)||l<=0||w<=0) { setStatus('Enter valid dimensions first.',false); deactivateAll(); return; }
         const h=view.on('click',ev=>{
-          h.remove(); deactivateAll();
+          clearActivePlacementHandle(); deactivateAll();
           const rect=buildFixedRect(ev.mapPoint,l,w);
           const dfId='df_'+Date.now()+'_'+Math.random().toString(36).slice(2);
           const g=new Graphic({geometry:rect,symbol:sym});
@@ -2022,6 +2279,7 @@ view.ui.add(parcelSearch, {
           showMeasure(isReserve?'Reserve drainfield':'Drainfield',Math.round(sq).toLocaleString()+' sq ft',l+' × '+w+' ft');
           setStatus((isReserve?'Reserve drainfield':'Drainfield')+' placed. Resize or rotate as needed.');
         });
+        setActivePlacementHandle(h);
         setStatus('Click to place the '+(isReserve?'reserve drainfield':'drainfield')+'.');
       } else {
         sketch.viewModel.polygonSymbol = sym;
@@ -2038,12 +2296,88 @@ view.ui.add(parcelSearch, {
       sketch.create('polyline');
       setStatus('Click to start septic line. Double-click to finish.');
     };
+    function clearSetbackPreview() {
+      if (activeSetbackPreview && activeSetbackPreview.moveHandle) activeSetbackPreview.moveHandle.remove();
+      activeSetbackPreview = null;
+      // Only remove preview graphics when a setback preview is active.
+      previewLayer.removeAll();
+    }
+
+    function setbackLineGeometry(startPt, endPt) {
+      return {
+        type: 'polyline',
+        spatialReference: (endPt && endPt.spatialReference) || (startPt && startPt.spatialReference),
+        paths: [[[startPt.x, startPt.y], [endPt.x, endPt.y]]]
+      };
+    }
+
+    function setbackMidpoint(startPt, endPt) {
+      return {
+        type: 'point',
+        x: (startPt.x + endPt.x) / 2,
+        y: (startPt.y + endPt.y) / 2,
+        spatialReference: endPt.spatialReference || startPt.spatialReference
+      };
+    }
+
+    function setbackLengthText(startPt, endPt) {
+      const geom = setbackLineGeometry(startPt, endPt);
+      const len = Math.abs(geometryEngine.geodesicLength(geom, 'feet'));
+      return isFinite(len) ? len.toFixed(1) + "'" : "—";
+    }
+
+    function createSetbackObject(startPt, endPt) {
+      const sid = 'setback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const leader = new Graphic({ geometry: setbackLineGeometry(startPt, endPt), symbol: SYM.setback });
+      leader.__setbackId = sid;
+      leader.__setbackRole = 'leader';
+      leader.__label = 'Setback';
+      const startHandle = new Graphic({ geometry: startPt, symbol: setbackHandleSym(false, false) });
+      startHandle.__setbackId = sid;
+      startHandle.__setbackRole = 'start';
+      const endHandle = new Graphic({ geometry: endPt, symbol: setbackHandleSym(false, false) });
+      endHandle.__setbackId = sid;
+      endHandle.__setbackRole = 'end';
+      const label = new Graphic({ geometry: setbackMidpoint(startPt, endPt), symbol: setbackMeasureSym(setbackLengthText(startPt, endPt)) });
+      label.__setbackId = sid;
+      label.__setbackRole = 'label';
+      drawLayer.addMany([leader, startHandle, endHandle]);
+      labelLayer.add(label);
+      createOrUpdateLineHitTarget(leader);
+      setSetbackHandlesVisible(sid, true);
+      sketch.update([endHandle], { tool:'move', toggleToolOnClick:false });
+      showSelectionToolbar(leader);
+      showMeasure('Setback', setbackLengthText(startPt, endPt).replace("'", ' ft'), null);
+      setStatus('Setback placed. Drag either endpoint handle to adjust, or drag the line to move the whole setback.');
+    }
+
     window.startSetbackTool = function () {
       cancelAndReset('btn-setback');
-      sketch.viewModel.polylineSymbol = SYM.setback;
-      sketch._pendingType = 'setback';
-      sketch.create('polyline');
-      setStatus('Click to start. Double-click to finish the setback/distance line.');
+      let startPt = null;
+      const h = view.on('click', ev => {
+        if (!startPt) {
+          startPt = ev.mapPoint;
+          const pLine = new Graphic({ geometry: setbackLineGeometry(startPt, startPt), symbol: SYM.setback });
+          const pPt = new Graphic({ geometry: startPt, symbol: previewPtSym() });
+          previewLayer.addMany([pLine, pPt]);
+          const mh = view.on('pointer-move', me => {
+            const mp = view.toMap({ x: me.x, y: me.y });
+            if (!mp) return;
+            pLine.geometry = setbackLineGeometry(startPt, mp);
+            pPt.geometry = mp;
+          });
+          activeSetbackPreview = { moveHandle: mh };
+          setStatus('Click the second setback point.');
+          return;
+        }
+        const endPt = ev.mapPoint;
+        clearActivePlacementHandle();
+        clearSetbackPreview();
+        deactivateAll();
+        createSetbackObject(startPt, endPt);
+      });
+      setActivePlacementHandle(h);
+      setStatus('Click the first setback point.');
     };
 
     window.startLineTool = function () {
@@ -2070,10 +2404,11 @@ view.ui.add(parcelSearch, {
         const w = parseFloat(document.getElementById('easement-w').value);
         if (!isFinite(l)||!isFinite(w)||l<=0||w<=0) { setStatus('Enter valid dimensions first.',false); deactivateAll(); return; }
         const h = view.on('click', ev => {
-          h.remove(); deactivateAll();
+          clearActivePlacementHandle(); deactivateAll();
           placeFixed(ev.mapPoint, l, w, SYM.easement, {__isEasement:true, __label:'Easement'});
           setStatus('Easement placed ('+l+' × '+w+' ft). Resize or rotate as needed.');
         });
+        setActivePlacementHandle(h);
         setStatus('Click to place the easement.');
       } else {
         sketch.viewModel.polygonSymbol = SYM.easement;
@@ -2091,10 +2426,11 @@ view.ui.add(parcelSearch, {
         const w=parseFloat(document.getElementById('rect-w').value);
         if (!isFinite(l)||!isFinite(w)||l<=0||w<=0) { setStatus('Enter valid dimensions first.',false); deactivateAll(); return; }
         const h=view.on('click',ev=>{
-          h.remove(); deactivateAll();
+          clearActivePlacementHandle(); deactivateAll();
           placeFixed(ev.mapPoint,l,w,SYM.drawPoly,{__isDrawTool:true,__label:'Rectangle'});
           setStatus('Rectangle placed. Resize or rotate as needed.');
         });
+        setActivePlacementHandle(h);
         setStatus('Click to place the rectangle.');
       } else {
         sketch.viewModel.polygonSymbol = SYM.drawPoly;
@@ -2109,13 +2445,14 @@ view.ui.add(parcelSearch, {
       const text=(document.getElementById('text-input').value||'').trim();
       if (!text) { setStatus('Enter text in the box first.',false); deactivateAll(); return; }
       const h=view.on('click',ev=>{
-        h.remove(); deactivateAll();
+        clearActivePlacementHandle(); deactivateAll();
         const g=new Graphic({geometry:ev.mapPoint,symbol:textSym(text,12)});
         drawLayer.add(g);
         sketch.update([g],{tool:'move',toggleToolOnClick:false});
         document.getElementById('text-input').value='';
         setStatus('Text placed.');
       });
+      setActivePlacementHandle(h);
       setStatus('Click the map to place the text.');
     };
 
@@ -2148,25 +2485,29 @@ view.ui.add(parcelSearch, {
           setStatus('Now click where the label should be placed.');
           return;
         }
-        const labelPt=ev.mapPoint; h.remove(); clearCalloutPreview();
+        const labelPt=ev.mapPoint; clearActivePlacementHandle(); clearCalloutPreview();
         const cid='callout_'+Date.now()+'_'+Math.random().toString(36).slice(2);
         const leader=new Graphic({geometry:{type:'polyline',spatialReference:labelPt.spatialReference,
           paths:[[[targetPt.x,targetPt.y],[labelPt.x,labelPt.y]]]},symbol:calloutLineSym()});
         leader.__calloutId=cid; leader.__calloutRole='leader';
-        const tMk=new Graphic({geometry:targetPt,symbol:{type:'simple-marker',style:'circle',size:8,
-          color:[0,0,0,0.01],outline:{color:[0,0,0,0],width:0}}});
+        const tMk=new Graphic({geometry:targetPt,symbol:calloutHandleSym(false,'target')});
         tMk.__calloutId=cid; tMk.__calloutRole='target';
-        const aMk=new Graphic({geometry:labelPt,symbol:{type:'simple-marker',style:'circle',size:8,
-          color:[0,0,0,0.01],outline:{color:[0,0,0,0],width:0}}});
+        const aMk=new Graphic({geometry:labelPt,symbol:calloutHandleSym(false,'anchor')});
         aMk.__calloutId=cid; aMk.__calloutRole='anchor';
         const lbl=new Graphic({geometry:labelPt,symbol:calloutTextSym(text)});
         lbl.__calloutId=cid; lbl.__calloutRole='text';
-        drawLayer.addMany([leader,tMk,aMk]); labelLayer.add(lbl);
-        sketch.update([tMk,aMk],{tool:'move',toggleToolOnClick:false});
+        const textHit=new Graphic({geometry:labelPt,symbol:calloutTextHitSym(text)});
+        textHit.__calloutId=cid; textHit.__calloutRole='textHit';
+        drawLayer.addMany([leader,tMk,aMk,textHit]); labelLayer.add(lbl); createOrUpdateLineHitTarget(leader);
+        hideAllCalloutHandles(cid);
+        setCalloutHandlesVisible(cid, true);
+        sketch.update([aMk],{tool:'move',toggleToolOnClick:false});
+        showSelectionToolbar(leader);
         document.getElementById('text-input').value='';
         deactivateAll();
-        setStatus('Callout placed.');
+        setStatus('Callout placed. Drag either endpoint handle to adjust the arrow point or label position.');
       });
+      setActivePlacementHandle(h);
       setStatus('Click the point the callout arrow should point to.');
     };
 
@@ -2175,16 +2516,371 @@ view.ui.add(parcelSearch, {
       const target=drawLayer.graphics.find(g=>g.__calloutId===cid&&g.__calloutRole==='target');
       const anchor=drawLayer.graphics.find(g=>g.__calloutId===cid&&g.__calloutRole==='anchor');
       const lbl   =labelLayer.graphics.find(g=>g.__calloutId===cid&&g.__calloutRole==='text');
+      const textHit=drawLayer.graphics.find(g=>g.__calloutId===cid&&g.__calloutRole==='textHit');
       if (!leader||!target||!anchor||!lbl) return;
       leader.geometry={type:'polyline',spatialReference:anchor.geometry.spatialReference,
         paths:[[[target.geometry.x,target.geometry.y],[anchor.geometry.x,anchor.geometry.y]]]};
       lbl.geometry=anchor.geometry.clone?anchor.geometry.clone():anchor.geometry;
+      if (textHit) textHit.geometry=anchor.geometry.clone?anchor.geometry.clone():anchor.geometry;
+      createOrUpdateLineHitTarget(leader);
     }
+
+    function calloutHandles(cid) {
+      if (!cid) return [];
+      return drawLayer.graphics
+        .filter(g => g.__calloutId === cid && (g.__calloutRole === 'target' || g.__calloutRole === 'anchor'))
+        .toArray();
+    }
+
+    function bringGraphicToFront(graphic) {
+      if (!graphic || !drawLayer || !drawLayer.graphics) return;
+      try {
+        if (typeof drawLayer.graphics.reorder === 'function') {
+          drawLayer.graphics.reorder(graphic, drawLayer.graphics.length - 1);
+        } else {
+          drawLayer.remove(graphic);
+          drawLayer.add(graphic);
+        }
+      } catch (err) {
+        console.warn('Unable to bring callout handle to front.', err);
+      }
+    }
+
+    function bringCalloutHandlesToFront(cid) {
+      calloutHandles(cid).forEach(g => bringGraphicToFront(g));
+    }
+
+    function setCalloutHandlesVisible(cid, visible) {
+      calloutHandles(cid).forEach(g => {
+        g.symbol = calloutHandleSym(!!visible, g.__calloutRole, false);
+      });
+      if (visible) {
+        // The invisible line hit target is added after the leader/handles to
+        // make thin callout lines easier to select. When handles are visible,
+        // bring them back to the top so clicks on the endpoint handles are not
+        // intercepted by that transparent line target.
+        bringCalloutHandlesToFront(cid);
+        activeCalloutEditId = cid;
+      } else if (activeCalloutEditId === cid) activeCalloutEditId = null;
+    }
+
+    function setActiveCalloutHandle(graphic) {
+      if (!graphic || !graphic.__calloutId ||
+          (graphic.__calloutRole !== 'target' && graphic.__calloutRole !== 'anchor')) return;
+      setCalloutHandlesVisible(graphic.__calloutId, true);
+      graphic.symbol = calloutHandleSym(true, graphic.__calloutRole, true);
+      bringGraphicToFront(graphic);
+    }
+
+    function hideAllCalloutHandles(exceptCid) {
+      drawLayer.graphics
+        .filter(g => g.__calloutId && (g.__calloutRole === 'target' || g.__calloutRole === 'anchor'))
+        .toArray()
+        .forEach(g => {
+          if (exceptCid && g.__calloutId === exceptCid) return;
+          g.symbol = calloutHandleSym(false, g.__calloutRole);
+        });
+      if (!exceptCid || activeCalloutEditId !== exceptCid) activeCalloutEditId = null;
+    }
+
+    function showCalloutForEditing(cid, toolbarGraphic) {
+      if (!cid) return;
+      hideAllCalloutHandles(cid);
+      setCalloutHandlesVisible(cid, true);
+      const leader = toolbarGraphic || drawLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'leader');
+      if (leader) showSelectionToolbar(leader);
+      setStatus('Callout selected. Drag the line to move the whole callout, or drag either endpoint handle to adjust it.');
+    }
+
+    function calloutLeaderEndpointSpec(leader) {
+      if (!leader || !leader.geometry || leader.geometry.type !== 'polyline') return null;
+      const paths = leader.geometry.paths || [];
+      const path = paths[0] || [];
+      if (path.length < 2) return null;
+      const first = path[0];
+      const last  = path[path.length - 1];
+      if (!first || !last || !isFinite(first[0]) || !isFinite(first[1]) || !isFinite(last[0]) || !isFinite(last[1])) return null;
+      return {
+        target: { type:'point', x:first[0], y:first[1], spatialReference:leader.geometry.spatialReference },
+        anchor: { type:'point', x:last[0], y:last[1], spatialReference:leader.geometry.spatialReference }
+      };
+    }
+
+    function syncCalloutFromLeader(cid) {
+      const leader = drawLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'leader');
+      const target = drawLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'target');
+      const anchor = drawLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'anchor');
+      const lbl    = labelLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'text');
+      const textHit= drawLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'textHit');
+      const spec   = calloutLeaderEndpointSpec(leader);
+      if (!leader || !target || !anchor || !lbl || !spec) return;
+      target.geometry = spec.target;
+      anchor.geometry = spec.anchor;
+      lbl.geometry = spec.anchor;
+      if (textHit) textHit.geometry = spec.anchor;
+      createOrUpdateLineHitTarget(leader);
+      if (activeCalloutEditId === cid) setCalloutHandlesVisible(cid, true);
+    }
+
+    function openCalloutMove(cid, leaderGraphic) {
+      const leader = leaderGraphic || drawLayer.graphics.find(g => g.__calloutId === cid && g.__calloutRole === 'leader');
+      if (!leader || leader.__openingCalloutMove) return false;
+      leader.__openingCalloutMove = true;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before callout move.', err);
+      }
+
+      setTimeout(() => {
+        try {
+          hideAllCalloutHandles(cid);
+          setCalloutHandlesVisible(cid, true);
+          sketch.update([leader], { tool:'move', toggleToolOnClick:false });
+          showSelectionToolbar(leader);
+          setStatus('Callout move enabled. Drag the line to reposition the whole callout, or drag either endpoint handle to adjust it.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to start callout move mode.', false);
+        }
+        setTimeout(() => { leader.__openingCalloutMove = false; }, 750);
+      }, 0);
+      return true;
+    }
+
+    function setbackParts(sid) {
+      return {
+        leader: drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'leader'),
+        start:  drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'start'),
+        end:    drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'end'),
+        label:  labelLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'label')
+      };
+    }
+
+    function setbackHandles(sid) {
+      if (!sid) return [];
+      return drawLayer.graphics
+        .filter(g => g.__setbackId === sid && (g.__setbackRole === 'start' || g.__setbackRole === 'end'))
+        .toArray();
+    }
+
+    function bringSetbackHandlesToFront(sid) {
+      setbackHandles(sid).forEach(g => bringGraphicToFront(g));
+    }
+
+    function setSetbackHandlesVisible(sid, visible) {
+      setbackHandles(sid).forEach(g => { g.symbol = setbackHandleSym(!!visible, false); });
+      if (visible) {
+        bringSetbackHandlesToFront(sid);
+        activeSetbackEditId = sid;
+      } else if (activeSetbackEditId === sid) activeSetbackEditId = null;
+    }
+
+    function setActiveSetbackHandle(graphic) {
+      if (!graphic || !graphic.__setbackId || (graphic.__setbackRole !== 'start' && graphic.__setbackRole !== 'end')) return;
+      setSetbackHandlesVisible(graphic.__setbackId, true);
+      graphic.symbol = setbackHandleSym(true, true);
+      bringGraphicToFront(graphic);
+    }
+
+    function hideAllSetbackHandles(exceptSid) {
+      drawLayer.graphics
+        .filter(g => g.__setbackId && (g.__setbackRole === 'start' || g.__setbackRole === 'end'))
+        .toArray()
+        .forEach(g => {
+          if (exceptSid && g.__setbackId === exceptSid) return;
+          g.symbol = setbackHandleSym(false, false);
+        });
+      if (!exceptSid || activeSetbackEditId !== exceptSid) activeSetbackEditId = null;
+    }
+
+    function updateSetbackGraphics(sid) {
+      const parts = setbackParts(sid);
+      if (!parts.leader || !parts.start || !parts.end) return;
+      parts.leader.geometry = setbackLineGeometry(parts.start.geometry, parts.end.geometry);
+      if (parts.label) {
+        parts.label.geometry = setbackMidpoint(parts.start.geometry, parts.end.geometry);
+        parts.label.symbol = setbackMeasureSym(setbackLengthText(parts.start.geometry, parts.end.geometry));
+      }
+      createOrUpdateLineHitTarget(parts.leader);
+    }
+
+    function setbackLeaderEndpointSpec(leader) {
+      if (!leader || !leader.geometry || leader.geometry.type !== 'polyline') return null;
+      const path = (leader.geometry.paths && leader.geometry.paths[0]) || [];
+      if (path.length < 2) return null;
+      const first = path[0];
+      const last = path[path.length - 1];
+      if (!first || !last) return null;
+      return {
+        start: { type:'point', x:first[0], y:first[1], spatialReference:leader.geometry.spatialReference },
+        end:   { type:'point', x:last[0],  y:last[1],  spatialReference:leader.geometry.spatialReference }
+      };
+    }
+
+    function syncSetbackFromLeader(sid) {
+      const parts = setbackParts(sid);
+      const spec = setbackLeaderEndpointSpec(parts.leader);
+      if (!parts.leader || !parts.start || !parts.end || !spec) return;
+      parts.start.geometry = spec.start;
+      parts.end.geometry = spec.end;
+      updateSetbackGraphics(sid);
+      if (activeSetbackEditId === sid) setSetbackHandlesVisible(sid, true);
+    }
+
+    function showSetbackForEditing(sid, toolbarGraphic) {
+      if (!sid) return;
+      hideAllSetbackHandles(sid);
+      setSetbackHandlesVisible(sid, true);
+      const leader = toolbarGraphic || drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'leader');
+      if (leader) showSelectionToolbar(leader);
+      setStatus('Setback selected. Drag the line to move the whole setback, or drag either endpoint handle to adjust it.');
+    }
+
+    function openSetbackMove(sid, leaderGraphic) {
+      const leader = leaderGraphic || drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'leader');
+      if (!leader || leader.__openingSetbackMove) return false;
+      leader.__openingSetbackMove = true;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before setback move.', err);
+      }
+
+      setTimeout(() => {
+        try {
+          hideAllSetbackHandles(sid);
+          setSetbackHandlesVisible(sid, true);
+          sketch.update([leader], { tool:'move', toggleToolOnClick:false });
+          showSelectionToolbar(leader);
+          setStatus('Setback move enabled. Drag the line to reposition the whole setback, or drag either endpoint handle to adjust it.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to start setback move mode.', false);
+        }
+        setTimeout(() => { leader.__openingSetbackMove = false; }, 750);
+      }, 0);
+      return true;
+    }
+
+
+    // ── Fixed-size control sync ──────────────────────────────
+    // If a user starts a drawing tool and then checks Fixed size or changes
+    // the dimensions before placing the object, cancel the stale Sketch/create
+    // state and restart the active tool with the current fixed-size settings.
+    // This prevents the first map click from placing the old/default geometry.
+    function btnIsActive(id) {
+      const btn = document.getElementById(id);
+      return !!(btn && btn.classList.contains('active'));
+    }
+
+    function dimsValid(lId, wId) {
+      const l = parseFloat(document.getElementById(lId).value);
+      const w = parseFloat(document.getElementById(wId).value);
+      return isFinite(l) && isFinite(w) && l > 0 && w > 0;
+    }
+
+    function cancelPendingToolForDimensions(btnId, message) {
+      clearActivePlacementHandle();
+      clearCalloutPreview();
+      clearLiveMeasurePreview();
+      if (sketch.state !== 'idle') sketch.cancel();
+      deactivateAll();
+      activateBtn(btnId);
+      setStatus(message || 'Enter valid dimensions first.', false);
+    }
+
+    function fixedControlChangeIsRelevant(btnId, pendingTypes) {
+      if (btnIsActive(btnId)) return true;
+      return !!(pendingTypes && pendingTypes.includes(sketch._pendingType));
+    }
+
+    function deferFixedControlSync(fn) {
+      // Let the checkbox/input value settle before restarting the active tool.
+      setTimeout(fn, 0);
+    }
+
+    function syncStructureFixedControls(type) {
+      deferFixedControlSync(() => {
+        const btnId = 'btn-' + type;
+        if (!fixedControlChangeIsRelevant(btnId, [type])) return;
+        const useFixed = document.getElementById('chk-' + type).checked;
+        if (useFixed && !dimsValid(type + '-l', type + '-w')) {
+          cancelPendingToolForDimensions(btnId, 'Enter valid ' + (type === 'existing' ? 'existing' : 'proposed') + ' structure dimensions first.');
+          return;
+        }
+        window.startStructure(type);
+      });
+    }
+
+    function syncSepticFixedControls() {
+      deferFixedControlSync(() => {
+        if (!fixedControlChangeIsRelevant('btn-septic', ['septic'])) return;
+        window.startSepticTool();
+      });
+    }
+
+    function syncDrainfieldFixedControls(isReserve) {
+      deferFixedControlSync(() => {
+        const btnId = isReserve ? 'btn-reserve' : 'btn-drainfield';
+        const pending = isReserve ? 'reserve' : 'drainfield';
+        const lId = isReserve ? 'rv-l' : 'df-l';
+        const wId = isReserve ? 'rv-w' : 'df-w';
+        if (!fixedControlChangeIsRelevant(btnId, [pending])) return;
+        const chkId = isReserve ? 'chk-reserve' : 'chk-drainfield';
+        if (document.getElementById(chkId).checked && !dimsValid(lId, wId)) {
+          cancelPendingToolForDimensions(btnId, 'Enter valid ' + (isReserve ? 'reserve drainfield' : 'drainfield') + ' dimensions first.');
+          return;
+        }
+        window.startDrainfieldTool(isReserve);
+      });
+    }
+
+    function syncEasementFixedControls() {
+      deferFixedControlSync(() => {
+        if (!fixedControlChangeIsRelevant('btn-easement', ['easement'])) return;
+        if (document.getElementById('chk-easement').checked && !dimsValid('easement-l', 'easement-w')) {
+          cancelPendingToolForDimensions('btn-easement', 'Enter valid easement dimensions first.');
+          return;
+        }
+        window.startEasementTool();
+      });
+    }
+
+    function syncRectangleFixedControls() {
+      deferFixedControlSync(() => {
+        if (!fixedControlChangeIsRelevant('btn-rectangle', ['rectangle'])) return;
+        if (document.getElementById('chk-rect').checked && !dimsValid('rect-l', 'rect-w')) {
+          cancelPendingToolForDimensions('btn-rectangle', 'Enter valid rectangle dimensions first.');
+          return;
+        }
+        window.startDrawTool('rectangle');
+      });
+    }
+
+    function addFixedControlListeners(ids, fn) {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', fn);
+        el.addEventListener('input', fn);
+      });
+    }
+
+    addFixedControlListeners(['chk-proposed','proposed-l','proposed-w'], () => syncStructureFixedControls('proposed'));
+    addFixedControlListeners(['chk-existing','existing-l','existing-w'], () => syncStructureFixedControls('existing'));
+    addFixedControlListeners(['chk-septic','septic-l','septic-w'], syncSepticFixedControls);
+    addFixedControlListeners(['chk-drainfield','df-l','df-w'], () => syncDrainfieldFixedControls(false));
+    addFixedControlListeners(['chk-reserve','rv-l','rv-w'], () => syncDrainfieldFixedControls(true));
+    addFixedControlListeners(['chk-easement','easement-l','easement-w'], syncEasementFixedControls);
+    addFixedControlListeners(['chk-rect','rect-l','rect-w'], syncRectangleFixedControls);
 
     // ── Sketch events ─────────────────────────────────────────
     sketch.on('create', ev => {
       if (ev.state === 'start') {
         hideSelectionToolbar();
+        hideAllCalloutHandles();
+        hideAllSetbackHandles();
         clearLiveMeasurePreview();
         return;
       }
@@ -2194,6 +2890,8 @@ view.ui.add(parcelSearch, {
       }
       if (ev.state === 'cancel') {
         hideSelectionToolbar();
+        hideAllCalloutHandles();
+        hideAllSetbackHandles();
         clearLiveMeasurePreview();
         return;
       }
@@ -2264,9 +2962,10 @@ view.ui.add(parcelSearch, {
           showPolygonAreaMeasure(g, 'Selected shape');
         }
       } else if (g.geometry.type==='polyline') {
+        createOrUpdateLineHitTarget(g);
         const len=Math.abs(geometryEngine.geodesicLength(g.geometry,'feet'));
         if (!g.__isLine) {
-          showMeasure('Setback / Distance', len.toFixed(1)+' ft', null);
+          showMeasure('Setback', len.toFixed(1)+' ft', null);
         } else {
           const lbl = g.__lineType==='septicline' ? 'Septic line' : 'Line';
           showMeasure(lbl, len.toFixed(1)+' ft', null);
@@ -2276,8 +2975,13 @@ view.ui.add(parcelSearch, {
     });
 
     sketch.on('update', ev => {
-      if (!ev.graphics||!ev.graphics.length) { hideSelectionToolbar(); return; }
+      if (!ev.graphics||!ev.graphics.length) { hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSetbackHandles(); return; }
       const g=ev.graphics[0];
+      const selectedLineForHitTarget = g.__lineHitTarget ? sourceLineForHitTarget(g) : null;
+      const isCalloutSelection = !!(g.__calloutId || (selectedLineForHitTarget && selectedLineForHitTarget.__calloutId));
+      const isSetbackSelection = !!(g.__setbackId || (selectedLineForHitTarget && selectedLineForHitTarget.__setbackId));
+      if (ev.state === 'start' && !isCalloutSelection) hideAllCalloutHandles();
+      if (ev.state === 'start' && !isSetbackSelection) hideAllSetbackHandles();
 
       // Keep the icon toolbar passive so it does not compete with Sketch handles.
       // Show it when an item is first selected, hide it while the user is actively
@@ -2312,7 +3016,135 @@ view.ui.add(parcelSearch, {
         }
       }
 
-      // Well buffer/spoke graphics are support graphics only. If selected,
+      // Setbacks use two equal endpoint handles and a dynamic centered label.
+      // Selecting the line moves the whole setback; selecting either handle
+      // moves only that endpoint.
+      if (g.__setbackId && g.__setbackRole === 'leader') {
+        hideMeasure();
+        if (ev.state === 'start') {
+          if (!g.__openingSetbackMove && sketchActiveToolName() !== 'move') {
+            openSetbackMove(g.__setbackId, g);
+            return;
+          }
+          showSetbackForEditing(g.__setbackId, g);
+        } else if (ev.state === 'active') {
+          syncSetbackFromLeader(g.__setbackId);
+          hideSelectionToolbar();
+        } else if (ev.state === 'complete') {
+          syncSetbackFromLeader(g.__setbackId);
+          showToolbarAfterEditIfStillSelected(g, 140);
+        } else if (ev.state === 'cancel') {
+          hideAllSetbackHandles();
+        }
+        return;
+      }
+
+      if (g.__setbackId && (g.__setbackRole === 'start' || g.__setbackRole === 'end')) {
+        hideAllSetbackHandles(g.__setbackId);
+        setSetbackHandlesVisible(g.__setbackId, true);
+        setActiveSetbackHandle(g);
+        updateSetbackGraphics(g.__setbackId);
+        if (ev.state === 'start') {
+          showSelectionToolbar(g);
+          setStatus('Setback handle selected. Drag to adjust the setback endpoint.');
+        } else if (ev.state === 'complete') {
+          showToolbarAfterEditIfStillSelected(g, 140);
+        }
+        hideMeasure();
+        return;
+      }
+
+      // Callouts use two separate endpoint handles. Selecting the leader line
+      // now allows the entire callout to be moved as one object. Selecting either
+      // endpoint handle still lets that endpoint move independently.
+      if (g.__calloutId && g.__calloutRole === 'leader') {
+        hideMeasure();
+        if (ev.state === 'start') {
+          if (!g.__openingCalloutMove && sketchActiveToolName() !== 'move') {
+            openCalloutMove(g.__calloutId, g);
+            return;
+          }
+          showCalloutForEditing(g.__calloutId, g);
+        } else if (ev.state === 'active') {
+          syncCalloutFromLeader(g.__calloutId);
+          hideSelectionToolbar();
+        } else if (ev.state === 'complete') {
+          syncCalloutFromLeader(g.__calloutId);
+          showToolbarAfterEditIfStillSelected(g, 140);
+        } else if (ev.state === 'cancel') {
+          hideAllCalloutHandles();
+        }
+        return;
+      }
+
+      if (g.__calloutId && g.__calloutRole === 'textHit') {
+        const cid = g.__calloutId;
+        const anchor = drawLayer.graphics.find(x => x.__calloutId === cid && x.__calloutRole === 'anchor');
+        if (anchor && g.geometry) anchor.geometry = g.geometry.clone ? g.geometry.clone() : g.geometry;
+        hideAllCalloutHandles(cid);
+        setCalloutHandlesVisible(cid, true);
+        if (anchor) setActiveCalloutHandle(anchor);
+        updateCalloutGraphics(cid);
+        if (ev.state === 'start') {
+          showSelectionToolbar(g);
+          setStatus('Callout text selected. Drag to move the label endpoint.');
+        } else if (ev.state === 'complete') {
+          showToolbarAfterEditIfStillSelected(g, 140);
+        }
+        hideMeasure();
+        return;
+      }
+
+      if (g.__calloutId && (g.__calloutRole === 'target' || g.__calloutRole === 'anchor')) {
+        hideAllCalloutHandles(g.__calloutId);
+        setCalloutHandlesVisible(g.__calloutId, true);
+        setActiveCalloutHandle(g);
+        updateCalloutGraphics(g.__calloutId);
+        if (ev.state === 'start') {
+          showSelectionToolbar(g);
+          setStatus('Callout handle selected. Drag to adjust the arrow point or label position.');
+        } else if (ev.state === 'complete') {
+          showToolbarAfterEditIfStillSelected(g, 140);
+        }
+        hideMeasure();
+        return;
+      }
+
+      // Invisible line hit targets are support graphics only. If selected,
+      // redirect editing to the actual visible line and suppress duplicate labels.
+      if (g.__lineHitTarget) {
+        const sourceLine = sourceLineForHitTarget(g);
+        if (sourceLine && ev.state === 'start') {
+          try { sketch.cancel(); } catch (err) { console.warn('Unable to cancel line hit target selection.', err); }
+          if (sourceLine.__setbackId) {
+            const sid = sourceLine.__setbackId;
+            showSetbackForEditing(sid, sourceLine);
+            setTimeout(() => {
+              openSetbackMove(sid, sourceLine);
+              setTimeout(() => showSetbackForEditing(sid, sourceLine), 160);
+            }, 0);
+          } else if (sourceLine.__calloutId) {
+            const cid = sourceLine.__calloutId;
+            // When the invisible callout line hit target is clicked, treat it
+            // exactly like the visible leader line: reveal the endpoint handles
+            // and anchor the toolbar to the overall callout, not the support line.
+            showCalloutForEditing(cid, sourceLine);
+            setTimeout(() => {
+              openCalloutMove(cid, sourceLine);
+              setTimeout(() => showCalloutForEditing(cid, sourceLine), 160);
+            }, 0);
+          } else {
+            setTimeout(() => {
+              try { sketch.update([sourceLine], { tool:'transform', toggleToolOnClick:false }); }
+              catch (err) { console.error(err); }
+            }, 0);
+          }
+        }
+        hideMeasure();
+        return;
+      }
+
+      // Well hit-area graphics are support graphics only. If selected,
       // redirect editing to the center marker and suppress any distance measurement.
       if (g.__wellId) {
         removeLineLabel(g);
@@ -2342,10 +3174,11 @@ view.ui.add(parcelSearch, {
           showPolygonAreaMeasure(g, 'Selected shape');
         }
       } else if (g.geometry.type==='polyline') {
+        createOrUpdateLineHitTarget(g);
         const len=Math.abs(geometryEngine.geodesicLength(g.geometry,'feet'));
         if (!g.__isLine) {
           createOrUpdateLineLabel(g);
-          showMeasure('Setback / Distance', len.toFixed(1)+' ft', null);
+          showMeasure('Setback', len.toFixed(1)+' ft', null);
         } else {
           const lbl = g.__lineType==='septicline' ? 'Septic line' : 'Line';
           showMeasure(lbl, len.toFixed(1)+' ft', null);
@@ -2355,19 +3188,47 @@ view.ui.add(parcelSearch, {
 
     sketch.on('delete', ev => {
       ev.graphics.forEach(g => {
+        if (g.__lineHitTarget) {
+          const sourceLine = sourceLineForHitTarget(g);
+          if (sourceLine && sourceLine.__setbackId) {
+            const sid = sourceLine.__setbackId;
+            hideAllSetbackHandles();
+            drawLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>drawLayer.remove(x));
+            labelLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>labelLayer.remove(x));
+          } else if (sourceLine && sourceLine.__calloutId) {
+            const cid = sourceLine.__calloutId;
+            hideAllCalloutHandles();
+            drawLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>drawLayer.remove(x));
+            labelLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>labelLayer.remove(x));
+          } else if (sourceLine) {
+            removeLineLabel(sourceLine);
+            drawLayer.remove(sourceLine);
+          }
+          drawLayer.remove(g);
+          return;
+        }
+        removeLineHitTarget(g);
         removeLineLabel(g);
         removePolygonEdgeLabels(g);
         if (g.__wellId) {
           const wid=g.__wellId;
           drawLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
+          wellLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>wellLayer.remove(x));
           labelLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>labelLayer.remove(x));
         }
         if (g.__isDrainfield&&g.__dfId) {
           const did=g.__dfId;
           labelLayer.graphics.filter(x=>x.__dfId===did).toArray().forEach(x=>labelLayer.remove(x));
         }
+        if (g.__setbackId) {
+          const sid=g.__setbackId;
+          hideAllSetbackHandles();
+          drawLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
+          labelLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>labelLayer.remove(x));
+        }
         if (g.__calloutId) {
           const cid=g.__calloutId;
+          hideAllCalloutHandles();
           drawLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
           const cl=labelLayer.graphics.find(x=>x.__calloutId===cid&&x.__calloutRole==='text');
           if(cl)labelLayer.remove(cl);
@@ -2598,14 +3459,48 @@ view.ui.add(parcelSearch, {
     }
 
 
+    function deleteGraphicDirectly(graphic) {
+      let g = graphic;
+      if (!g) return false;
+      if (g.__lineHitTarget) g = sourceLineForHitTarget(g) || g;
+      if (!isSelectableDrawGraphic(g)) return false;
+
+      removeLineHitTarget(g);
+      removeLineLabel(g);
+      removePolygonEdgeLabels(g);
+
+      if (g.__wellId) {
+        const wid = g.__wellId;
+        drawLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>drawLayer.remove(x));
+        wellLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>wellLayer.remove(x));
+        labelLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>labelLayer.remove(x));
+      } else if (g.__isDrainfield && g.__dfId) {
+        const did = g.__dfId;
+        labelLayer.graphics.filter(x=>x.__dfId===did).toArray().forEach(x=>labelLayer.remove(x));
+        drawLayer.remove(g);
+      } else if (g.__calloutId) {
+        const cid = g.__calloutId;
+        hideAllCalloutHandles();
+        drawLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>drawLayer.remove(x));
+        labelLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>labelLayer.remove(x));
+      } else {
+        drawLayer.remove(g);
+      }
+
+      hideSelectionToolbar();
+      hideMeasure();
+      setStatus('Deleted.');
+      return true;
+    }
+
     window.deleteSelected = function () {
       if (sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
-      else setStatus('Click an item to select it first.');
+      else if (!deleteGraphicDirectly(selectedToolbarGraphic)) setStatus('Click an item to select it first.');
     };
 
     function performClearAll() {
-      clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); sketch.cancel();
-      drawLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
+      clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); hideAllCalloutHandles(); sketch.cancel();
+      drawLayer.removeAll(); wellLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
       document.getElementById('measure-box').style.display='none';
@@ -2654,6 +3549,10 @@ view.ui.add(parcelSearch, {
     // ── Print ─────────────────────────────────────────────────
     window.printPlan = function () {
       hideSelectionToolbar();
+      const calloutToRestoreAfterPrint = activeCalloutEditId;
+      const setbackToRestoreAfterPrint = activeSetbackEditId;
+      hideAllCalloutHandles();
+      hideAllSetbackHandles();
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
       const prePrintBasemap = map.basemap;
@@ -2681,7 +3580,7 @@ view.ui.add(parcelSearch, {
       }
 
       function lineGraphicExists(testFn) {
-        return drawLayer.graphics.toArray().some(g => g && g.geometry && testFn(g));
+        return drawLayer.graphics.toArray().some(g => g && g.geometry && !g.__lineHitTarget && testFn(g));
       }
 
       function polygonGraphicExists(testFn) {
@@ -2697,12 +3596,12 @@ view.ui.add(parcelSearch, {
         if (polygonGraphicExists(g => g.__structureType === 'proposed')) items.push(['legend-proposed','Proposed structure']);
         if (polygonGraphicExists(g => g.__structureType === 'existing')) items.push(['legend-existing','Existing structure']);
         if (pointGraphicExists(g => g.__wellRole === 'center')) items.push(['legend-well','Well']);
-        if (polygonGraphicExists(g => g.__wellRole === 'buffer') || drawLayer.graphics.toArray().some(g => g.__wellRole === 'buffer')) items.push(['legend-buffer',"100' well buffer"]);
+        if (wellLayer.graphics.toArray().some(g => g.__wellRole === 'buffer')) items.push(['legend-buffer',"100' well buffer"]);
         if (polygonGraphicExists(g => g.__isSepticTank)) items.push(['legend-septic','Septic tank']);
         if (drawLayer.graphics.toArray().some(g => g.__isDrainfield === 'primary')) items.push(['legend-drainfield','Drainfield']);
         if (drawLayer.graphics.toArray().some(g => g.__isDrainfield === 'reserve')) items.push(['legend-reserve','Reserve drainfield']);
         if (lineGraphicExists(g => g.__isLine && !g.__wellRole && !g.__calloutId && !g.__isDrainfield && !g.__isSepticTank && g.symbol && g.symbol.style === 'solid' && g.symbol.color && g.symbol.color[1] !== 110)) items.push(['legend-line','Line']);
-        if (lineGraphicExists(g => !g.__isLine && !g.__calloutId && g.symbol && g.symbol.style === 'short-dash')) items.push(['legend-setback','Setback / distance']);
+        if (lineGraphicExists(g => !g.__isLine && !g.__calloutId && g.symbol && g.symbol.style === 'short-dash')) items.push(['legend-setback','Setback']);
         if (polygonGraphicExists(g => g.__isGrading)) items.push(['legend-grading','Proposed grading']);
         if (polygonGraphicExists(g => g.__isEasement)) items.push(['legend-easement','Easement']);
         if (lineGraphicExists(g => g.symbol && g.symbol.color && g.symbol.color[1] === 110)) items.push(['legend-septicline','Septic line']);
@@ -3084,6 +3983,8 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
           .catch(err => { console.error(err); setStatus('Screenshot failed.', false); })
           .finally(() => {
             restoreTextStyles(orig);
+            if (calloutToRestoreAfterPrint) setCalloutHandlesVisible(calloutToRestoreAfterPrint, true);
+            if (setbackToRestoreAfterPrint) setSetbackHandlesVisible(setbackToRestoreAfterPrint, true);
             if (prePrintPadding) view.padding = prePrintPadding;
             if (prePrintBasemap) map.basemap = prePrintBasemap;
             if (prePrintViewpoint) view.goTo(prePrintViewpoint, { duration:0 }).catch(() => {});
