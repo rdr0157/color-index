@@ -183,6 +183,41 @@
       width:7px; height:7px; border-radius:50%; background:#e85b2a;
       flex-shrink:0; margin-top:3px;
     }
+
+
+    /* ── Selected-object floating toolbar ───────────────────── */
+    #selection-toolbar {
+      position:absolute;
+      z-index:30;
+      display:none;
+      align-items:center;
+      gap:4px;
+      padding:4px;
+      background:rgba(255,255,255,.96);
+      border:1px solid #9ca3af;
+      border-radius:6px;
+      box-shadow:0 2px 7px rgba(0,0,0,.18);
+      pointer-events:auto;
+    }
+    #selection-toolbar.visible { display:flex; }
+    .selection-tool-btn {
+      width:28px;
+      height:28px;
+      padding:0;
+      border:1px solid #cbd5e1;
+      border-radius:4px;
+      background:#fff;
+      color:#000;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font:inherit;
+      line-height:1;
+    }
+    .selection-tool-btn:hover { background:#deeeff; border-color:#0b2d4c; }
+    .selection-tool-btn svg { width:16px; height:16px; display:block; }
+    .selection-tool-btn.delete { font-size:22px; }
   </style>
 </head>
 <body>
@@ -462,6 +497,16 @@
           <div class="ms-sub"  id="ms-sub"></div>
         </div>
       </div>
+
+      <div id="selection-toolbar" aria-label="Selected drawing actions">
+        <button type="button" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/>
+            <rect x="8" y="4" width="12" height="12" rx="2"/>
+          </svg>
+        </button>
+        <button type="button" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">&times;</button>
+      </div>
     </div>
 
     <!-- RIGHT INFO PANEL -->
@@ -738,6 +783,251 @@ view.ui.add(parcelSearch, {
     };
 
     updateEditModeButtons();
+
+
+    // ── Selected-object floating toolbar ──────────────────────
+    let selectedToolbarGraphic = null;
+
+    function toolbarElement() {
+      return document.getElementById('selection-toolbar');
+    }
+
+    function isSelectableDrawGraphic(graphic) {
+      if (!graphic || !graphic.geometry) return false;
+      if (graphic.__liveMeasurementPreview || graphic.__polyEdgeLabelOf || graphic.__dfRole) return false;
+      return !!drawLayer.graphics.find(g => g === graphic);
+    }
+
+    function selectionToolbarAnchorPoint(graphic) {
+      if (!graphic || !graphic.geometry) return null;
+      const geom = graphic.geometry;
+      if (geom.type === 'point') return geom;
+      const ext = geom.extent;
+      if (!ext) return null;
+      return {
+        type: 'point',
+        x: (ext.xmin + ext.xmax) / 2,
+        y: ext.ymax,
+        spatialReference: geom.spatialReference || ext.spatialReference
+      };
+    }
+
+    function positionSelectionToolbar() {
+      const bar = toolbarElement();
+      if (!bar || !selectedToolbarGraphic || !selectedToolbarGraphic.geometry) return;
+      const anchor = selectionToolbarAnchorPoint(selectedToolbarGraphic);
+      if (!anchor) return;
+      const screen = view.toScreen(anchor);
+      if (!screen || !isFinite(screen.x) || !isFinite(screen.y)) return;
+
+      const wrap = document.getElementById('map-wrap');
+      const barWidth = bar.offsetWidth || 68;
+      const barHeight = bar.offsetHeight || 38;
+      const pad = 6;
+      let left = screen.x - (barWidth / 2);
+      let top = screen.y - barHeight - 14;
+
+      const maxLeft = Math.max(pad, wrap.clientWidth - barWidth - pad);
+      const maxTop = Math.max(pad, wrap.clientHeight - barHeight - pad);
+      left = Math.max(pad, Math.min(left, maxLeft));
+      top = Math.max(pad, Math.min(top, maxTop));
+
+      bar.style.left = left + 'px';
+      bar.style.top = top + 'px';
+    }
+
+    function showSelectionToolbar(graphic) {
+      const bar = toolbarElement();
+      if (!bar || !isSelectableDrawGraphic(graphic)) return;
+      selectedToolbarGraphic = graphic;
+      bar.classList.add('visible');
+      requestAnimationFrame(positionSelectionToolbar);
+    }
+
+    function hideSelectionToolbar() {
+      const bar = toolbarElement();
+      if (bar) bar.classList.remove('visible');
+      selectedToolbarGraphic = null;
+    }
+
+    const toolbar = toolbarElement();
+    if (toolbar) {
+      ['pointerdown','mousedown','touchstart','click','dblclick'].forEach(evtName => {
+        toolbar.addEventListener(evtName, evt => {
+          evt.preventDefault();
+          evt.stopPropagation();
+        });
+      });
+    }
+
+    view.watch('extent', () => {
+      if (selectedToolbarGraphic) requestAnimationFrame(positionSelectionToolbar);
+    });
+
+    function cloneSymbol(symbol) {
+      if (!symbol) return null;
+      return symbol.clone ? symbol.clone() : JSON.parse(JSON.stringify(symbol));
+    }
+
+    function cloneAttributes(attrs) {
+      return attrs ? JSON.parse(JSON.stringify(attrs)) : null;
+    }
+
+    function duplicateOffset() {
+      const res = view && isFinite(view.resolution) ? view.resolution :
+        (view && view.extent && view.width ? view.extent.width / view.width : 5);
+      return Math.max(res * 28, 2);
+    }
+
+    function translateCoord(coord, dx, dy) {
+      if (!coord) return coord;
+      const out = coord.slice ? coord.slice() : [coord[0], coord[1]];
+      out[0] = out[0] + dx;
+      out[1] = out[1] - dy;
+      return out;
+    }
+
+    function translateGeometry(geometry, dx, dy) {
+      if (!geometry) return null;
+      const sr = geometry.spatialReference;
+      if (geometry.type === 'point') {
+        return {
+          type: 'point',
+          x: geometry.x + dx,
+          y: geometry.y - dy,
+          spatialReference: sr
+        };
+      }
+      if (geometry.type === 'polyline') {
+        return {
+          type: 'polyline',
+          spatialReference: sr,
+          paths: geometry.paths.map(path => path.map(pt => translateCoord(pt, dx, dy)))
+        };
+      }
+      if (geometry.type === 'polygon') {
+        return new Polygon({
+          spatialReference: sr,
+          rings: geometry.rings.map(ring => ring.map(pt => translateCoord(pt, dx, dy)))
+        });
+      }
+      return geometry.clone ? geometry.clone() : JSON.parse(JSON.stringify(geometry));
+    }
+
+    function copyGraphicFlags(source, target, replacements) {
+      Object.keys(source).forEach(key => {
+        if (!key.startsWith('__')) return;
+        if (key === '__sitePlanId') return;
+        if (Object.prototype.hasOwnProperty.call(replacements || {}, key)) return;
+        target[key] = source[key];
+      });
+      Object.keys(replacements || {}).forEach(key => { target[key] = replacements[key]; });
+    }
+
+    function cloneGraphicWithOffset(source, dx, dy, replacements) {
+      const g = new Graphic({
+        geometry: translateGeometry(source.geometry, dx, dy),
+        symbol: cloneSymbol(source.symbol),
+        attributes: cloneAttributes(source.attributes)
+      });
+      copyGraphicFlags(source, g, replacements || {});
+      return g;
+    }
+
+    function duplicateDrainfield(graphic, dx, dy) {
+      const newId = 'df_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const copy = cloneGraphicWithOffset(graphic, dx, dy, { __dfId: newId });
+      drawLayer.add(copy);
+      buildDrainfieldOverlay(copy.geometry, newId, copy.__isDrainfield === 'reserve').forEach(x => labelLayer.add(x));
+      sketch.update([copy], { tool:'transform', toggleToolOnClick:false });
+      showSelectionToolbar(copy);
+      setStatus('Drainfield duplicated.');
+      return true;
+    }
+
+    function duplicateWell(graphic, dx, dy) {
+      const oldId = graphic.__wellId;
+      if (!oldId) return false;
+      const newId = 'well_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const originals = drawLayer.graphics.filter(g => g.__wellId === oldId).toArray();
+      const labels = labelLayer.graphics.filter(g => g.__wellId === oldId).toArray();
+      let newCenter = null;
+
+      originals.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __wellId: newId });
+        drawLayer.add(copy);
+        if (copy.__wellRole === 'center') newCenter = copy;
+      });
+      labels.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __wellId: newId });
+        labelLayer.add(copy);
+      });
+
+      if (newCenter) {
+        sketch.update([newCenter], { tool:'move', toggleToolOnClick:false });
+        showSelectionToolbar(newCenter);
+      }
+      setStatus('Well duplicated.');
+      return true;
+    }
+
+    function duplicateCallout(graphic, dx, dy) {
+      const oldId = graphic.__calloutId;
+      if (!oldId) return false;
+      const newId = 'callout_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const originals = drawLayer.graphics.filter(g => g.__calloutId === oldId).toArray();
+      const labels = labelLayer.graphics.filter(g => g.__calloutId === oldId).toArray();
+      const updateParts = [];
+
+      originals.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __calloutId: newId });
+        drawLayer.add(copy);
+        if (copy.__calloutRole === 'target' || copy.__calloutRole === 'anchor') updateParts.push(copy);
+      });
+      labels.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __calloutId: newId });
+        labelLayer.add(copy);
+      });
+      updateCalloutGraphics(newId);
+      if (updateParts.length) {
+        sketch.update(updateParts, { tool:'move', toggleToolOnClick:false });
+        showSelectionToolbar(updateParts[0]);
+      }
+      setStatus('Callout duplicated.');
+      return true;
+    }
+
+    window.duplicateSelectedGraphic = function () {
+      const source = selectedToolbarGraphic || getCurrentUpdateGraphic();
+      if (!source || !source.geometry || !isSelectableDrawGraphic(source)) {
+        setStatus('Click an item to select it first.');
+        return;
+      }
+
+      const dx = duplicateOffset();
+      const dy = duplicateOffset();
+
+      if (source.__calloutId) { duplicateCallout(source, dx, dy); return; }
+      if (source.__wellId) { duplicateWell(source, dx, dy); return; }
+      if (source.__isDrainfield && source.__dfId) { duplicateDrainfield(source, dx, dy); return; }
+
+      const copy = cloneGraphicWithOffset(source, dx, dy, {});
+      delete copy.__sitePlanId;
+      drawLayer.add(copy);
+
+      if (copy.geometry.type === 'polygon') {
+        syncPolygonEdgeLabels(copy);
+        showPolygonAreaMeasure(copy, copy.__measureLabel || copy.__label || 'Selected shape');
+      } else if (copy.geometry.type === 'polyline') {
+        if (!copy.__isLine && !copy.__wellId) createOrUpdateLineLabel(copy);
+      }
+
+      const tool = copy.geometry.type === 'point' ? 'move' :
+        (copy.geometry.type === 'polygon' && shouldUseVertexEdit(copy) ? 'reshape' : 'transform');
+      sketch.update([copy], { tool, enableRotation:true, enableScaling:true, preserveAspectRatio:false, toggleToolOnClick:false });
+      showSelectionToolbar(copy);
+      setStatus('Item duplicated.');
+    };
 
     // ── Symbols ───────────────────────────────────────────────
     const SYM = {
@@ -1770,6 +2060,7 @@ view.ui.add(parcelSearch, {
     // ── Sketch events ─────────────────────────────────────────
     sketch.on('create', ev => {
       if (ev.state === 'start') {
+        hideSelectionToolbar();
         clearLiveMeasurePreview();
         return;
       }
@@ -1778,6 +2069,7 @@ view.ui.add(parcelSearch, {
         return;
       }
       if (ev.state === 'cancel') {
+        hideSelectionToolbar();
         clearLiveMeasurePreview();
         return;
       }
@@ -1860,8 +2152,10 @@ view.ui.add(parcelSearch, {
     });
 
     sketch.on('update', ev => {
-      if (!ev.graphics||!ev.graphics.length) return;
+      if (!ev.graphics||!ev.graphics.length) { hideSelectionToolbar(); return; }
       const g=ev.graphics[0];
+      if (ev.state === 'cancel') hideSelectionToolbar();
+      else if (isSelectableDrawGraphic(g)) showSelectionToolbar(g);
 
       // Apply the selected edit mode when supported polygons are selected.
       // Reshape is the default; Resize object can be selected from the Editing panel.
@@ -1939,6 +2233,7 @@ view.ui.add(parcelSearch, {
         }
       });
       document.getElementById('measure-box').style.display='none';
+      hideSelectionToolbar();
       setStatus('Deleted.');
     });
 
@@ -2079,6 +2374,50 @@ view.ui.add(parcelSearch, {
       return 1;
     }
 
+    const PRINT_MAP_FRAME_WIDTH_IN = 13.5;
+    const PRINT_SCALE_BAR_MAX_PX = 200;
+    const PRINT_SCALE_NICE_DISTANCES_FT = [10, 20, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+
+    function getPrintScaleBarInfo(fallbackScale) {
+      let groundWidthFt = null;
+
+      try {
+        const ext = view && view.extent;
+        if (ext && isFinite(ext.xmin) && isFinite(ext.xmax) && isFinite(ext.ymin) && isFinite(ext.ymax)) {
+          const y = (ext.ymin + ext.ymax) / 2;
+          const horizontalLine = {
+            type: 'polyline',
+            spatialReference: ext.spatialReference,
+            paths: [[[ext.xmin, y], [ext.xmax, y]]]
+          };
+          const measured = Math.abs(geometryEngine.geodesicLength(horizontalLine, 'feet'));
+          if (isFinite(measured) && measured > 0) groundWidthFt = measured;
+        }
+      } catch (err) {
+        console.warn('Unable to calculate print scale from view extent.', err);
+      }
+
+      // Feet represented by one printed inch of the map frame.
+      // Fallback uses the ArcGIS representative fraction if the extent calculation fails.
+      let feetPerPrintInch = groundWidthFt / PRINT_MAP_FRAME_WIDTH_IN;
+      if (!isFinite(feetPerPrintInch) || feetPerPrintInch <= 0) {
+        feetPerPrintInch = isFinite(fallbackScale) && fallbackScale > 0 ? fallbackScale / 12 : 100;
+      }
+
+      let barFt = PRINT_SCALE_NICE_DISTANCES_FT[0];
+      let barPx = Math.max(48, Math.round((barFt / feetPerPrintInch) * 96));
+
+      for (const d of PRINT_SCALE_NICE_DISTANCES_FT) {
+        const px = (d / feetPerPrintInch) * 96;
+        if (px <= PRINT_SCALE_BAR_MAX_PX) {
+          barFt = d;
+          barPx = Math.max(48, Math.round(px));
+        }
+      }
+
+      return { barFt, barPx, feetPerPrintInch };
+    }
+
     function getOptimizedParcelPrintExtent() {
       if (!selectedParcelGeometry || !selectedParcelGeometry.extent) return null;
       return selectedParcelGeometry.extent.expand(PARCEL_PRINT_PADDING_FACTOR);
@@ -2088,13 +2427,43 @@ view.ui.add(parcelSearch, {
       printExtentMode = checked ? mode : null;
     };
 
+    const AUTO_PRINT_TO_PARCEL_MAX_ACRES = 5;
+
+    function getParcelAcreage(attrs) {
+      attrs = attrs || {};
+      const raw = firstUsableValue([
+        attrs[pf.acreage],
+        attrs.size_acres,
+        attrs.SIZE_ACRES,
+        attrs.ACRES,
+        attrs.acres,
+        attrs.ACREAGE,
+        attrs.acreage
+      ]);
+      if (!raw) return NaN;
+      const cleaned = String(raw).replace(/,/g, '').trim();
+      const acres = parseFloat(cleaned);
+      return isFinite(acres) ? acres : NaN;
+    }
+
+    function autoSetPrintParcelExtentByAcreage(attrs) {
+      const acres = getParcelAcreage(attrs);
+      if (!isFinite(acres)) return;
+
+      const useParcelExtent = acres <= AUTO_PRINT_TO_PARCEL_MAX_ACRES;
+      const chk = document.getElementById('print-parcel');
+      if (chk) chk.checked = useParcelExtent;
+      setPrintExtent('parcel', useParcelExtent);
+    }
+
+
     window.deleteSelected = function () {
       if (sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
       else setStatus('Click an item to select it first.');
     };
 
     window.clearAll = function () {
-      clearCalloutPreview(); clearLiveMeasurePreview(); sketch.cancel();
+      clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); sketch.cancel();
       drawLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
@@ -2162,7 +2531,7 @@ view.ui.add(parcelSearch, {
         return items.map(([cls,label]) => `<div class="legend-item"><span class="legend-swatch ${cls}"></span><span>${escHtml(label)}</span></div>`).join('');
       }
 
-      function openPrintWindow(dataUrl, mapScale) {
+      function openPrintWindow(dataUrl, scaleBarInfo) {
         const attrs = currentParcelAttrs || {};
         // Prefer the active parcel feature's geo_id value for printing/file naming.
         // geoParam is only populated when the tool is launched from Experience Builder;
@@ -2184,14 +2553,38 @@ view.ui.add(parcelSearch, {
         const formsUrl = escHtml(cfg.branding.formsUrl || '');
         const disclaimer = 'MAP DISCLAIMER: This site plan was generated using data obtained from the Walla Walla County Community Development Department and the County GIS. The presence or absence of mapped critical areas does not constitute a formal determination. Additional review, mitigation, or information may be required prior to development; this map does not preclude the County from requesting revisions to plans.';
 
-        const maxBarPx = 200; // ~2.08in in the wider sidebar
-        const niceDistsFt = [10,20,25,50,100,200,500,1000,2000];
-        let barFt = 10, barInches = 0;
-        for (const d of niceDistsFt) {
-          const w = (d * 12) / mapScale;
-          if (w * 96 <= maxBarPx) { barFt = d; barInches = w; }
-        }
-        const barPx = Math.max(48, Math.round(barInches * 96));
+        // Build a scale bar from the actual printed map extent, not only view.scale.
+        // This keeps the printed scale bar aligned with the screenshot after Web Mercator
+        // distortion, screenshot sizing, 11x17 layout scaling, and print-to-parcel zooming.
+        const barFt = (scaleBarInfo && scaleBarInfo.barFt) || 100;
+        const barPx = (scaleBarInfo && scaleBarInfo.barPx) || 96;
+
+        // SVG scale bar is used instead of div/CSS ticks so the printed PDF
+        // reliably shows visible major/minor tick marks. Labels are proportional:
+        // 0, 1/4, 1/2, and full distance, e.g. 0 50 100 200 Feet.
+        const scaleBarWidth = Math.max(90, Math.round(barPx));
+        const scaleSvgRightPad = 58;
+        const scaleQ1 = Math.round(barFt / 4);
+        const scaleHalf = Math.round(barFt / 2);
+        const scaleBarSvg =
+          '<svg id="scale-svg" xmlns="http://www.w3.org/2000/svg" width="' + (scaleBarWidth + scaleSvgRightPad) + '" height="54" viewBox="0 0 ' + (scaleBarWidth + scaleSvgRightPad) + ' 54" role="img" aria-label="Scale bar">' +
+            '<text x="0" y="16" font-size="11" font-family="Calibri, Arial, sans-serif">0</text>' +
+            '<text x="' + (scaleBarWidth * 0.25) + '" y="16" text-anchor="middle" font-size="11" font-family="Calibri, Arial, sans-serif">' + scaleQ1 + '</text>' +
+            '<text x="' + (scaleBarWidth * 0.50) + '" y="16" text-anchor="middle" font-size="11" font-family="Calibri, Arial, sans-serif">' + scaleHalf + '</text>' +
+            '<text x="' + scaleBarWidth + '" y="16" text-anchor="middle" font-size="11" font-family="Calibri, Arial, sans-serif">' + barFt + '</text>' +
+            '<text x="' + (scaleBarWidth + 18) + '" y="16" text-anchor="start" font-size="11" font-family="Calibri, Arial, sans-serif">Feet</text>' +
+            '<line x1="0" y1="38" x2="' + scaleBarWidth + '" y2="38" stroke="#000" stroke-width="2" />' +
+            '<line x1="0" y1="24" x2="0" y2="38" stroke="#000" stroke-width="2" />' +
+            '<line x1="' + (scaleBarWidth * 0.25) + '" y1="24" x2="' + (scaleBarWidth * 0.25) + '" y2="38" stroke="#000" stroke-width="2" />' +
+            '<line x1="' + (scaleBarWidth * 0.50) + '" y1="24" x2="' + (scaleBarWidth * 0.50) + '" y2="38" stroke="#000" stroke-width="2" />' +
+            '<line x1="' + (scaleBarWidth * 0.75) + '" y1="24" x2="' + (scaleBarWidth * 0.75) + '" y2="38" stroke="#000" stroke-width="2" />' +
+            '<line x1="' + scaleBarWidth + '" y1="24" x2="' + scaleBarWidth + '" y2="38" stroke="#000" stroke-width="2" />' +
+            '<line x1="' + (scaleBarWidth * 0.125) + '" y1="30" x2="' + (scaleBarWidth * 0.125) + '" y2="38" stroke="#000" stroke-width="1.5" />' +
+            '<line x1="' + (scaleBarWidth * 0.375) + '" y1="30" x2="' + (scaleBarWidth * 0.375) + '" y2="38" stroke="#000" stroke-width="1.5" />' +
+            '<line x1="' + (scaleBarWidth * 0.625) + '" y1="30" x2="' + (scaleBarWidth * 0.625) + '" y2="38" stroke="#000" stroke-width="1.5" />' +
+            '<line x1="' + (scaleBarWidth * 0.875) + '" y1="30" x2="' + (scaleBarWidth * 0.875) + '" y2="38" stroke="#000" stroke-width="1.5" />' +
+          '</svg>';
+
         const legendHtml = buildLegendItems();
 
         const now2 = new Date();
@@ -2367,25 +2760,33 @@ html, body {
   top: 0;
 }
 #scale-labels {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
   width: ${barPx}px;
+  height: 0.18in;
   font-size: 10px;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
+.scale-label {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.scale-label.first { left: 0; transform: none; }
+.scale-label.end { left: 100%; transform: translateX(-100%); }
 #scale-bar {
   position: relative;
   width: ${barPx}px;
-  height: 12px;
-  border-bottom: 1.4px solid #000;
+  height: 14px;
+  border-bottom: 1.5px solid #000;
 }
 #scale-bar::before,
 #scale-bar::after {
   content: '';
   position: absolute;
   bottom: -1px;
-  width: 1.4px;
-  height: 12px;
+  width: 1.5px;
+  height: 14px;
   background: #000;
 }
 #scale-bar::before { left: 0; }
@@ -2393,10 +2794,11 @@ html, body {
 .scale-tick {
   position: absolute;
   bottom: -1px;
-  width: 1.1px;
-  height: 8px;
+  width: 1.2px;
+  height: 9px;
   background: #000;
 }
+.scale-tick.major { height: 14px; width: 1.5px; }
 #date-generated {
   position: absolute;
   right: 0.22in;
@@ -2460,20 +2862,7 @@ html, body {
 
     <div id="sidebar-bottom">
       <div id="scale-wrap">
-        <div id="scale-labels">
-          <span>0</span>
-          <span>${Math.round(barFt/2)}</span>
-          <span>${barFt} Feet</span>
-        </div>
-        <div id="scale-bar">
-          <span class="scale-tick" style="left:${Math.round(barPx*0.125)}px;"></span>
-          <span class="scale-tick" style="left:${Math.round(barPx*0.25)}px;"></span>
-          <span class="scale-tick" style="left:${Math.round(barPx*0.375)}px;"></span>
-          <span class="scale-tick" style="left:${Math.round(barPx*0.5)}px; height:12px;"></span>
-          <span class="scale-tick" style="left:${Math.round(barPx*0.625)}px;"></span>
-          <span class="scale-tick" style="left:${Math.round(barPx*0.75)}px;"></span>
-          <span class="scale-tick" style="left:${Math.round(barPx*0.875)}px;"></span>
-        </div>
+        ${scaleBarSvg}
       </div>
     </div>
   </div>
@@ -2507,9 +2896,10 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
           return;
         }
         const mapScale = view.scale || 2400;
+        const scaleBarInfo = getPrintScaleBarInfo(mapScale);
         const orig = applyPrintTextStyles();
         view.takeScreenshot({ format:'png', quality:100, width:PRINT_SCREENSHOT_WIDTH, height:PRINT_SCREENSHOT_HEIGHT })
-          .then(r => openPrintWindow(r.dataUrl, mapScale))
+          .then(r => openPrintWindow(r.dataUrl, scaleBarInfo))
           .catch(err => { console.error(err); setStatus('Screenshot failed.', false); })
           .finally(() => {
             restoreTextStyles(orig);
@@ -2607,6 +2997,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   
     selectedParcelGeometry = feature.geometry;
     currentParcelAttrs = attrs;
+    autoSetPrintParcelExtentByAcreage(attrs);
   
     highlightLayer.removeAll();
     highlightLayer.add(new Graphic({
