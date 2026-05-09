@@ -652,7 +652,6 @@
     let activeCalloutEditId    = null;
     let activeSetbackPreview   = null;
     let activeSetbackEditId    = null;
-    let activeSetbackHandleDrag = null;
     let activePlacementHandle  = null;
 
     function clearActivePlacementHandle() {
@@ -1019,66 +1018,9 @@ view.ui.add(parcelSearch, {
             const sourceGraphic = hitGraphic.__lineHitTarget ? sourceLineForHitTarget(hitGraphic) : hitGraphic;
             return isSelectableDrawGraphic(sourceGraphic);
           });
-          if (!hitEditable) { hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSetbackHandles(); resetDirectSetbackHandleCursor(); }
+          if (!hitEditable) { hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSetbackHandles(); }
         }).catch(() => {});
       }, 0);
-    });
-
-    // Direct-drag setback endpoints. Sketch's default endpoint behavior requires
-    // selecting the handle first, then dragging it. These handlers make visible
-    // setback endpoint handles behave more like native edit grips: hover shows a
-    // grab cursor, mouse down + drag immediately moves that endpoint, and the
-    // centered measurement updates live. The handler is intentionally limited to
-    // the currently active setback so it does not compete with ordinary map pan
-    // or Sketch editing for other graphics.
-    view.on('pointer-move', ev => {
-      if (activeSetbackHandleDrag) return;
-      const handle = directSetbackHandleAtScreen(ev.x, ev.y);
-      if (handle) view.container.style.cursor = 'grab';
-      else resetDirectSetbackHandleCursor();
-    });
-
-    view.on('pointer-leave', () => {
-      if (!activeSetbackHandleDrag) resetDirectSetbackHandleCursor();
-    });
-
-    view.on('drag', ev => {
-      if (ev.action === 'start') {
-        const handle = directSetbackHandleAtScreen(ev.x, ev.y);
-        if (!handle) return;
-        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-        try { if (sketch.state !== 'idle') sketch.cancel(); } catch (err) {}
-        activeSetbackHandleDrag = { graphic: handle, sid: handle.__setbackId };
-        hideSelectionToolbar();
-        setActiveSetbackHandle(handle);
-        view.container.style.cursor = 'grabbing';
-        setStatus('Dragging setback endpoint. Release to place.');
-        return;
-      }
-
-      if (!activeSetbackHandleDrag) return;
-      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-
-      const mp = view.toMap({ x: ev.x, y: ev.y });
-      if (mp && activeSetbackHandleDrag.graphic) {
-        activeSetbackHandleDrag.graphic.geometry = mp;
-        setActiveSetbackHandle(activeSetbackHandleDrag.graphic);
-        updateSetbackGraphics(activeSetbackHandleDrag.sid);
-        const parts = setbackParts(activeSetbackHandleDrag.sid);
-        if (parts && parts.start && parts.end) {
-          showMeasure('Setback', setbackLengthText(parts.start.geometry, parts.end.geometry).replace("'", ' ft'), null);
-        }
-      }
-
-      if (ev.action === 'end') {
-        const sid = activeSetbackHandleDrag.sid;
-        const leader = drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'leader');
-        activeSetbackHandleDrag = null;
-        setSetbackHandlesVisible(sid, true);
-        resetDirectSetbackHandleCursor();
-        if (leader) showSelectionToolbar(leader);
-        setStatus('Setback endpoint adjusted.');
-      }
     });
 
     view.watch('extent', () => {
@@ -2762,6 +2704,7 @@ view.ui.add(parcelSearch, {
       let pHoverBoundary = null;
       let pHoverSnapPoint = null;
       let pEndBoundaryHighlight = null;
+      let pMeasureLabel = null;
       let firstMoveHandle = null;
       let secondMoveHandle = null;
 
@@ -2808,6 +2751,33 @@ view.ui.add(parcelSearch, {
         }
       }
 
+      function updateSetbackPreviewMeasure(endPt) {
+        if (!startPt || !endPt) {
+          if (pMeasureLabel) { previewLayer.remove(pMeasureLabel); pMeasureLabel = null; }
+          return;
+        }
+
+        const text = setbackLengthText(startPt, endPt);
+        if (!text || text === '—') {
+          if (pMeasureLabel) { previewLayer.remove(pMeasureLabel); pMeasureLabel = null; }
+          return;
+        }
+
+        const midpoint = setbackMidpoint(startPt, endPt);
+        if (!pMeasureLabel) {
+          pMeasureLabel = new Graphic({
+            geometry: midpoint,
+            symbol: setbackMeasureSym(text)
+          });
+          pMeasureLabel.__setbackPreviewLabel = true;
+          previewLayer.add(pMeasureLabel);
+        } else {
+          pMeasureLabel.geometry = midpoint;
+          pMeasureLabel.symbol = setbackMeasureSym(text);
+          if (!previewLayer.graphics.includes(pMeasureLabel)) previewLayer.add(pMeasureLabel);
+        }
+      }
+
       firstMoveHandle = view.on('pointer-move', me => {
         if (startPt) return;
         const mp = view.toMap({ x: me.x, y: me.y });
@@ -2844,6 +2814,7 @@ view.ui.add(parcelSearch, {
             pLine.geometry = setbackLineGeometry(startPt, nextPt);
             pPt.geometry = nextPt;
             pPt.symbol = (result && result.snapped) ? setbackSnapPointSym() : previewPtSym();
+            updateSetbackPreviewMeasure(nextPt);
 
             if (result && result.snapped && result.snapSegment) {
               pEndBoundaryHighlight = makeOrUpdatePreviewGraphic(
@@ -3167,32 +3138,6 @@ view.ui.add(parcelSearch, {
         .toArray();
     }
 
-    function resetDirectSetbackHandleCursor() {
-      if (view && view.container && /^(grab|grabbing)$/.test(view.container.style.cursor || '')) {
-        view.container.style.cursor = '';
-      }
-    }
-
-    function directSetbackHandleAtScreen(x, y) {
-      if (!activeSetbackEditId || !view || !isFinite(x) || !isFinite(y)) return null;
-      let best = null;
-      let bestDist = Infinity;
-      setbackHandles(activeSetbackEditId).forEach(g => {
-        if (!g || !g.geometry || g.geometry.type !== 'point') return;
-        const screen = view.toScreen(g.geometry);
-        if (!screen || !isFinite(screen.x) || !isFinite(screen.y)) return;
-        const dist = Math.hypot(screen.x - x, screen.y - y);
-        // The visible handle is 10px and the hidden hit marker is 12px; use a
-        // slightly forgiving screen tolerance so users can grab it directly
-        // without creating a broad invisible selection area.
-        if (dist <= 9 && dist < bestDist) {
-          best = g;
-          bestDist = dist;
-        }
-      });
-      return best;
-    }
-
     function bringSetbackHandlesToFront(sid) {
       setbackHandles(sid).forEach(g => bringGraphicToFront(g));
     }
@@ -3263,7 +3208,7 @@ view.ui.add(parcelSearch, {
       setSetbackHandlesVisible(sid, true);
       const leader = toolbarGraphic || drawLayer.graphics.find(g => g.__setbackId === sid && g.__setbackRole === 'leader');
       if (leader) showSelectionToolbar(leader);
-      setStatus('Setback selected. Drag the line to move the whole setback, or drag an endpoint directly to adjust it.');
+      setStatus('Setback selected. Drag the line to move the whole setback, or drag either endpoint handle to adjust it.');
     }
 
     function openSetbackMove(sid, leaderGraphic) {
@@ -3282,7 +3227,7 @@ view.ui.add(parcelSearch, {
           setSetbackHandlesVisible(sid, true);
           sketch.update([leader], { tool:'move', toggleToolOnClick:false });
           showSelectionToolbar(leader);
-          setStatus('Setback move enabled. Drag the line to reposition the whole setback, or drag an endpoint directly to adjust it.');
+          setStatus('Setback move enabled. Drag the line to reposition the whole setback, or drag either endpoint handle to adjust it.');
         } catch (err) {
           console.error(err);
           setStatus('Unable to start setback move mode.', false);
@@ -3575,7 +3520,7 @@ view.ui.add(parcelSearch, {
         updateSetbackGraphics(g.__setbackId);
         if (ev.state === 'start') {
           showSelectionToolbar(g);
-          setStatus('Setback endpoint selected. Drag directly to adjust the endpoint.');
+          setStatus('Setback handle selected. Drag to adjust the setback endpoint.');
         } else if (ev.state === 'complete') {
           showToolbarAfterEditIfStillSelected(g, 140);
         }
