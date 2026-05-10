@@ -467,7 +467,7 @@
           </svg>
           <span class="bm-label">Streets</span>
         </button>
-        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('topo-vector',this)" title="Topographic">
+        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('national-topo',this)" title="National Map Topo">
           <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <rect width="64" height="64" fill="#f0ebe0"/>
             <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
@@ -556,13 +556,13 @@
   }
 
   require([
-    'esri/Map', 'esri/views/MapView',
+    'esri/Map', 'esri/views/MapView', 'esri/Basemap',
     'esri/layers/FeatureLayer', 'esri/layers/GraphicsLayer',
     'esri/Graphic', 'esri/geometry/geometryEngine', 'esri/geometry/Polygon',
     'esri/widgets/Sketch', 'esri/widgets/Home', 'esri/widgets/ScaleBar',
     'esri/widgets/Search'
   ], function (
-    EsriMap, MapView,
+    EsriMap, MapView, Basemap,
     FeatureLayer, GraphicsLayer,
     Graphic, geometryEngine, Polygon,
     Sketch, Home, ScaleBar,
@@ -621,8 +621,19 @@
     const previewLayer   = new GraphicsLayer({ title:'Preview',        listMode:'hide' });
     const highlightLayer = new GraphicsLayer({ title:'Selected Parcel',listMode:'hide' });
 
+    // Custom topographic basemap. The Topo button uses the provided ArcGIS item
+    // instead of the default Esri topo-vector basemap. Imagery still remains
+    // available for reference, but print will temporarily switch imagery to this
+    // topo basemap so printed site plans stay clean.
+    const NATIONAL_TOPO_ITEM_ID = '6d9fa6d159ae4a1f80b9e296ed300767';
+    const nationalTopoBasemap = new Basemap({
+      portalItem: { id: NATIONAL_TOPO_ITEM_ID }
+    });
+    let activeBasemapId = cfg.map.basemap === 'topo-vector' ? 'national-topo' : cfg.map.basemap;
+    const initialBasemap = activeBasemapId === 'national-topo' ? nationalTopoBasemap : cfg.map.basemap;
+
     const map = new EsriMap({
-      basemap: cfg.map.basemap,
+      basemap: initialBasemap,
       // Well buffers are visible but kept outside the Sketch drawing layer so
       // the 100-foot radius does not block selecting structures on small lots.
       layers: [parcelLayer, highlightLayer, wellLayer, drawLayer, labelLayer, previewLayer]
@@ -678,7 +689,8 @@ view.ui.add(parcelSearch, {
 
     window.switchBasemap = function (id, btn) {
       try {
-      map.basemap = id;
+      activeBasemapId = id;
+      map.basemap = id === 'national-topo' ? nationalTopoBasemap : id;
       document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       setStatus('Basemap: ' + btn.title, true);
@@ -876,7 +888,7 @@ view.ui.add(parcelSearch, {
       const barHeight = bar.offsetHeight || 38;
       const pad = 6;
       let left = screen.x - (barWidth / 2);
-      let top = screen.y - barHeight - 14;
+      let top = screen.y - barHeight - 30;
 
       const maxLeft = Math.max(pad, wrap.clientWidth - barWidth - pad);
       const maxTop = Math.max(pad, wrap.clientHeight - barHeight - pad);
@@ -4364,7 +4376,9 @@ view.ui.add(parcelSearch, {
       const prePrintBasemap = map.basemap;
       const prePrintPadding = view.padding ? Object.assign({}, view.padding) : null;
       view.padding = { top: 0, right: 0, bottom: 0, left: 0 };
-      map.basemap = 'topo-vector';
+      // Only swap basemaps during print when the user is viewing imagery.
+      // Streets and the National Map Topo basemap print as selected.
+      if (activeBasemapId === 'satellite') map.basemap = nationalTopoBasemap;
 
       function escHtml(value) {
         return String(value == null ? '' : value)
@@ -4401,18 +4415,15 @@ view.ui.add(parcelSearch, {
         const items = [];
         if (polygonGraphicExists(g => g.__structureType === 'proposed')) items.push(['legend-proposed','Proposed structure']);
         if (polygonGraphicExists(g => g.__structureType === 'existing')) items.push(['legend-existing','Existing structure']);
-        if (pointGraphicExists(g => g.__wellRole === 'center')) items.push(['legend-well','Well']);
-        if (wellLayer.graphics.toArray().some(g => g.__wellRole === 'buffer')) items.push(['legend-buffer',"100' well buffer"]);
+        if (pointGraphicExists(g => g.__wellRole === 'center') || wellLayer.graphics.toArray().some(g => g.__wellRole === 'buffer')) items.push(['legend-well-combo',"Well + 100' buffer"]);
         if (polygonGraphicExists(g => g.__isSepticTank)) items.push(['legend-septic','Septic tank']);
         if (drawLayer.graphics.toArray().some(g => g.__isDrainfield === 'primary')) items.push(['legend-drainfield','Drainfield']);
         if (drawLayer.graphics.toArray().some(g => g.__isDrainfield === 'reserve')) items.push(['legend-reserve','Reserve drainfield']);
         if (lineGraphicExists(g => g.__isLine && !g.__wellRole && !g.__calloutId && !g.__isDrainfield && !g.__isSepticTank && g.symbol && g.symbol.style === 'solid' && g.symbol.color && g.symbol.color[1] !== 110)) items.push(['legend-line','Line']);
-        if (lineGraphicExists(g => !g.__isLine && !g.__calloutId && g.symbol && g.symbol.style === 'short-dash')) items.push(['legend-setback','Setback']);
+        if (lineGraphicExists(g => g.__setbackRole === 'leader' || (!g.__isLine && !g.__calloutId && g.symbol && g.symbol.style === 'short-dash'))) items.push(['legend-setback','Setback']);
         if (polygonGraphicExists(g => g.__isGrading)) items.push(['legend-grading','Proposed grading']);
         if (polygonGraphicExists(g => g.__isEasement)) items.push(['legend-easement','Easement']);
         if (lineGraphicExists(g => g.symbol && g.symbol.color && g.symbol.color[1] === 110)) items.push(['legend-septicline','Septic line']);
-        if (drawLayer.graphics.toArray().some(g => g.__calloutRole === 'leader')) items.push(['legend-callout','Callout']);
-        if (drawLayer.graphics.toArray().some(g => g.geometry && g.geometry.type === 'point' && g.symbol && g.symbol.type === 'text' && !g.__calloutRole)) items.push(['legend-text','Text label']);
         if (!items.length) items.push(['legend-empty','No sketch items on map']);
         return items.map(([cls,label]) => `<div class="legend-item"><span class="legend-swatch ${cls}"></span><span>${escHtml(label)}</span></div>`).join('');
       }
@@ -4609,9 +4620,27 @@ html, body {
 }
 .legend-proposed { border: 2px solid #c80000; background: rgba(200,0,0,.10); }
 .legend-existing { border: 2px dashed #444; background: rgba(0,0,0,.03); }
-.legend-well { width: 10px; min-width: 10px; height: 10px; border: 2px solid #000; border-radius: 50%; background: #fff; margin-left: 5px; margin-right: 5px; }
-.legend-buffer { height: 0; border-top: 1.5px dashed #666; margin-top: 6px; }
-.legend-septic { border: 1.5px solid #005a1e; background: rgba(0,140,60,.22); }
+.legend-well-combo {
+  width: 18px; min-width: 18px; height: 18px;
+  border: 1.3px dashed #666; border-radius: 50%;
+  background: transparent; margin-left: 1px; margin-right: 1px;
+}
+.legend-well-combo::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; transform: translate(-50%, -50%);
+  border: 1.5px solid #000; border-radius: 50%; background: #fff;
+}
+.legend-septic {
+  border: 1.5px solid #005a1e; background: rgba(0,140,60,.22);
+  border-radius: 5px;
+}
+.legend-septic::before, .legend-septic::after {
+  content: ''; position: absolute; top: 50%; width: 3.5px; height: 3.5px;
+  transform: translateY(-50%); border: 1px solid #005a1e;
+  border-radius: 50%; background: #fff;
+}
+.legend-septic::before { left: 5px; }
+.legend-septic::after { right: 5px; }
 .legend-drainfield, .legend-reserve {
   background: repeating-linear-gradient(to right, transparent 0, transparent 5px, #006e2d 5px, #006e2d 6px);
   border-top: 2px solid #006e2d;
@@ -4619,6 +4648,12 @@ html, body {
 .legend-reserve { border-top-style: dashed; opacity: .75; }
 .legend-line { height: 0; border-top: 1.5px solid #000; margin-top: 6px; }
 .legend-setback { height: 0; border-top: 1.5px dashed #000; margin-top: 6px; }
+.legend-setback::before, .legend-setback::after {
+  content: ''; position: absolute; top: -4px; width: 0; height: 0;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+}
+.legend-setback::before { left: -1px; border-right: 6px solid #000; }
+.legend-setback::after { right: -1px; border-left: 6px solid #000; }
 .legend-grading { border: 1.5px solid #6e4100; background: repeating-linear-gradient(135deg, rgba(160,100,0,.62) 0, rgba(160,100,0,.62) 2px, transparent 2px, transparent 6px); }
 .legend-easement { border: 1.5px solid #003296; background: repeating-linear-gradient(0deg, rgba(0,80,180,.45) 0, rgba(0,80,180,.45) 2px, transparent 2px, transparent 5px); }
 .legend-septicline { height: 0; border-top: 2px solid #006e2d; margin-top: 6px; }
@@ -5016,10 +5051,11 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   const basemapBtnMap = {
     'streets-vector': 'bm-osm',
     'topo-vector': 'bm-topo-vector',
+    'national-topo': 'bm-topo-vector',
     'satellite': 'bm-satellite'
   };
 
-  const initBtnId = basemapBtnMap[cfg.map.basemap] || 'bm-osm';
+  const initBtnId = basemapBtnMap[activeBasemapId] || basemapBtnMap[cfg.map.basemap] || 'bm-osm';
   const initBtn = document.getElementById(initBtnId);
 
   if (initBtn) {
