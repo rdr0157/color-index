@@ -1020,6 +1020,7 @@ view.ui.add(parcelSearch, {
       Object.keys(source).forEach(key => {
         if (!key.startsWith('__')) return;
         if (key === '__sitePlanId') return;
+        if (key === '__septicId') return;
         if (Object.prototype.hasOwnProperty.call(replacements || {}, key)) return;
         target[key] = source[key];
       });
@@ -1170,6 +1171,7 @@ view.ui.add(parcelSearch, {
 
       if (copy.geometry.type === 'polygon') {
         syncPolygonEdgeLabels(copy);
+        if (copy.__isSepticTank) scheduleSepticLidSync(copy);
         showPolygonAreaMeasure(copy, copy.__measureLabel || copy.__label || 'Selected shape');
       } else if (copy.geometry.type === 'polyline') {
         if (!copy.__isLine && !copy.__wellId) createOrUpdateLineLabel(copy);
@@ -1301,6 +1303,169 @@ view.ui.add(parcelSearch, {
         const lat = labelLayer.graphics.find(g => g.__dfId===dfId && g.__dfRole==='lat_'+i);
         if (lat) lat.geometry = { type:'polyline', spatialReference:sr, paths:[path] };
       });
+    }
+
+
+    // ── Septic tank lid overlays ─────────────────────────────
+    // The septic tank remains a normal resizable polygon for editing. The
+    // footprint is drawn as a rounded rectangle and two non-selectable lid
+    // symbols are drawn above it so the map symbol reads less like a generic
+    // rectangle.
+    function ensureSepticId(graphic) {
+      if (!graphic) return null;
+      if (!graphic.__septicId) graphic.__septicId = 'septic_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      return graphic.__septicId;
+    }
+
+    function septicLidSymbol() {
+      return {
+        type: 'simple-marker',
+        style: 'circle',
+        color: [255, 255, 255, 1],
+        size: 7,
+        outline: { color: [46, 125, 50, 1], width: 1.25 }
+      };
+    }
+
+    function calcSepticLidPoints(polygon) {
+      if (!polygon || !polygon.rings || !polygon.rings[0] || polygon.rings[0].length < 4) return [];
+      const ring = polygon.rings[0].slice(0, -1);
+      const pts = ring.map(p => ({ x:p[0], y:p[1] })).filter(p => isFinite(p.x) && isFinite(p.y));
+      if (pts.length < 4) return [];
+
+      // Works for both normal rectangles and the rounded-rectangle septic tank.
+      // Find the dominant axis from the longest edge segment, then use the full
+      // projected width of the polygon along that axis to place the lids.
+      const center = pts.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x:0, y:0 });
+      center.x /= pts.length;
+      center.y /= pts.length;
+
+      let longest = null;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        const vx = b.x - a.x;
+        const vy = b.y - a.y;
+        const d = Math.hypot(vx, vy);
+        if (isFinite(d) && d > 0 && (!longest || d > longest.d)) longest = { vx, vy, d };
+      }
+      if (!longest || !isFinite(longest.d) || longest.d <= 0) return [];
+
+      const ux = longest.vx / longest.d;
+      const uy = longest.vy / longest.d;
+      const projections = pts.map(p => (p.x - center.x) * ux + (p.y - center.y) * uy);
+      const minP = Math.min.apply(null, projections);
+      const maxP = Math.max.apply(null, projections);
+      const span = maxP - minP;
+      if (!isFinite(span) || span <= 0) return [];
+
+      const offset = span * 0.25;
+      return [
+        { x: center.x - ux * offset, y: center.y - uy * offset },
+        { x: center.x + ux * offset, y: center.y + uy * offset }
+      ];
+    }
+
+    function removeSepticLidsById(id) {
+      if (!id) return;
+      [labelLayer, drawLayer, previewLayer, wellLayer].forEach(layer => {
+        if (!layer || !layer.graphics) return;
+        layer.graphics
+          .filter(g => g.__septicId === id && g.__septicRole === 'lid')
+          .toArray()
+          .forEach(g => layer.remove(g));
+      });
+    }
+
+    function removeSepticLids(graphic) {
+      const id = graphic && graphic.__septicId;
+      if (!id) return;
+      removeSepticLidsById(id);
+    }
+
+    function scheduleSepticLidDeleteCleanup(ids) {
+      const septicIds = Array.from(new Set((ids || []).filter(Boolean)));
+      const run = () => {
+        septicIds.forEach(removeSepticLidsById);
+        cleanupOrphanSepticLids();
+      };
+      run();
+      setTimeout(run, 0);
+      setTimeout(run, 75);
+      setTimeout(run, 200);
+      setTimeout(run, 500);
+    }
+
+    function cleanupOrphanSepticLids() {
+      const activeIds = new Set(
+        drawLayer.graphics
+          .filter(g => g.__isSepticTank && g.__septicId)
+          .toArray()
+          .map(g => g.__septicId)
+      );
+      labelLayer.graphics
+        .filter(g => g.__septicRole === 'lid' && (!g.__septicId || !activeIds.has(g.__septicId)))
+        .toArray()
+        .forEach(g => labelLayer.remove(g));
+    }
+
+    function syncSepticLids(graphic) {
+      if (!graphic || !graphic.__isSepticTank || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
+      const id = ensureSepticId(graphic);
+      const lidPts = calcSepticLidPoints(graphic.geometry);
+      if (lidPts.length !== 2) { removeSepticLids(graphic); return; }
+
+      const sr = graphic.geometry.spatialReference;
+      let lids = labelLayer.graphics
+        .filter(g => g.__septicId === id && g.__septicRole === 'lid')
+        .toArray()
+        .sort((a,b) => (a.__septicLidIndex || 0) - (b.__septicLidIndex || 0));
+
+      if (lids.length !== 2) {
+        lids.forEach(g => labelLayer.remove(g));
+        lids = lidPts.map((pt, i) => {
+          const lid = new Graphic({
+            geometry: { type:'point', x:pt.x, y:pt.y, spatialReference:sr },
+            symbol: septicLidSymbol()
+          });
+          lid.__septicId = id;
+          lid.__septicRole = 'lid';
+          lid.__septicLidIndex = i;
+          lid.__skipMeasure = true;
+          lid.__label = 'Septic tank lid';
+          labelLayer.add(lid);
+          return lid;
+        });
+      } else {
+        lids.forEach((lid, i) => {
+          const pt = lidPts[i];
+          lid.geometry = { type:'point', x:pt.x, y:pt.y, spatialReference:sr };
+          lid.symbol = septicLidSymbol();
+        });
+      }
+    }
+
+
+    function syncAllSepticLids() {
+      drawLayer.graphics
+        .filter(g => g.__isSepticTank && g.geometry && g.geometry.type === 'polygon')
+        .toArray()
+        .forEach(g => syncSepticLids(g));
+    }
+
+    function scheduleSepticLidSync(graphic) {
+      if (!graphic || !graphic.__isSepticTank) return;
+      // Sketch can report the update state before the polygon geometry has fully
+      // settled on screen. Syncing on the next frames keeps the lid markers tied
+      // to the tank after placement, move, resize, rotate, duplicate, or undo.
+      syncSepticLids(graphic);
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => syncSepticLids(graphic));
+        requestAnimationFrame(() => requestAnimationFrame(() => syncSepticLids(graphic)));
+      }
+      setTimeout(() => syncSepticLids(graphic), 60);
+      setTimeout(() => syncSepticLids(graphic), 180);
+      setTimeout(() => syncSepticLids(graphic), 360);
     }
     function textSym(text, size) {
       return {
@@ -2030,6 +2195,44 @@ view.ui.add(parcelSearch, {
       );
     }
 
+    function buildRoundedRect(center, lFt, wFt, cornerSegments, radiusRatio) {
+      const hl = feetToLocalMapMeters(center, lFt) / 2;
+      const hw = feetToLocalMapMeters(center, wFt) / 2;
+      const segs = Math.max(3, cornerSegments || 5);
+      const r = Math.max(0, Math.min(hl, hw) * (radiusRatio == null ? 0.35 : radiusRatio));
+      const x = center.x;
+      const y = center.y;
+      const pts = [];
+
+      function addArc(cx, cy, startDeg, endDeg) {
+        for (let i = 0; i <= segs; i++) {
+          const t = i / segs;
+          const a = (startDeg + (endDeg - startDeg) * t) * Math.PI / 180;
+          pts.push([x + cx + r * Math.cos(a), y + cy + r * Math.sin(a)]);
+        }
+      }
+
+      // Counter-clockwise rounded rectangle. The straight segments between
+      // corner arcs are implied by consecutive points in the polygon ring.
+      addArc( hl - r,  hw - r,   0,  90); // upper right
+      addArc(-hl + r,  hw - r,  90, 180); // upper left
+      addArc(-hl + r, -hw + r, 180, 270); // lower left
+      addArc( hl - r, -hw + r, 270, 360); // lower right
+      if (pts.length) pts.push(pts[0].slice());
+
+      return new Polygon({ spatialReference:center.spatialReference, rings:[pts] });
+    }
+
+    function buildFixedRoundedRect(center, lFt, wFt) {
+      return buildRoundedRect(
+        center,
+        lFt * FIXED_SIZE_LENGTH_CORRECTION,
+        wFt * FIXED_SIZE_WIDTH_CORRECTION,
+        5,
+        0.35
+      );
+    }
+
     function polygonCenter(polygon) {
       if (!polygon) return null;
       return polygon.extent ? polygon.extent.center : (polygon.centroid || null);
@@ -2059,16 +2262,18 @@ view.ui.add(parcelSearch, {
 
     function placeFixed(center, lFt, wFt, symbol, extraProps) {
       extraProps = extraProps || {};
-      const rect = buildFixedRect(center, lFt, wFt);
+      const rect = extraProps.__isSepticTank ? buildFixedRoundedRect(center, lFt, wFt) : buildFixedRect(center, lFt, wFt);
       const g = new Graphic({geometry:rect, symbol});
       Object.assign(g, { __isFixedObject:true, __twoSideLabels:true }, extraProps);
       drawLayer.add(g);
       syncPolygonEdgeLabels(g);
+      if (g.__isSepticTank) scheduleSepticLidSync(g);
       sketch.update([g],{tool:'transform',toggleToolOnClick:false});
       const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
       if (shouldShowSelectedShapeOnly(g)) showSelectedShapeOnly(extraProps.__label || 'Shape');
       else if (shouldSkipShapeMeasurement(g)) hideMeasure();
       else showPolygonAreaMeasure(g, extraProps.__measureLabel || extraProps.__label || 'Selected shape');
+      return g;
     }
 
     // ── Tool helpers ──────────────────────────────────────────
@@ -3441,6 +3646,7 @@ view.ui.add(parcelSearch, {
         resizedToMinimum = enforceMinimumRect(g, pt==='existing' ? 'Existing structure' : 'Proposed structure');
       } else if (pt==='septic') {
         g.symbol=SYM.septic; g.__isSepticTank=true; g.__skipEdgeLabels=true; g.__label='Septic tank'; g.__measureLabel='Selected shape';
+        scheduleSepticLidSync(g);
       } else if (pt==='drainfield'||pt==='reserve') {
         const isRes = pt==='reserve';
         // Guard against near-zero freehand draws — enforce a 10×30 ft minimum
@@ -3485,6 +3691,7 @@ view.ui.add(parcelSearch, {
 
       if (g.geometry.type==='polygon') {
         syncPolygonEdgeLabels(g);
+        if (g.__isSepticTank) scheduleSepticLidSync(g);
         if (shouldShowSelectedShapeOnly(g)) {
           showSelectedShapeOnly(g.__label || 'Shape');
         } else if (shouldSkipShapeMeasurement(g)) {
@@ -3701,6 +3908,7 @@ view.ui.add(parcelSearch, {
         return;
       }
       if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
+      if (g.__isSepticTank) scheduleSepticLidSync(g);
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
       if (g.geometry.type==='polygon') {
         enforceMinimumRect(g, g.__label || (g.__structureType === 'existing' ? 'Existing structure' : g.__structureType === 'proposed' ? 'Proposed structure' : 'Shape'));
@@ -3726,7 +3934,9 @@ view.ui.add(parcelSearch, {
     });
 
     sketch.on('delete', ev => {
+      const deletedSepticIds = [];
       ev.graphics.forEach(g => {
+        if (g && (g.__isSepticTank || g.__septicId) && g.__septicId) deletedSepticIds.push(g.__septicId);
         if (g.__lineHitTarget) {
           const sourceLine = sourceLineForHitTarget(g);
           if (sourceLine && sourceLine.__setbackId) {
@@ -3749,6 +3959,7 @@ view.ui.add(parcelSearch, {
         removeLineHitTarget(g);
         removeLineLabel(g);
         removePolygonEdgeLabels(g);
+        removeSepticLids(g);
         if (g.__wellId) {
           const wid=g.__wellId;
           drawLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
@@ -3773,6 +3984,7 @@ view.ui.add(parcelSearch, {
           if(cl)labelLayer.remove(cl);
         }
       });
+      scheduleSepticLidDeleteCleanup(deletedSepticIds);
       document.getElementById('measure-box').style.display='none';
       hideSelectionToolbar();
       setStatus('Deleted.');
@@ -4003,10 +4215,12 @@ view.ui.add(parcelSearch, {
       if (!g) return false;
       if (g.__lineHitTarget) g = sourceLineForHitTarget(g) || g;
       if (!isSelectableDrawGraphic(g)) return false;
+      const deletedSepticIds = (g.__isSepticTank || g.__septicId) && g.__septicId ? [g.__septicId] : [];
 
       removeLineHitTarget(g);
       removeLineLabel(g);
       removePolygonEdgeLabels(g);
+      removeSepticLids(g);
 
       if (g.__wellId) {
         const wid = g.__wellId;
@@ -4026,6 +4240,7 @@ view.ui.add(parcelSearch, {
         drawLayer.remove(g);
       }
 
+      scheduleSepticLidDeleteCleanup(deletedSepticIds);
       hideSelectionToolbar();
       hideMeasure();
       setStatus('Deleted.');
@@ -4033,6 +4248,12 @@ view.ui.add(parcelSearch, {
     }
 
     window.deleteSelected = function () {
+      const current = getCurrentUpdateGraphic();
+      if (current && current.__isSepticTank) {
+        try { sketch.cancel(); } catch (err) {}
+        deleteGraphicDirectly(current);
+        return;
+      }
       if (sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
       else if (!deleteGraphicDirectly(selectedToolbarGraphic)) setStatus('Click an item to select it first.');
     };
@@ -4783,4 +5004,3 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
 </script>
 </body>
 </html>
-
