@@ -467,7 +467,7 @@
           </svg>
           <span class="bm-label">Streets</span>
         </button>
-        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('national-topo',this)" title="National Map Topo">
+        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('contour-topo',this)" title="Topo">
           <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <rect width="64" height="64" fill="#f0ebe0"/>
             <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
@@ -621,16 +621,17 @@
     const previewLayer   = new GraphicsLayer({ title:'Preview',        listMode:'hide' });
     const highlightLayer = new GraphicsLayer({ title:'Selected Parcel',listMode:'hide' });
 
-    // Custom topographic basemap. The Topo button uses the provided ArcGIS item
-    // instead of the default Esri topo-vector basemap. Imagery still remains
-    // available for reference, but print will temporarily switch imagery to this
-    // topo basemap so printed site plans stay clean.
-    const NATIONAL_TOPO_ITEM_ID = '6d9fa6d159ae4a1f80b9e296ed300767';
-    const nationalTopoBasemap = new Basemap({
-      portalItem: { id: NATIONAL_TOPO_ITEM_ID }
+    // Custom topographic basemap. The Topo button uses the World Topographic Map
+    // with Contours and Hillshade ArcGIS item instead of the default Esri
+    // topo-vector basemap. Imagery remains available for reference, but print
+    // will temporarily switch imagery to this topo basemap so printed site
+    // plans stay clean.
+    const CONTOUR_TOPO_ITEM_ID = '18d32a699af64bfba4e78eba5a4dd705';
+    const contourTopoBasemap = new Basemap({
+      portalItem: { id: CONTOUR_TOPO_ITEM_ID }
     });
-    let activeBasemapId = cfg.map.basemap === 'topo-vector' ? 'national-topo' : cfg.map.basemap;
-    const initialBasemap = activeBasemapId === 'national-topo' ? nationalTopoBasemap : cfg.map.basemap;
+    let activeBasemapId = cfg.map.basemap === 'topo-vector' ? 'contour-topo' : cfg.map.basemap;
+    const initialBasemap = activeBasemapId === 'contour-topo' ? contourTopoBasemap : cfg.map.basemap;
 
     const map = new EsriMap({
       basemap: initialBasemap,
@@ -690,7 +691,7 @@ view.ui.add(parcelSearch, {
     window.switchBasemap = function (id, btn) {
       try {
       activeBasemapId = id;
-      map.basemap = id === 'national-topo' ? nationalTopoBasemap : id;
+      map.basemap = id === 'contour-topo' ? contourTopoBasemap : id;
       document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       setStatus('Basemap: ' + btn.title, true);
@@ -4377,8 +4378,8 @@ view.ui.add(parcelSearch, {
       const prePrintPadding = view.padding ? Object.assign({}, view.padding) : null;
       view.padding = { top: 0, right: 0, bottom: 0, left: 0 };
       // Only swap basemaps during print when the user is viewing imagery.
-      // Streets and the National Map Topo basemap print as selected.
-      if (activeBasemapId === 'satellite') map.basemap = nationalTopoBasemap;
+      // Streets and the Topo basemap print as selected.
+      if (activeBasemapId === 'satellite') map.basemap = contourTopoBasemap;
 
       function escHtml(value) {
         return String(value == null ? '' : value)
@@ -5051,7 +5052,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   const basemapBtnMap = {
     'streets-vector': 'bm-osm',
     'topo-vector': 'bm-topo-vector',
-    'national-topo': 'bm-topo-vector',
+    'contour-topo': 'bm-topo-vector',
     'satellite': 'bm-satellite'
   };
 
