@@ -27,9 +27,76 @@
       background:rgba(255,255,255,.08);
     }
     #header-seal img { width:52px; height:52px; object-fit:contain; border-radius:50%; }
-    #titlewrap { flex:1; min-width:0; }
+    #titlewrap { flex:0 0 275px; min-width:0; }
     #agency      { font-size:16px; font-weight:700; color:#fff; line-height:1.2; }
-    #title       { font-size:14px; color:#fff; opacity:.85; margin-top:2px; }
+    #title       { font-size:14px; color:#fff; opacity:.85; margin-top:2px; white-space:nowrap; }
+
+    /* Header parcel search */
+    #header-search-wrap {
+      flex:0 1 430px; min-width:280px; max-width:430px;
+      height:36px; margin-left:18px; margin-right:auto;
+      display:flex; align-items:center;
+    }
+    #header-search {
+      width:100%; height:36px; position:relative; z-index:40;
+      background:#fff; border:1px solid #000; border-radius:5px;
+      overflow:hidden; box-shadow:none;
+    }
+    #header-search:focus-within {
+      outline:2px solid #000; outline-offset:0;
+    }
+    #header-search .esri-search {
+      width:100%; height:34px; max-width:none;
+      background:#fff; box-shadow:none; border:0; border-radius:5px;
+      overflow:hidden; font-family:Calibri,'Segoe UI',Arial,sans-serif;
+    }
+    #header-search .esri-search__container {
+      height:34px; min-height:34px;
+      background:#fff; border:0; border-radius:5px;
+      box-shadow:none; overflow:hidden;
+    }
+    #header-search .esri-search__container:focus-within {
+      outline:none; box-shadow:none;
+    }
+    #header-search .esri-search__form {
+      height:34px; border-radius:5px; overflow:hidden; background:#fff;
+    }
+    #header-search .esri-search__input-container,
+    #header-search .esri-search__form { height:34px; }
+    #header-search .esri-search__input-container {
+      border-radius:5px 0 0 5px; overflow:hidden; background:#fff;
+    }
+    #header-search .esri-search__input {
+      height:34px; min-height:34px;
+      color:#000; background:#fff; border:0;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif;
+      font-size:14px; padding:0 10px 0 12px;
+      outline:none; box-shadow:none;
+    }
+    #header-search .esri-search__input:focus,
+    #header-search .esri-search__input:focus-visible {
+      outline:none; box-shadow:none;
+    }
+    #header-search .esri-search__input::placeholder { color:#555; opacity:1; }
+    #header-search .esri-search__submit-button,
+    #header-search .esri-search__clear-button,
+    #header-search .esri-search__sources-button {
+      height:34px; min-height:34px;
+      background:#fff; color:#000; border:0; box-shadow:none;
+    }
+    #header-search .esri-search__submit-button {
+      width:38px; border-radius:0 5px 5px 0;
+    }
+    #header-search .esri-search__submit-button:hover,
+    #header-search .esri-search__clear-button:hover { background:#f5f7fa; color:#000; }
+    #header-search .esri-search__suggestions-menu {
+      z-index:10000; font-family:Calibri,'Segoe UI',Arial,sans-serif;
+    }
+    @media (max-width: 1100px) {
+      #titlewrap { flex-basis:235px; }
+      #header-search-wrap { flex-basis:340px; min-width:220px; margin-left:12px; }
+    }
+
     .hdr-btn {
       border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.1);
       color:#fff; border-radius:4px; padding:7px 10px; cursor:pointer; font:inherit; font-size:14px;
@@ -73,6 +140,69 @@
       text-shadow:0 1px 2px rgba(0,0,0,.9); text-align:center; line-height:1.2;
       background:rgba(0,0,0,.35); width:100%; padding:2px 3px; margin:0 -3px;
     }
+
+    /* Optional map reference layers */
+    #layer-control {
+      position:relative;
+      width:64px;
+      height:64px;
+      flex-shrink:0;
+      z-index:11;
+    }
+    #layer-control .layers-toggle {
+      position:absolute;
+      inset:0;
+    }
+    #layer-control.expanded .layers-toggle {
+      visibility:hidden;
+      pointer-events:none;
+    }
+    #layers-panel {
+      display:none;
+      position:absolute;
+      top:0;
+      right:0;
+      width:236px;
+      background:#fff;
+      border:2px solid #0b2d4c;
+      border-radius:6px;
+      box-shadow:0 2px 8px rgba(0,0,0,.35);
+      overflow:hidden;
+      color:#000;
+    }
+    #layer-control.expanded #layers-panel { display:block; }
+    .layers-panel-head {
+      height:30px;
+      background:#0b2d4c;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:0 9px;
+      cursor:pointer;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.03em;
+      user-select:none;
+    }
+    .layers-panel-head:hover { background:#123f68; }
+    .layers-panel-body {
+      padding:8px 10px 9px;
+      background:#fff;
+    }
+    .layer-check-row {
+      display:flex;
+      align-items:center;
+      gap:7px;
+      padding:5px 2px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .layer-check-row input { margin:0; cursor:pointer; }
+    .layer-check-row span { cursor:pointer; }
+    .layer-check-row:hover { background:#f5f7fa; }
 
     /* Layout */
     #main { flex:1; display:flex; min-height:0; overflow:hidden; }
@@ -163,25 +293,6 @@
     /* Align ArcGIS scale bar with measure box */
     .esri-scale-bar { bottom:60px !important; }
     
-    /* ── Parcel search widget ───────────────────────────────── */
-    /* Target the Search widget via its position in the ArcGIS view UI.
-       Accessing widget.container directly before view.ui.add() returns null
-       and crashes the script, so we style it through the parent instead. */
-    .esri-ui-top-right .esri-search {
-      width: 330px;
-      max-width: calc(100vw - 620px);
-    }
-
-    .esri-ui-top-right .esri-search .esri-search__input {
-      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
-      font-size: 13px;
-    }
-
-    /* Keep the basemap buttons below the search box */
-    #basemap-toggle {
-      top: 62px;
-    }
-
     /* ── Right info panel ─────────────────────────────────── */
     #info-panel {
       width:280px; background:#fff; border-left:1px solid #d7dce3;
@@ -308,6 +419,9 @@
     <div id="titlewrap">
       <div id="agency"></div>
       <div id="title"></div>
+    </div>
+    <div id="header-search-wrap" aria-label="Parcel search">
+      <div id="header-search"></div>
     </div>
     <button class="hdr-btn light clear-all-btn" onclick="clearAll()" title="Clear all drawn site plan items" aria-label="Clear all drawn site plan items">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -467,7 +581,7 @@
           </svg>
           <span class="bm-label">Streets</span>
         </button>
-        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('contour-topo',this)" title="Topo">
+        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('topo-vector',this)" title="Topo">
           <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <rect width="64" height="64" fill="#f0ebe0"/>
             <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
@@ -488,6 +602,31 @@
           </svg>
           <span class="bm-label">Imagery</span>
         </button>
+
+        <div id="layer-control" class="layer-control">
+          <button class="bm-btn layers-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
+            <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" fill="#eef2f6"/>
+              <polygon points="32,10 52,21 32,32 12,21" fill="#0b2d4c" opacity=".85"/>
+              <polygon points="32,23 52,34 32,45 12,34" fill="#4b7fa8" opacity=".75"/>
+              <polygon points="32,36 52,47 32,58 12,47" fill="#7fa7c7" opacity=".75"/>
+              <path d="M12 21l20 11 20-11M12 34l20 11 20-11M12 47l20 11 20-11" fill="none" stroke="#fff" stroke-width="1" opacity=".7"/>
+            </svg>
+            <span class="bm-label">Layers</span>
+          </button>
+          <div id="layers-panel" onclick="event.stopPropagation();">
+            <div class="layers-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers">
+              <span>Layers</span>
+              <span aria-hidden="true">›</span>
+            </div>
+            <div class="layers-panel-body">
+              <label class="layer-check-row" for="contours-toggle" title="Show or hide 10-foot contour lines">
+                <input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" />
+                <span>Contours</span>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="loading">
@@ -556,13 +695,13 @@
   }
 
   require([
-    'esri/Map', 'esri/views/MapView', 'esri/Basemap',
+    'esri/Map', 'esri/views/MapView',
     'esri/layers/FeatureLayer', 'esri/layers/GraphicsLayer',
     'esri/Graphic', 'esri/geometry/geometryEngine', 'esri/geometry/Polygon',
     'esri/widgets/Sketch', 'esri/widgets/Home', 'esri/widgets/ScaleBar',
     'esri/widgets/Search'
   ], function (
-    EsriMap, MapView, Basemap,
+    EsriMap, MapView,
     FeatureLayer, GraphicsLayer,
     Graphic, geometryEngine, Polygon,
     Sketch, Home, ScaleBar,
@@ -615,29 +754,31 @@
       }}
     });
 
+    const contourLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Contours_10ft/FeatureServer/0',
+      title:'Contours',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      renderer:{
+        type:'simple',
+        symbol:{ type:'simple-line', color:[120,95,65,0.72], width:0.8 }
+      }
+    });
+
     const wellLayer      = new GraphicsLayer({ title:'Well Buffers',    listMode:'hide' });
     const drawLayer      = new GraphicsLayer({ title:'Drawings' });
     const labelLayer     = new GraphicsLayer({ title:'Labels',         listMode:'hide' });
     const previewLayer   = new GraphicsLayer({ title:'Preview',        listMode:'hide' });
     const highlightLayer = new GraphicsLayer({ title:'Selected Parcel',listMode:'hide' });
 
-    // Custom topographic basemap. The Topo button uses the World Topographic Map
-    // with Contours and Hillshade ArcGIS item instead of the default Esri
-    // topo-vector basemap. Imagery remains available for reference, but print
-    // will temporarily switch imagery to this topo basemap so printed site
-    // plans stay clean.
-    const CONTOUR_TOPO_ITEM_ID = '18d32a699af64bfba4e78eba5a4dd705';
-    const contourTopoBasemap = new Basemap({
-      portalItem: { id: CONTOUR_TOPO_ITEM_ID }
-    });
-    let activeBasemapId = cfg.map.basemap === 'topo-vector' ? 'contour-topo' : cfg.map.basemap;
-    const initialBasemap = activeBasemapId === 'contour-topo' ? contourTopoBasemap : cfg.map.basemap;
+    let activeBasemapId = cfg.map.basemap || 'streets-vector';
 
     const map = new EsriMap({
-      basemap: initialBasemap,
-      // Well buffers are visible but kept outside the Sketch drawing layer so
-      // the 100-foot radius does not block selecting structures on small lots.
-      layers: [parcelLayer, highlightLayer, wellLayer, drawLayer, labelLayer, previewLayer]
+      basemap: activeBasemapId,
+      // Contours are optional reference layers. They remain below parcel lines
+      // and drawings so site-plan graphics stay visually dominant.
+      layers: [contourLayer, parcelLayer, highlightLayer, wellLayer, drawLayer, labelLayer, previewLayer]
     });
 
     const view = new MapView({
@@ -656,6 +797,7 @@
     */
     const parcelSearch = new Search({
       view: view,
+      container: 'header-search',
       includeDefaultSources: false,
       searchAllEnabled: false,
       popupEnabled: false,
@@ -681,17 +823,12 @@
       }]
     });
 
-// NOTE: Do NOT access parcelSearch.container here — it is null until after
-// view.ui.add() resolves. Widget styling is handled via CSS on .esri-ui-top-right.
-view.ui.add(parcelSearch, {
-  position: 'top-right',
-  index: 0
-});
+    // Parcel Search is rendered in the application header rather than inside the map UI.
 
     window.switchBasemap = function (id, btn) {
       try {
       activeBasemapId = id;
-      map.basemap = id === 'contour-topo' ? contourTopoBasemap : id;
+      map.basemap = id;
       document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       setStatus('Basemap: ' + btn.title, true);
@@ -700,6 +837,20 @@ view.ui.add(parcelSearch, {
       setStatus('Unable to switch basemap.', false);
     }
   };
+
+    window.toggleLayerPanel = function (force) {
+      const control = document.getElementById('layer-control');
+      if (!control) return;
+      const open = typeof force === 'boolean' ? force : !control.classList.contains('expanded');
+      control.classList.toggle('expanded', open);
+    };
+
+    window.toggleMapLayer = function (layerName, visible) {
+      if (layerName === 'contours') {
+        contourLayer.visible = !!visible;
+        setStatus(visible ? 'Contours layer on.' : 'Contours layer off.', true);
+      }
+    };
 
     const sketch = new Sketch({
       view, layer:drawLayer, updateOnGraphicClick:true, creationMode:'update',
@@ -4378,8 +4529,9 @@ view.ui.add(parcelSearch, {
       const prePrintPadding = view.padding ? Object.assign({}, view.padding) : null;
       view.padding = { top: 0, right: 0, bottom: 0, left: 0 };
       // Only swap basemaps during print when the user is viewing imagery.
-      // Streets and the Topo basemap print as selected.
-      if (activeBasemapId === 'satellite') map.basemap = contourTopoBasemap;
+      // Streets and Topo print as selected. Optional layers, including contours,
+      // print according to their current visibility.
+      if (activeBasemapId === 'satellite') map.basemap = 'topo-vector';
 
       function escHtml(value) {
         return String(value == null ? '' : value)
@@ -5009,7 +5161,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
           try {
             // Layer 3: direct DOM fallback — forces the input field blank
             // Uses native HTMLInputElement setter to bypass any framework value-tracking
-            const input = document.querySelector('.esri-ui-top-right .esri-search__input');
+            const input = document.querySelector('#header-search .esri-search__input');
             if (input) {
               const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
               nativeSetter.call(input, '');
@@ -5033,7 +5185,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   // Block the Enter key on the search input so the widget never auto-selects
   // the first result. Users must click a suggestion from the dropdown.
   const searchInputObserver = new MutationObserver(() => {
-    const input = document.querySelector('.esri-ui-top-right .esri-search__input');
+    const input = document.querySelector('#header-search .esri-search__input');
     if (input && !input.__enterBlocked) {
       input.__enterBlocked = true;
       input.addEventListener('keydown', function(e) {
@@ -5052,7 +5204,6 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   const basemapBtnMap = {
     'streets-vector': 'bm-osm',
     'topo-vector': 'bm-topo-vector',
-    'contour-topo': 'bm-topo-vector',
     'satellite': 'bm-satellite'
   };
 
