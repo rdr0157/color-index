@@ -19,7 +19,7 @@
     #header {
       height:72px; background:#0b2d4c; color:#fff;
       display:flex; align-items:center; gap:12px; padding:0 16px;
-      flex-shrink:0;
+      flex-shrink:0; overflow:visible; position:relative; z-index:50;
     }
     #header-seal {
       width:56px; height:56px; border:2px solid #bb3829; border-radius:50%;
@@ -35,12 +35,12 @@
     #header-search-wrap {
       flex:0 1 430px; min-width:280px; max-width:430px;
       height:36px; margin-left:18px; margin-right:auto;
-      display:flex; align-items:center;
+      display:flex; align-items:center; overflow:visible; position:relative; z-index:60;
     }
     #header-search {
-      width:100%; height:36px; position:relative; z-index:40;
+      width:100%; height:36px; position:relative; z-index:60;
       background:#fff; border:1px solid #000; border-radius:5px;
-      overflow:hidden; box-shadow:none;
+      overflow:visible; box-shadow:none;
     }
     #header-search:focus-within {
       outline:2px solid #000; outline-offset:0;
@@ -48,23 +48,23 @@
     #header-search .esri-search {
       width:100%; height:34px; max-width:none;
       background:#fff; box-shadow:none; border:0; border-radius:5px;
-      overflow:hidden; font-family:Calibri,'Segoe UI',Arial,sans-serif;
+      overflow:visible; font-family:Calibri,'Segoe UI',Arial,sans-serif;
     }
     #header-search .esri-search__container {
       height:34px; min-height:34px;
       background:#fff; border:0; border-radius:5px;
-      box-shadow:none; overflow:hidden;
+      box-shadow:none; overflow:visible;
     }
     #header-search .esri-search__container:focus-within {
       outline:none; box-shadow:none;
     }
     #header-search .esri-search__form {
-      height:34px; border-radius:5px; overflow:hidden; background:#fff;
+      height:34px; border-radius:5px; overflow:visible; background:#fff;
     }
     #header-search .esri-search__input-container,
     #header-search .esri-search__form { height:34px; }
     #header-search .esri-search__input-container {
-      border-radius:5px 0 0 5px; overflow:hidden; background:#fff;
+      border-radius:5px 0 0 5px; overflow:visible; background:#fff;
     }
     #header-search .esri-search__input {
       height:34px; min-height:34px;
@@ -91,6 +91,11 @@
     #header-search .esri-search__clear-button:hover { background:#f5f7fa; color:#000; }
     #header-search .esri-search__suggestions-menu {
       z-index:10000; font-family:Calibri,'Segoe UI',Arial,sans-serif;
+      border-radius:4px; overflow:auto; box-shadow:0 3px 8px rgba(0,0,0,.25);
+    }
+    #header-search .esri-search__suggestions-menu,
+    #header-search .esri-menu {
+      z-index:10000;
     }
     @media (max-width: 1100px) {
       #titlewrap { flex-basis:235px; }
