@@ -52,23 +52,24 @@
     }
     #header-search .esri-search__container {
       height:34px; min-height:34px;
-      background:#fff; border:0; border-radius:5px;
-      box-shadow:none; overflow:visible;
+      background:#fff; border:0; border-radius:4px;
+      box-shadow:none; overflow:hidden;
+      clip-path: inset(0 round 4px);
     }
     #header-search .esri-search__container:focus-within {
       outline:none; box-shadow:none;
     }
     #header-search .esri-search__form {
-      height:34px; border-radius:5px; overflow:visible; background:#fff;
+      height:34px; border-radius:4px; overflow:hidden; background:#fff;
     }
     #header-search .esri-search__input-container,
     #header-search .esri-search__form { height:34px; }
     #header-search .esri-search__input-container {
-      border-radius:5px 0 0 5px; overflow:visible; background:#fff;
+      border-radius:4px 0 0 4px; overflow:hidden; background:#fff;
     }
     #header-search .esri-search__input {
       height:34px; min-height:34px;
-      color:#000; background:#fff; border:0;
+      color:#000; background:#fff; border:0; border-radius:4px 0 0 4px;
       font-family:Calibri,'Segoe UI',Arial,sans-serif;
       font-size:14px; padding:0 10px 0 12px;
       outline:none; box-shadow:none;
@@ -125,20 +126,29 @@
     }
     .hdr-btn.clear-all-btn svg { flex-shrink:0; }
 
-    /* Basemap toggle */
+    /* Basemap / reference-layer controls */
     #basemap-toggle {
       position:absolute; top:12px; right:12px; z-index:10;
-      display:flex; flex-direction:column; gap:4px;
+      display:flex; flex-direction:column; gap:16px;
+      align-items:flex-end;
+    }
+    .map-control {
+      position:relative;
+      width:64px;
+      height:64px;
+      flex-shrink:0;
+      z-index:11;
     }
     .bm-btn {
       width:64px; height:64px; border-radius:6px; border:2px solid #fff;
       cursor:pointer; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.35);
       position:relative; transition:border-color .15s;
       display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-      padding-bottom:4px;
+      padding-bottom:4px; background:#fff;
     }
     .bm-btn:hover { border-color:#c8a84b; }
-    .bm-btn.active { border-color:#0b2d4c; box-shadow:0 0 0 3px #0b2d4c,0 2px 6px rgba(0,0,0,.35); }
+    .bm-btn.active { border-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+    .map-control.expanded .bm-btn.control-toggle { border-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
     .bm-thumb { position:absolute; inset:0; width:100%; height:100%; display:block; }
     .bm-label {
       position:relative; z-index:1; font-size:9px; font-weight:700; color:#fff;
@@ -146,28 +156,26 @@
       background:rgba(0,0,0,.35); width:100%; padding:2px 3px; margin:0 -3px;
     }
 
-    /* Optional map reference layers */
-    #layer-control {
-      position:relative;
-      width:64px;
-      height:64px;
-      flex-shrink:0;
-      z-index:11;
+    .bm-thumb-wrap {
+      position:absolute; inset:0; width:100%; height:100%; display:block;
     }
-    #layer-control .layers-toggle {
+    .bm-thumb-wrap svg { width:100%; height:100%; display:block; }
+
+
+    .map-control .control-toggle {
       position:absolute;
       inset:0;
     }
-    #layer-control.expanded .layers-toggle {
+    .map-control.expanded .control-toggle {
       visibility:hidden;
       pointer-events:none;
     }
-    #layers-panel {
+    .map-panel {
       display:none;
       position:absolute;
       top:0;
       right:0;
-      width:236px;
+      width:248px;
       background:#fff;
       border:2px solid #0b2d4c;
       border-radius:6px;
@@ -175,8 +183,116 @@
       overflow:hidden;
       color:#000;
     }
-    #layer-control.expanded #layers-panel { display:block; }
-    .layers-panel-head {
+    .map-control.expanded .map-panel { display:block; }
+
+    /* Horizontal basemap picker: expands left from the active Basemap button. */
+    #basemap-control.expanded {
+      width:358px;
+      height:78px;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      padding:4px;
+      border:3px solid #0b2d4c;
+      border-radius:7px;
+      background:rgba(255,255,255,.96);
+      box-shadow:0 2px 8px rgba(0,0,0,.22);
+      z-index:30;
+    }
+    #basemap-control.expanded::before { content:none; }
+    #basemap-control.expanded .control-toggle {
+      position:relative;
+      inset:auto;
+      order:2;
+      width:64px;
+      height:64px;
+      flex:0 0 64px;
+      visibility:visible;
+      pointer-events:auto;
+      z-index:2;
+      border:3px solid #0b2d4c;
+      box-shadow:0 2px 6px rgba(0,0,0,.35);
+    }
+    #basemap-panel.basemap-panel-strip {
+      position:relative;
+      top:auto;
+      right:auto;
+      order:1;
+      width:auto;
+      height:64px;
+      background:transparent;
+      border:0;
+      border-right:2px solid #0b2d4c;
+      border-radius:0;
+      box-shadow:none;
+      overflow:visible;
+      color:#000;
+      align-items:center;
+      gap:8px;
+      padding:0 14px 0 0;
+      margin:0 6px 0 0;
+      display:none;
+      z-index:2;
+    }
+    #basemap-panel.basemap-panel-strip::after { content:none; }
+    #basemap-control.expanded #basemap-panel.basemap-panel-strip { display:flex; }
+    .basemap-collapse-btn {
+      width:34px;
+      height:64px;
+      border-radius:4px;
+      border:0;
+      background:#0b2d4c;
+      color:#fff;
+      cursor:pointer;
+      font:inherit;
+      font-size:24px;
+      line-height:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      flex:0 0 34px;
+      box-shadow:none;
+    }
+    .basemap-collapse-btn:hover { background:#123f68; color:#fff; }
+    #basemap-panel .basemap-option.strip-option {
+      width:64px;
+      height:64px;
+      margin:0;
+      padding:0 0 4px;
+      border:2px solid #fff;
+      border-radius:6px;
+      background:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-end;
+      gap:0;
+      box-shadow:0 2px 6px rgba(0,0,0,.18);
+      overflow:hidden;
+      position:relative;
+      flex:0 0 64px;
+      color:#fff;
+      transition:border-color .15s, background .15s;
+    }
+    #basemap-panel .basemap-option.strip-option:hover { border-color:#c8a84b; background:#fff; }
+    #basemap-panel .basemap-option.strip-option.active {
+      background:#fff;
+      border-color:#fff;
+      color:#fff;
+      box-shadow:0 2px 6px rgba(0,0,0,.18);
+    }
+    #basemap-panel .basemap-option.strip-option.active:hover { border-color:#c8a84b; }
+    #basemap-panel .basemap-option.strip-option .bm-label {
+      position:relative;
+      z-index:1;
+      flex:0 0 auto;
+      width:100%;
+      margin:0 -3px;
+    }
+
+    .map-panel-head {
       height:30px;
       background:#0b2d4c;
       color:#fff;
@@ -191,10 +307,55 @@
       letter-spacing:.03em;
       user-select:none;
     }
-    .layers-panel-head:hover { background:#123f68; }
-    .layers-panel-body {
+    .map-panel-head:hover { background:#123f68; }
+    .map-panel-body {
       padding:8px 10px 9px;
       background:#fff;
+    }
+    .basemap-option {
+      width:100%;
+      height:42px;
+      border:1px solid #d5dbe3;
+      background:#fff;
+      border-radius:4px;
+      margin:0 0 6px;
+      display:flex;
+      align-items:center;
+      gap:9px;
+      cursor:pointer;
+      padding:5px 8px;
+      font:inherit;
+      font-size:12px;
+      color:#000;
+      text-align:left;
+    }
+    .basemap-option:last-child { margin-bottom:0; }
+    .basemap-option:hover { background:#f5f7fa; }
+    .basemap-option.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
+    .basemap-swatch {
+      width:34px;
+      height:26px;
+      border-radius:3px;
+      border:1px solid #cbd5e1;
+      overflow:hidden;
+      flex-shrink:0;
+      position:relative;
+      background:#f3f4f6;
+    }
+    .basemap-swatch svg { width:34px; height:26px; display:block; }
+    .basemap-option-label { flex:1; font-weight:700; }
+    .basemap-option-check {
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      border:1px solid #9ca3af;
+      flex-shrink:0;
+      background:#fff;
+    }
+    .basemap-option.active .basemap-option-check {
+      border-color:#0b2d4c;
+      box-shadow: inset 0 0 0 3px #fff;
+      background:#0b2d4c;
     }
     .layer-check-row {
       display:flex;
@@ -398,6 +559,32 @@
     }
     .selection-tool-btn:hover { background:#deeeff; border-color:#0b2d4c; }
     .selection-tool-btn svg { width:16px; height:16px; display:block; }
+
+    /* ── Object label editor (inside selection toolbar) ─────── */
+    .selection-tool-btn.label-tool { font-size:13px; font-weight:700; line-height:1; }
+    #label-editor-wrap { pointer-events:auto; }
+    .label-input-group { position:relative; display:flex; align-items:center; }
+    #obj-label-input {
+      width:168px; height:28px; padding:0 24px 0 8px;
+      border:1px solid #cbd5e1; border-radius:4px;
+      font:inherit; font-size:12px; color:#000; background:#fff;
+      box-sizing:border-box;
+    }
+    #obj-label-input:focus { border-color:#0b2d4c; outline:2px solid #0b2d4c; outline-offset:0; }
+    #obj-label-input::placeholder { color:#9ca3af; }
+    .label-x-btn {
+      position:absolute; right:3px; top:50%; transform:translateY(-50%);
+      width:20px; height:20px; border:0; background:transparent;
+      color:#9ca3af; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; border-radius:3px; padding:0; pointer-events:auto;
+      line-height:1;
+    }
+    .label-x-btn:hover { color:#374151; background:#f3f4f6; }
+    .selection-tool-btn.label-confirm-btn {
+      background:#16a34a; border-color:#16a34a; color:#fff;
+      font-size:16px; font-weight:700;
+    }
+    .selection-tool-btn.label-confirm-btn:hover { background:#15803d; border-color:#15803d; }
   </style>
 </head>
 <body>
@@ -574,42 +761,59 @@
     <div id="map-wrap">
       <div id="viewDiv"></div>
 
-      <!-- Basemap toggle -->
+      <!-- Basemap and optional layer controls -->
       <div id="basemap-toggle">
-        <button class="bm-btn active" id="bm-osm" onclick="switchBasemap('streets-vector',this)" title="Streets">
-          <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-            <rect width="64" height="64" fill="#e8e0d0"/>
-            <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
-            <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
-            <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
-            <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
-          </svg>
-          <span class="bm-label">Streets</span>
-        </button>
-        <button class="bm-btn" id="bm-topo-vector" onclick="switchBasemap('topo-vector',this)" title="Topo">
-          <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-            <rect width="64" height="64" fill="#f0ebe0"/>
-            <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-            <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-            <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-            <ellipse cx="32" cy="36" rx="4"  ry="2"  fill="#b8a882"/>
-          </svg>
-          <span class="bm-label">Topo</span>
-        </button>
-        <button class="bm-btn" id="bm-satellite" onclick="switchBasemap('satellite',this)" title="Imagery">
-          <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-            <rect width="64" height="64" fill="#2d4a1e"/>
-            <rect x="0"  y="0"  width="32" height="32" fill="#3a5c28" opacity=".8"/>
-            <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
-            <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
-            <rect x="36" y="38" width="12" height="8"  fill="#8ba888" opacity=".6"/>
-            <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
-          </svg>
-          <span class="bm-label">Imagery</span>
-        </button>
+        <div id="basemap-control" class="map-control">
+          <button class="bm-btn control-toggle active" id="bm-basemap" type="button" onclick="toggleBasemapPanel(true)" title="Basemap">
+            <span class="bm-thumb-wrap" id="bm-current-thumb" aria-hidden="true">
+              <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                <rect width="64" height="64" fill="#e8e0d0"/>
+                <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
+                <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
+                <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
+                <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
+              </svg>
+            </span>
+            <span class="bm-label" id="bm-current-label">Basemap</span>
+          </button>
+          <div id="basemap-panel" class="map-panel basemap-panel-strip" onclick="event.stopPropagation();">
+            <button type="button" class="basemap-collapse-btn" onclick="toggleBasemapPanel(false)" title="Collapse basemaps" aria-label="Collapse basemap options">›</button>
+            <button type="button" class="basemap-option strip-option active" id="bm-option-streets" onclick="switchBasemap('streets-vector', this)" title="Streets">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#e8e0d0"/>
+                <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
+                <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
+                <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
+                <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
+              </svg>
+              <span class="bm-label">Streets</span>
+            </button>
+            <button type="button" class="basemap-option strip-option" id="bm-option-topo" onclick="switchBasemap('topo-vector', this)" title="Topo">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#f0ebe0"/>
+                <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+                <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+                <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+                <ellipse cx="32" cy="36" rx="4" ry="2" fill="#b8a882"/>
+              </svg>
+              <span class="bm-label">Topo</span>
+            </button>
+            <button type="button" class="basemap-option strip-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#2d4a1e"/>
+                <rect x="0"  y="0"  width="32" height="32" fill="#3a5c28" opacity=".8"/>
+                <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
+                <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
+                <rect x="36" y="38" width="12" height="8"  fill="#8ba888" opacity=".6"/>
+                <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
+              </svg>
+              <span class="bm-label">Imagery</span>
+            </button>
+          </div>
+        </div>
 
-        <div id="layer-control" class="layer-control">
-          <button class="bm-btn layers-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
+        <div id="layer-control" class="map-control">
+          <button class="bm-btn control-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
             <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
               <rect width="64" height="64" fill="#eef2f6"/>
               <polygon points="32,10 52,21 32,32 12,21" fill="#0b2d4c" opacity=".85"/>
@@ -619,12 +823,12 @@
             </svg>
             <span class="bm-label">Layers</span>
           </button>
-          <div id="layers-panel" onclick="event.stopPropagation();">
-            <div class="layers-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers">
+          <div id="layers-panel" class="map-panel" onclick="event.stopPropagation();">
+            <div class="map-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers">
               <span>Layers</span>
               <span aria-hidden="true">›</span>
             </div>
-            <div class="layers-panel-body">
+            <div class="map-panel-body">
               <label class="layer-check-row" for="contours-toggle" title="Show or hide 10-foot contour lines">
                 <input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" />
                 <span>Contours</span>
@@ -648,13 +852,14 @@
       </div>
 
       <div id="selection-toolbar" aria-label="Selected drawing actions">
-        <button type="button" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
+        <button type="button" id="btn-duplicate-tool" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M8 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/>
             <rect x="8" y="4" width="12" height="12" rx="2"/>
           </svg>
         </button>
-        <button type="button" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
+        <button type="button" id="btn-label-tool" class="selection-tool-btn label-tool" onclick="openLabelEditor()" title="Add or edit label" aria-label="Add or edit label" style="display:none;">T</button>
+        <button type="button" id="btn-delete-tool" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -663,6 +868,13 @@
             <line x1="14" y1="11" x2="14" y2="17"/>
           </svg>
         </button>
+        <div id="label-editor-wrap" style="display:none;align-items:center;gap:4px;pointer-events:auto;">
+          <div class="label-input-group">
+            <input id="obj-label-input" type="text" maxlength="20" placeholder="Label…" aria-label="Object label text" />
+            <button type="button" class="label-x-btn" onclick="clearLabelInput()" title="Clear text" aria-label="Clear label text">✕</button>
+          </div>
+          <button type="button" class="selection-tool-btn label-confirm-btn" onclick="confirmObjectLabel()" title="Set label" aria-label="Set label">✓</button>
+        </div>
       </div>
     </div>
 
@@ -748,7 +960,8 @@
       activePlacementHandle = handle || null;
     }
 
-    const lineLabelMap = new Map();
+    const lineLabelMap   = new Map();
+    const objectLabelMap = new Map();   // sitePlanId → body-label Graphic
 
     // ── Layers ────────────────────────────────────────────────
     const parcelLayer = new FeatureLayer({
@@ -830,24 +1043,89 @@
 
     // Parcel Search is rendered in the application header rather than inside the map UI.
 
+    function basemapThumbSvg(id) {
+      if (id === 'satellite') {
+        return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="64" height="64" fill="#2d4a1e"/>
+          <rect x="0" y="0" width="32" height="32" fill="#3a5c28" opacity=".8"/>
+          <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
+          <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
+          <rect x="36" y="38" width="12" height="8" fill="#8ba888" opacity=".6"/>
+          <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
+        </svg>`;
+      }
+      if (id === 'topo-vector') {
+        return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="64" height="64" fill="#f0ebe0"/>
+          <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+          <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+          <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+          <ellipse cx="32" cy="36" rx="4" ry="2" fill="#b8a882"/>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="64" height="64" fill="#e8e0d0"/>
+        <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
+        <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
+        <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
+        <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
+      </svg>`;
+    }
+
+    function updateBasemapUI() {
+      const optionMap = {
+        'streets-vector': 'bm-option-streets',
+        'topo-vector': 'bm-option-topo',
+        'satellite': 'bm-option-imagery'
+      };
+      document.querySelectorAll('.basemap-option').forEach(btn => btn.classList.remove('active'));
+      const activeOption = document.getElementById(optionMap[activeBasemapId] || 'bm-option-streets');
+      if (activeOption) activeOption.classList.add('active');
+
+      const mainToggle = document.getElementById('bm-basemap');
+      if (mainToggle) mainToggle.classList.remove('active');
+
+      const currentLabel = document.getElementById('bm-current-label');
+      if (currentLabel) currentLabel.textContent = 'Basemap';
+
+      const currentThumb = document.getElementById('bm-current-thumb');
+      if (currentThumb) currentThumb.innerHTML = basemapThumbSvg(activeBasemapId);
+    }
+
     window.switchBasemap = function (id, btn) {
       try {
-      activeBasemapId = id;
-      map.basemap = id;
-      document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      setStatus('Basemap: ' + btn.title, true);
-    } catch (err) {
-      console.error(err);
-      setStatus('Unable to switch basemap.', false);
-    }
-  };
+        activeBasemapId = id;
+        map.basemap = id;
+        updateBasemapUI();
+        const label = btn && btn.title ? btn.title :
+          (id === 'satellite' ? 'Imagery' : id === 'topo-vector' ? 'Topo' : 'Streets');
+        setStatus('Basemap: ' + label, true);
+      } catch (err) {
+        console.error(err);
+        setStatus('Unable to switch basemap.', false);
+      }
+    };
+
+    window.toggleBasemapPanel = function (force) {
+      const control = document.getElementById('basemap-control');
+      if (!control) return;
+      const open = typeof force === 'boolean' ? force : !control.classList.contains('expanded');
+      control.classList.toggle('expanded', open);
+      if (open) {
+        const layerControl = document.getElementById('layer-control');
+        if (layerControl) layerControl.classList.remove('expanded');
+      }
+    };
 
     window.toggleLayerPanel = function (force) {
       const control = document.getElementById('layer-control');
       if (!control) return;
       const open = typeof force === 'boolean' ? force : !control.classList.contains('expanded');
       control.classList.toggle('expanded', open);
+      if (open) {
+        const basemapControl = document.getElementById('basemap-control');
+        if (basemapControl) basemapControl.classList.remove('expanded');
+      }
     };
 
     window.toggleMapLayer = function (layerName, visible) {
@@ -1062,10 +1340,23 @@
       if (!bar || !isSelectableDrawGraphic(normalized)) return;
       selectedToolbarGraphic = normalized;
       bar.classList.add('visible');
+      updateLabelToolVisibility();
       requestAnimationFrame(positionSelectionToolbar);
     }
 
     function hideSelectionToolbar() {
+      // If the label editor is open, reset it to normal state without saving.
+      if (labelEditorActive) {
+        labelEditorActive = false;
+        const wrap = document.getElementById('label-editor-wrap');
+        if (wrap) wrap.style.display = 'none';
+        const dup = document.getElementById('btn-duplicate-tool');
+        const del = document.getElementById('btn-delete-tool');
+        if (dup) dup.style.display = '';
+        if (del) del.style.display = '';
+        const lblBtn = document.getElementById('btn-label-tool');
+        if (lblBtn) lblBtn.style.display = 'none';
+      }
       const bar = toolbarElement();
       if (bar) bar.classList.remove('visible');
       selectedToolbarGraphic = null;
@@ -1108,6 +1399,16 @@
           evt.preventDefault();
           evt.stopPropagation();
         });
+      });
+    }
+
+    // Label editor: Enter confirms, Escape cancels.
+    const objLabelInput = document.getElementById('obj-label-input');
+    if (objLabelInput) {
+      objLabelInput.addEventListener('keydown', function (e) {
+        e.stopPropagation(); // never let sketch or map intercept keystrokes in the input
+        if (e.key === 'Enter') { e.preventDefault(); window.confirmObjectLabel(); }
+        if (e.key === 'Escape') { e.preventDefault(); closeLabelEditor(); }
       });
     }
 
@@ -2072,6 +2373,153 @@
         polyEdgeLabelMap.delete(id);
       }
     }
+
+    // ── Object body-label system ──────────────────────────────
+    // Selected polygon types can receive a user-defined text label centred on
+    // their geometry. The label is keyed by __sitePlanId so it moves when the
+    // polygon is moved or reshaped (on commit), and is removed when the polygon
+    // is deleted or all drawings are cleared.
+
+    function isLabelEligible(graphic) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return false;
+      return !!(
+        graphic.__structureType === 'proposed' ||
+        graphic.__structureType === 'existing' ||
+        graphic.__isEasement ||
+        graphic.__isGrading ||
+        graphic.__isDrawTool   // free-draw polygon and rectangle (both placed and freehand)
+      );
+    }
+
+    function getPolygonLabelPoint(graphic) {
+      if (!graphic || !graphic.geometry) return null;
+      try {
+        const c = graphic.geometry.centroid;
+        if (c && isFinite(c.x) && isFinite(c.y)) return c;
+      } catch (e) {}
+      const ext = graphic.geometry.extent;
+      return (ext && isFinite(ext.xmin)) ? ext.center : null;
+    }
+
+    function objectLabelSym(text) {
+      return {
+        type: 'text',
+        text: text,
+        color: [0, 0, 0, 1],
+        haloColor: [255, 255, 255, 1],
+        haloSize: 1.5,
+        font: { size: 8, weight: 'bold', family: 'Calibri, Segoe UI, Arial, sans-serif' },
+        horizontalAlignment: 'center',
+        verticalAlignment: 'middle'
+      };
+    }
+
+    function formatObjectLabelText(raw) {
+      // Break after the first word so short two-word labels stack vertically
+      // (e.g. "PROPOSED ADU" → "PROPOSED\nADU"). Single words are left as-is.
+      const trimmed = raw.trim();
+      const spaceIdx = trimmed.indexOf(' ');
+      if (spaceIdx === -1) return trimmed;
+      return trimmed.slice(0, spaceIdx) + '\n' + trimmed.slice(spaceIdx + 1);
+    }
+
+    function setObjectLabel(graphic, text) {
+      if (!graphic || !isLabelEligible(graphic)) return;
+      const id = ensureSitePlanId(graphic, 'poly');
+      const pt = getPolygonLabelPoint(graphic);
+      if (!pt) return;
+      let lbl = objectLabelMap.get(id);
+      const formatted = text && text.trim() ? formatObjectLabelText(text) : '';
+      if (formatted) {
+        if (lbl) {
+          lbl.geometry = pt;
+          lbl.symbol = objectLabelSym(formatted);
+        } else {
+          lbl = new Graphic({ geometry: pt, symbol: objectLabelSym(formatted) });
+          lbl.__objectLabelOf = id;
+          labelLayer.add(lbl);
+          objectLabelMap.set(id, lbl);
+        }
+      } else {
+        if (lbl) { labelLayer.remove(lbl); objectLabelMap.delete(id); }
+      }
+    }
+
+    function removeObjectLabel(graphic) {
+      if (!graphic || !graphic.__sitePlanId) return;
+      const lbl = objectLabelMap.get(graphic.__sitePlanId);
+      if (lbl) { labelLayer.remove(lbl); objectLabelMap.delete(graphic.__sitePlanId); }
+    }
+
+    function syncObjectLabelPosition(graphic) {
+      if (!graphic || !graphic.__sitePlanId) return;
+      const lbl = objectLabelMap.get(graphic.__sitePlanId);
+      if (!lbl) return;
+      const pt = getPolygonLabelPoint(graphic);
+      if (pt) lbl.geometry = pt;
+    }
+
+    function getCurrentObjectLabelText(graphic) {
+      if (!graphic || !graphic.__sitePlanId) return '';
+      const lbl = objectLabelMap.get(graphic.__sitePlanId);
+      return (lbl && lbl.symbol && lbl.symbol.text) ? lbl.symbol.text : '';
+    }
+
+    // ── Label editor toolbar state ────────────────────────────
+    let labelEditorActive = false;
+
+    function updateLabelToolVisibility() {
+      const btn = document.getElementById('btn-label-tool');
+      if (!btn) return;
+      btn.style.display = isLabelEligible(selectedToolbarGraphic) ? '' : 'none';
+    }
+
+    function closeLabelEditor() {
+      labelEditorActive = false;
+      const wrap = document.getElementById('label-editor-wrap');
+      if (wrap) wrap.style.display = 'none';
+      const dup = document.getElementById('btn-duplicate-tool');
+      const del = document.getElementById('btn-delete-tool');
+      if (dup) dup.style.display = '';
+      if (del) del.style.display = '';
+      updateLabelToolVisibility();
+      positionSelectionToolbar();
+    }
+
+    window.openLabelEditor = function () {
+      const graphic = selectedToolbarGraphic;
+      if (!graphic || !isLabelEligible(graphic)) return;
+      labelEditorActive = true;
+      // Hide normal buttons, show editor face
+      const dup = document.getElementById('btn-duplicate-tool');
+      const lbl = document.getElementById('btn-label-tool');
+      const del = document.getElementById('btn-delete-tool');
+      const wrap = document.getElementById('label-editor-wrap');
+      if (dup) dup.style.display = 'none';
+      if (lbl) lbl.style.display = 'none';
+      if (del) del.style.display = 'none';
+      if (wrap) wrap.style.display = 'flex';
+      const input = document.getElementById('obj-label-input');
+      if (input) {
+        input.value = getCurrentObjectLabelText(graphic);
+        setTimeout(() => { input.focus(); input.select(); }, 0);
+      }
+      positionSelectionToolbar();
+    };
+
+    window.clearLabelInput = function () {
+      const input = document.getElementById('obj-label-input');
+      if (input) { input.value = ''; input.focus(); }
+    };
+
+    window.confirmObjectLabel = function () {
+      const graphic = selectedToolbarGraphic;
+      const input = document.getElementById('obj-label-input');
+      const text = (input ? input.value : '').trim();
+      if (graphic) setObjectLabel(graphic, text);
+      closeLabelEditor();
+      setStatus(text ? 'Label set.' : 'Label removed.');
+    };
 
 
     // ── Live drawing measurement preview ─────────────────────
@@ -4127,6 +4575,7 @@
       if (g.geometry.type==='polygon') {
         enforceMinimumRect(g, g.__label || (g.__structureType === 'existing' ? 'Existing structure' : g.__structureType === 'proposed' ? 'Proposed structure' : 'Shape'));
         syncPolygonEdgeLabels(g);
+        syncObjectLabelPosition(g);
         if (shouldShowSelectedShapeOnly(g)) {
           showSelectedShapeOnly(g.__label || 'Shape');
         } else if (shouldSkipShapeMeasurement(g)) {
@@ -4173,6 +4622,7 @@
         removeLineHitTarget(g);
         removeLineLabel(g);
         removePolygonEdgeLabels(g);
+        removeObjectLabel(g);
         removeSepticLids(g);
         if (g.__wellId) {
           const wid=g.__wellId;
@@ -4434,6 +4884,7 @@
       removeLineHitTarget(g);
       removeLineLabel(g);
       removePolygonEdgeLabels(g);
+      removeObjectLabel(g);
       removeSepticLids(g);
 
       if (g.__wellId) {
@@ -4477,6 +4928,7 @@
       drawLayer.removeAll(); wellLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
+      objectLabelMap.clear();
       document.getElementById('measure-box').style.display='none';
       setStatus('All items cleared.');
     }
@@ -5205,20 +5657,8 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
   });
   searchInputObserver.observe(document.body, { childList: true, subtree: true });
 
-  // Sync active basemap button to config
-  const basemapBtnMap = {
-    'streets-vector': 'bm-osm',
-    'topo-vector': 'bm-topo-vector',
-    'satellite': 'bm-satellite'
-  };
-
-  const initBtnId = basemapBtnMap[activeBasemapId] || basemapBtnMap[cfg.map.basemap] || 'bm-osm';
-  const initBtn = document.getElementById(initBtnId);
-
-  if (initBtn) {
-    document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
-    initBtn.classList.add('active');
-  }
+  // Sync active basemap option to config
+  updateBasemapUI();
 
   if (!geoParam) {
     document.getElementById('loading').classList.add('hidden');
