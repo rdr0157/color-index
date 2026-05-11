@@ -216,7 +216,7 @@
       flex:0 0 64px;
       visibility:visible;
       pointer-events:auto;
-      z-index:2;
+      z-index:20;
       border:3px solid #0b2d4c;
       box-shadow:0 2px 6px rgba(0,0,0,.35);
     }
@@ -239,7 +239,7 @@
       padding:0 14px 0 0;
       margin:0 6px 0 0;
       display:none;
-      z-index:2;
+      z-index:80;
     }
     #basemap-panel.basemap-panel-strip::after { content:none; }
     #basemap-control.expanded #basemap-panel.basemap-panel-strip { display:flex; }
@@ -296,6 +296,36 @@
       flex:0 0 auto;
       width:100%;
       margin:0 -3px;
+    }
+    #basemap-panel .basemap-option.strip-option.imagery-option {
+      overflow:visible;
+      z-index:90;
+    }
+    #basemap-panel .basemap-option.strip-option.imagery-option .imagery-print-note {
+      display:none;
+      position:absolute;
+      left:calc(100% + 5px);
+      top:5px;
+      width:max-content;
+      min-width:0;
+      max-width:none;
+      padding:6px 8px;
+      border-radius:4px;
+      background:#111;
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      line-height:1.1;
+      text-align:left;
+      box-shadow:0 2px 8px rgba(0,0,0,.35);
+      pointer-events:none;
+      white-space:nowrap;
+      z-index:100000;
+    }
+    #basemap-panel .basemap-option.strip-option.imagery-option:hover .imagery-print-note,
+    #basemap-panel .basemap-option.strip-option.imagery-option:focus .imagery-print-note,
+    #basemap-panel .basemap-option.strip-option.imagery-option:focus-visible .imagery-print-note {
+      display:block;
     }
 
     .map-panel-head {
@@ -817,7 +847,7 @@
               </svg>
               <span class="bm-label">Gray Canvas</span>
             </button>
-            <button type="button" class="basemap-option strip-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
+            <button type="button" class="basemap-option strip-option imagery-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
               <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect width="64" height="64" fill="#2d4a1e"/>
                 <rect x="0"  y="0"  width="32" height="32" fill="#3a5c28" opacity=".8"/>
@@ -827,6 +857,7 @@
                 <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
               </svg>
               <span class="bm-label">Imagery</span>
+              <span class="imagery-print-note" role="note">Prints as Gray Canvas</span>
             </button>
           </div>
         </div>
@@ -848,6 +879,26 @@
               <span aria-hidden="true">›</span>
             </div>
             <div class="map-panel-body">
+              <label class="layer-check-row" for="liquefaction-toggle" title="Show or hide liquefaction susceptibility areas">
+                <input type="checkbox" id="liquefaction-toggle" onchange="toggleMapLayer('liquefaction', this.checked)" />
+                <span>Liquefaction Susceptibility</span>
+              </label>
+              <label class="layer-check-row" for="riparian-toggle" title="Show or hide minimum riparian buffers">
+                <input type="checkbox" id="riparian-toggle" onchange="toggleMapLayer('riparian', this.checked)" />
+                <span>Riparian Buffer</span>
+              </label>
+              <label class="layer-check-row" for="wetlands-toggle" title="Show or hide wetlands">
+                <input type="checkbox" id="wetlands-toggle" onchange="toggleMapLayer('wetlands', this.checked)" />
+                <span>Wetlands</span>
+              </label>
+              <label class="layer-check-row" for="cara-toggle" title="Show or hide Critical Aquifer Recharge Areas">
+                <input type="checkbox" id="cara-toggle" onchange="toggleMapLayer('cara', this.checked)" />
+                <span>Critical Aquifer Recharge Area (CARA)</span>
+              </label>
+              <label class="layer-check-row" for="flood-toggle" title="Show or hide FEMA flood hazard areas">
+                <input type="checkbox" id="flood-toggle" onchange="toggleMapLayer('flood', this.checked)" />
+                <span>Flood Hazard Areas</span>
+              </label>
               <label class="layer-check-row" for="contours-toggle" title="Show or hide 10-foot contour lines">
                 <input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" />
                 <span>Contours</span>
@@ -1003,6 +1054,159 @@
       }
     });
 
+    const liquefactionLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Liquefaction_Susceptibility/FeatureServer/0',
+      title:'Liquefaction Susceptibility',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      opacity:1,
+      // Only show the categories that are relevant for site plan screening.
+      // The full service includes low, very low, water, and bedrock classifications,
+      // which would otherwise fill most of the county and obscure the site plan.
+      definitionExpression:"LIQUEFAC_1 IN ('Moderate to High', 'High')",
+      renderer:{
+        type:'simple',
+        symbol:{
+          type:'simple-fill',
+          style:'backward-diagonal',
+          color:[214,83,32,0.55],
+          outline:{ type:'simple-line', color:[174,63,25,0.9], width:0.9 }
+        }
+      }
+    });
+
+    const riparianWaterBodyLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Minimum_Watercourse_and_Water_Body_Riparian_Buffers/FeatureServer/0',
+      title:'Riparian Buffer — Water Bodies',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      opacity:1,
+      renderer:{
+        type:'simple',
+        symbol:{
+          type:'simple-fill',
+          color:[37,150,190,0.16],
+          outline:{ type:'simple-line', color:[0,95,130,0.85], width:0.8 }
+        }
+      }
+    });
+
+    const riparianWatercourseLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Minimum_Watercourse_and_Water_Body_Riparian_Buffers/FeatureServer/1',
+      title:'Riparian Buffer — Watercourses',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      opacity:1,
+      renderer:{
+        type:'simple',
+        symbol:{
+          type:'simple-fill',
+          color:[37,150,190,0.16],
+          outline:{ type:'simple-line', color:[0,95,130,0.85], width:0.8 }
+        }
+      }
+    });
+
+    const wetlandsLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Wetlands/FeatureServer/0',
+      title:'Wetlands',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      opacity:1,
+      renderer:{
+        type:'simple',
+        symbol:{
+          type:'simple-fill',
+          color:[36,166,108,0.18],
+          outline:{ type:'simple-line', color:[0,111,68,0.9], width:0.9 }
+        }
+      }
+    });
+
+    const caraLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Aquifer_Vulnerability/FeatureServer/0',
+      title:'Critical Aquifer Recharge Area (CARA)',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      opacity:1,
+      renderer:{
+        type:'unique-value',
+        field:'aqvul_zone',
+        defaultSymbol:{
+          type:'simple-fill',
+          style:'none',
+          outline:{ type:'simple-line', color:[120,120,120,0.45], width:0.6 }
+        },
+        defaultLabel:'CARA',
+        uniqueValueInfos:[
+          {
+            value:'Zone I',
+            label:'CARA High Recharge Vulnerability',
+            symbol:{
+              type:'simple-fill',
+              style:'backward-diagonal',
+              color:[255,0,0,0.62],
+              outline:{ type:'simple-line', color:[230,0,0,0.9], width:0.8 }
+            }
+          },
+          {
+            value:'Zone II',
+            label:'CARA Moderate Recharge Vulnerability',
+            symbol:{
+              type:'simple-fill',
+              style:'backward-diagonal',
+              color:[255,170,0,0.62],
+              outline:{ type:'simple-line', color:[255,170,0,0.9], width:0.8 }
+            }
+          }
+        ]
+      }
+    });
+
+    const floodLayer = new FeatureLayer({
+      url:'https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/FEMA/FeatureServer/0',
+      title:'Flood Hazard Areas',
+      visible:false,
+      popupEnabled:false,
+      listMode:'hide',
+      opacity:1,
+      // Keep the site plan overlay limited to the main FEMA flood hazard zones.
+      // The full service includes broader categories such as X500/ANI that can visually fill
+      // large parts of the map and obscure the parcel and site plan drawing layers.
+      definitionExpression:"zone IN ('A', 'AE', 'AO')",
+      renderer:{
+        type:'simple',
+        symbol:{
+          type:'simple-fill',
+          color:[0,105,180,0.16],
+          outline:{ type:'simple-line', color:[0,75,150,0.9], width:0.9 }
+        }
+      }
+    });
+
+    const referenceLayerGroups = {
+      contours: [contourLayer],
+      liquefaction: [liquefactionLayer],
+      riparian: [riparianWaterBodyLayer, riparianWatercourseLayer],
+      wetlands: [wetlandsLayer],
+      cara: [caraLayer],
+      flood: [floodLayer]
+    };
+
+    const referenceLayerLabels = {
+      contours: 'Contours',
+      liquefaction: 'Liquefaction Susceptibility',
+      riparian: 'Riparian Buffer',
+      wetlands: 'Wetlands',
+      cara: 'Critical Aquifer Recharge Area (CARA)',
+      flood: 'Flood Hazard Areas'
+    };
+
     const wellLayer      = new GraphicsLayer({ title:'Well Buffers',    listMode:'hide' });
     const drawLayer      = new GraphicsLayer({ title:'Drawings' });
     const labelLayer     = new GraphicsLayer({ title:'Labels',         listMode:'hide' });
@@ -1013,9 +1217,23 @@
 
     const map = new EsriMap({
       basemap: activeBasemapId,
-      // Contours are optional reference layers. They remain below parcel lines
-      // and drawings so site-plan graphics stay visually dominant.
-      layers: [contourLayer, parcelLayer, highlightLayer, wellLayer, drawLayer, labelLayer, previewLayer]
+      // Optional reference layers remain below parcel lines and drawings so
+      // site-plan graphics stay visually dominant when a user turns overlays on.
+      layers: [
+        floodLayer,
+        liquefactionLayer,
+        caraLayer,
+        wetlandsLayer,
+        riparianWaterBodyLayer,
+        riparianWatercourseLayer,
+        contourLayer,
+        parcelLayer,
+        highlightLayer,
+        wellLayer,
+        drawLayer,
+        labelLayer,
+        previewLayer
+      ]
     });
 
     const view = new MapView({
@@ -1160,10 +1378,12 @@
     };
 
     window.toggleMapLayer = function (layerName, visible) {
-      if (layerName === 'contours') {
-        contourLayer.visible = !!visible;
-        setStatus(visible ? 'Contours layer on.' : 'Contours layer off.', true);
-      }
+      const group = referenceLayerGroups[layerName];
+      if (!group) return;
+      const isVisible = !!visible;
+      group.forEach(layer => { layer.visible = isVisible; });
+      const label = referenceLayerLabels[layerName] || 'Layer';
+      setStatus(label + (isVisible ? ' layer on.' : ' layer off.'), true);
     };
 
     const sketch = new Sketch({
@@ -5017,9 +5237,10 @@
       const prePrintPadding = view.padding ? Object.assign({}, view.padding) : null;
       view.padding = { top: 0, right: 0, bottom: 0, left: 0 };
       // Only swap basemaps during print when the user is viewing imagery.
-      // Streets and Topo print as selected. Optional layers, including contours,
+      // Imagery is available for on-screen reference, but it prints as Gray Canvas.
+      // Streets, Topo, and Gray Canvas print as selected. Optional layers, including contours,
       // print according to their current visibility.
-      if (activeBasemapId === 'satellite') map.basemap = 'topo-vector';
+      if (activeBasemapId === 'satellite') map.basemap = 'gray-vector';
 
       function escHtml(value) {
         return String(value == null ? '' : value)
