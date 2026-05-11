@@ -2,7 +2,7 @@ var SitePlanConfig = {
   map: {
     center: [-118.26, 46.14],
     extent: { xmin: -118.64, ymin: 45.82, xmax: -117.88, ymax: 46.47 },
-    basemap: "streets-vector"
+    basemap: "gray-vector"
   },
 
   layers: {
