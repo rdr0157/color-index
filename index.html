@@ -441,9 +441,41 @@
     }
 
     .size-row { display:flex; align-items:center; gap:4px; padding:3px 0 1px; }
+    .size-row input[type="checkbox"] { margin:0; width:13px; height:13px; flex:0 0 13px; }
     .dim-input { width:44px; padding:4px; border:1px solid #d5dbe3; border-radius:4px; font:inherit; font-size:11px; text-align:center; }
     .dim-sep   { font-size:12px; color:#000; }
     .size-lbl  { font-size:12px; color:#000; flex:1; cursor:pointer; }
+    .drainfield-lateral-row {
+      display:flex;
+      align-items:center;
+      gap:4px;
+      padding-top:1px;
+    }
+    .drainfield-lateral-row .lateral-checkbox-spacer {
+      width:13px;
+      flex:0 0 13px;
+    }
+    .drainfield-lateral-row .lateral-label {
+      flex:1;
+      min-width:0;
+      line-height:1.15;
+      cursor:default;
+    }
+    .drainfield-lateral-row .lateral-placeholder-input {
+      width:44px;
+      flex:0 0 44px;
+      visibility:hidden;
+      pointer-events:none;
+    }
+    .drainfield-lateral-row .lateral-placeholder-sep,
+    .drainfield-lateral-row .lateral-placeholder-ft {
+      visibility:hidden;
+      pointer-events:none;
+    }
+    .drainfield-lateral-row .lateral-input {
+      width:44px;
+      flex:0 0 44px;
+    }
 
     .toggle-row {
       display:flex; align-items:center; justify-content:flex-start; gap:6px;
@@ -597,6 +629,54 @@
     .selection-tool-btn:hover { background:#deeeff; border-color:#0b2d4c; }
     .selection-tool-btn svg { width:16px; height:16px; display:block; }
 
+    .df-lateral-tool-wrap {
+      position:relative;
+      display:none;
+      pointer-events:auto;
+    }
+    .selection-tool-btn.df-lateral-menu-btn {
+      width:auto;
+      min-width:36px;
+      padding:0 6px;
+      gap:1px;
+      font-size:14px;
+      font-weight:700;
+      letter-spacing:-0.01em;
+    }
+    .df-lateral-count { min-width:8px; text-align:center; line-height:1; }
+    .df-lateral-caret { font-size:9px; line-height:1; margin-left:0; }
+    .df-lateral-menu {
+      position:absolute;
+      top:32px;
+      left:0;
+      z-index:80;
+      display:none;
+      flex-direction:column;
+      width:38px;
+      background:#fff;
+      border:1px solid #9ca3af;
+      border-radius:5px;
+      box-shadow:0 3px 9px rgba(0,0,0,.22);
+      overflow:hidden;
+      pointer-events:auto;
+    }
+    .df-lateral-tool-wrap.open .df-lateral-menu { display:flex; }
+    .df-lateral-option {
+      height:24px;
+      border:0;
+      border-bottom:1px solid #eef1f4;
+      background:#fff;
+      color:#000;
+      font:inherit;
+      font-size:12px;
+      cursor:pointer;
+      padding:0;
+      text-align:center;
+    }
+    .df-lateral-option:last-child { border-bottom:0; }
+    .df-lateral-option:hover,
+    .df-lateral-option.active { background:#deeeff; color:#0b2d4c; font-weight:700; }
+
     /* ── Object label editor (inside selection toolbar) ─────── */
     .selection-tool-btn.label-tool { font-size:13px; font-weight:700; line-height:1; }
     #label-editor-wrap { pointer-events:auto; }
@@ -728,6 +808,16 @@
           <span class="dim-sep">ft</span>
         </div>
 
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-dbox" onclick="startDboxTool()" style="margin-top:7px;"><span class="tool-icon icon-dbox"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="6" y="3" width="16" height="12" rx="0.8" fill="#66bb6a" stroke="#2e7d32" stroke-width="1.5"/><rect x="10" y="6" width="8" height="6" rx="0.5" fill="#2e7d32" opacity="0.8"/></svg></span><span class="tool-label">Distribution box (D-box)</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-dbox" checked title="Distribution box (D-box) uses the fixed dimensions entered here" />
+          <label for="chk-dbox" class="size-lbl">Fixed size</label>
+          <input id="dbox-l" type="number" min="0.5" step="0.5" value="3" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="dbox-w" type="number" min="0.5" step="0.5" value="3" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
         <button class="tool-btn draw-tool-btn icon-btn" id="btn-drainfield" onclick="startDrainfieldTool(false)" style="margin-top:7px;"><span class="tool-icon icon-drainfield"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4"/></svg></span><span class="tool-label">Drainfield</span></button>
         <div class="size-row">
           <input type="checkbox" id="chk-drainfield" />
@@ -736,6 +826,14 @@
           <span class="dim-sep">×</span>
           <input id="df-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
           <span class="dim-sep">ft</span>
+        </div>
+        <div class="size-row drainfield-lateral-row">
+          <span class="lateral-checkbox-spacer" aria-hidden="true"></span>
+          <label for="df-laterals" class="size-lbl lateral-label">Number of Laterals (Pipes)</label>
+          <span class="lateral-placeholder-input" aria-hidden="true"></span>
+          <span class="dim-sep lateral-placeholder-sep" aria-hidden="true">×</span>
+          <input id="df-laterals" type="number" min="2" max="9" step="1" value="3" class="dim-input lateral-input" />
+          <span class="dim-sep lateral-placeholder-ft" aria-hidden="true">ft</span>
         </div>
 
         <button class="tool-btn draw-tool-btn icon-btn" id="btn-reserve" onclick="startDrainfieldTool(true)" style="margin-top:7px;"><span class="tool-icon icon-reserve"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8" stroke-dasharray="4 2"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Reserve drainfield</span></button>
@@ -746,6 +844,14 @@
           <span class="dim-sep">×</span>
           <input id="rv-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
           <span class="dim-sep">ft</span>
+        </div>
+        <div class="size-row drainfield-lateral-row">
+          <span class="lateral-checkbox-spacer" aria-hidden="true"></span>
+          <label for="rv-laterals" class="size-lbl lateral-label">Number of Laterals (Pipes)</label>
+          <span class="lateral-placeholder-input" aria-hidden="true"></span>
+          <span class="dim-sep lateral-placeholder-sep" aria-hidden="true">×</span>
+          <input id="rv-laterals" type="number" min="2" max="9" step="1" value="3" class="dim-input lateral-input" />
+          <span class="dim-sep lateral-placeholder-ft" aria-hidden="true">ft</span>
         </div>
 
         <button class="tool-btn draw-tool-btn icon-btn" id="btn-septicline" onclick="startSepticLineTool()" style="margin-top:7px;"><span class="tool-icon icon-septicline"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#006e2d" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="tool-label">Septic line</span></button>
@@ -928,6 +1034,22 @@
             <rect x="8" y="4" width="12" height="12" rx="2"/>
           </svg>
         </button>
+        <div id="df-lateral-tool-wrap" class="df-lateral-tool-wrap" style="display:none;">
+          <button type="button" id="df-lateral-menu-btn" class="selection-tool-btn df-lateral-menu-btn" onclick="toggleDrainfieldLateralMenu(event)" title="Change number of drainfield laterals" aria-label="Change number of drainfield laterals" aria-haspopup="listbox" aria-expanded="false">
+            <span id="df-lateral-menu-count" class="df-lateral-count">3</span>
+            <span class="df-lateral-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="df-lateral-menu" class="df-lateral-menu" role="listbox" aria-label="Drainfield lateral count">
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(2)">2</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(3)">3</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(4)">4</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(5)">5</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(6)">6</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(7)">7</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(8)">8</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(9)">9</button>
+          </div>
+        </div>
         <button type="button" id="btn-label-tool" class="selection-tool-btn label-tool" onclick="openLabelEditor()" title="Add or edit label" aria-label="Add or edit label" style="display:none;">T</button>
         <button type="button" id="btn-delete-tool" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1016,6 +1138,8 @@
     let activeSetbackEditId    = null;
     let activeSetbackPerpGuide = null;
     let activeSetbackPerpGuideId = null;
+    let activeSepticLinePreview = null;
+    let activeSepticLineEditId = null;
     let activePlacementHandle  = null;
 
     function clearActivePlacementHandle() {
@@ -1032,6 +1156,9 @@
 
     const lineLabelMap   = new Map();
     const objectLabelMap = new Map();   // sitePlanId → body-label Graphic
+    const dboxInnerMap   = new Map();   // __dboxId → inner-box Graphic
+    const drainfieldChildDboxMap = new Map(); // drainfield __dfId → child D-box outer Graphic
+    let activeDboxSnapPreview = null;
 
     // ── Layers ────────────────────────────────────────────────
     const parcelLayer = new FeatureLayer({
@@ -1477,6 +1604,41 @@
       return true;
     }
 
+    function septicMoveRotateUpdateOptions() {
+      return {
+        tool:'transform',
+        enableRotation:true,
+        enableScaling:false,
+        preserveAspectRatio:true,
+        toggleToolOnClick:false
+      };
+    }
+
+    function openSepticMoveRotateEdit(graphic, statusText) {
+      if (!isSepticGraphic(graphic) || graphic.__openingSepticMoveRotateEdit) return false;
+      graphic.__openingSepticMoveRotateEdit = true;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before septic move/rotate edit.', err);
+      }
+
+      setTimeout(() => {
+        try {
+          sketch.update([graphic], septicMoveRotateUpdateOptions());
+          showSelectionToolbar(graphic);
+          updateDrainfieldLateralTool();
+          hideMeasure();
+          setStatus(statusText || 'Septic tank selected. Move or rotate only. Use the fixed-size fields to place a different tank size.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to select the septic tank for move/rotate.', false);
+        }
+        setTimeout(() => { graphic.__openingSepticMoveRotateEdit = false; }, 750);
+      }, 0);
+      return true;
+    }
+
     function openVertexEdit(graphic) {
       if (!graphic || graphic.__openingVertexEdit) return false;
       graphic.__openingVertexEdit = true;
@@ -1504,7 +1666,9 @@
       updateEditModeButtons();
 
       const g = getCurrentUpdateGraphic();
-      if (isEditModeControlledGraphic(g)) {
+      if (isSepticGraphic(g)) {
+        openSepticMoveRotateEdit(g);
+      } else if (isEditModeControlledGraphic(g)) {
         if (selectedEditMode === 'reshape') openVertexEdit(g);
         else openTransformEdit(g);
       } else {
@@ -1524,9 +1688,177 @@
       return document.getElementById('selection-toolbar');
     }
 
+    function drainfieldLateralToolElement() {
+      return document.getElementById('df-lateral-tool-wrap');
+    }
+
+    function isDrainfieldGraphic(graphic) {
+      return !!(graphic && graphic.__isDrainfield && graphic.__dfId && graphic.geometry && graphic.geometry.type === 'polygon');
+    }
+
+    function isDrainfieldSupportGraphic(graphic) {
+      return !!(graphic && graphic.__dfId && graphic.__dfRole && !graphic.__isDrainfield);
+    }
+
+    function drainfieldParentForGraphic(graphic) {
+      if (!graphic || !graphic.__dfId) return null;
+      if (isDrainfieldGraphic(graphic)) return graphic;
+      return drawLayer.graphics.find(g => isDrainfieldGraphic(g) && g.__dfId === graphic.__dfId) || null;
+    }
+
+    function selectDrainfieldParentFromSupport(supportGraphic) {
+      const parent = drainfieldParentForGraphic(supportGraphic);
+      if (!parent) return false;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before drainfield parent selection.', err);
+      }
+      setTimeout(() => {
+        try {
+          sketch.update([parent], {
+            tool:'transform',
+            enableRotation:true,
+            enableScaling:true,
+            preserveAspectRatio:false,
+            toggleToolOnClick:false
+          });
+          showSelectionToolbar(parent);
+          updateDrainfieldLateralTool();
+          hideMeasure();
+          setStatus((parent.__isDrainfield === 'reserve' ? 'Reserve drainfield' : 'Drainfield') + ' selected. Move, resize, rotate, or adjust laterals.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to select the drainfield from the lateral line.', false);
+        }
+      }, 0);
+      return true;
+    }
+
+    function isSepticGraphic(graphic) {
+      return !!(graphic && graphic.__isSepticTank && graphic.__septicId && graphic.geometry && graphic.geometry.type === 'polygon');
+    }
+
+    function isSepticSupportGraphic(graphic) {
+      return !!(graphic && graphic.__septicId && graphic.__septicRole && !graphic.__isSepticTank);
+    }
+
+    function septicParentForGraphic(graphic) {
+      if (!graphic || !graphic.__septicId) return null;
+      if (isSepticGraphic(graphic)) return graphic;
+      return drawLayer.graphics.find(g => isSepticGraphic(g) && g.__septicId === graphic.__septicId) || null;
+    }
+
+    function selectSepticParentFromSupport(supportGraphic) {
+      const parent = septicParentForGraphic(supportGraphic);
+      if (!parent) return false;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before septic parent selection.', err);
+      }
+      openSepticMoveRotateEdit(parent, 'Septic tank selected. Move or rotate only. Use the fixed-size fields to place a different tank size.');
+      return true;
+    }
+
+    function selectedDrainfieldGraphic() {
+      const g = selectionToolbarGraphicFor(selectedToolbarGraphic);
+      return isDrainfieldGraphic(g) ? g : null;
+    }
+
+    function syncDrainfieldSidebarInput(graphic, lateralCount) {
+      if (!isDrainfieldGraphic(graphic)) return;
+      const input = document.getElementById(graphic.__isDrainfield === 'reserve' ? 'rv-laterals' : 'df-laterals');
+      if (!input) return;
+      const n = clampDrainfieldLateralCount(lateralCount);
+      if (String(input.value) !== String(n)) input.value = n;
+    }
+
+    function closeDrainfieldLateralMenu() {
+      const wrap = drainfieldLateralToolElement();
+      const btn = document.getElementById('df-lateral-menu-btn');
+      if (wrap) wrap.classList.remove('open');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function updateDrainfieldLateralTool() {
+      const wrap = drainfieldLateralToolElement();
+      const countEl = document.getElementById('df-lateral-menu-count');
+      const btn = document.getElementById('df-lateral-menu-btn');
+      if (!wrap) return;
+      const g = selectedDrainfieldGraphic();
+      const shouldShow = !!g && !labelEditorActive;
+      wrap.style.display = shouldShow ? 'flex' : 'none';
+      if (!shouldShow) {
+        closeDrainfieldLateralMenu();
+        return;
+      }
+
+      const n = clampDrainfieldLateralCount(g.__dfLaterals || 3);
+      g.__dfLaterals = n;
+      if (countEl) countEl.textContent = String(n);
+      if (btn) btn.setAttribute('aria-expanded', wrap.classList.contains('open') ? 'true' : 'false');
+      syncDrainfieldSidebarInput(g, n);
+
+      const options = document.querySelectorAll('.df-lateral-option');
+      options.forEach(opt => {
+        const active = parseInt(opt.textContent, 10) === n;
+        opt.classList.toggle('active', active);
+        opt.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+
+    function applyDrainfieldLateralCountToGraphic(graphic, lateralCount, statusMessage) {
+      if (!isDrainfieldGraphic(graphic)) return false;
+      const n = clampDrainfieldLateralCount(lateralCount);
+      graphic.__dfLaterals = n;
+      syncDrainfield(graphic.geometry, graphic.__dfId, graphic.__isDrainfield === 'reserve', n, ensureDrainfieldHeaderEdgeIndex(graphic));
+      syncDrainfieldSidebarInput(graphic, n);
+      updateDrainfieldLateralTool();
+      if (statusMessage !== false) setStatus('Drainfield laterals set to ' + n + '.');
+      return true;
+    }
+
+    function updateSelectedDrainfieldLateralsFromSidebar(isReserve) {
+      const g = selectedDrainfieldGraphic();
+      if (!g) {
+        updateDrainfieldLateralTool();
+        return;
+      }
+      const selectedIsReserve = g.__isDrainfield === 'reserve';
+      if (selectedIsReserve !== !!isReserve) {
+        updateDrainfieldLateralTool();
+        return;
+      }
+      const n = getDrainfieldLateralCount(isReserve);
+      applyDrainfieldLateralCountToGraphic(g, n, false);
+    }
+
+    window.toggleDrainfieldLateralMenu = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const wrap = drainfieldLateralToolElement();
+      const btn = document.getElementById('df-lateral-menu-btn');
+      if (!wrap || !selectedDrainfieldGraphic()) return;
+      wrap.classList.toggle('open');
+      if (btn) btn.setAttribute('aria-expanded', wrap.classList.contains('open') ? 'true' : 'false');
+      updateDrainfieldLateralTool();
+      requestAnimationFrame(positionSelectionToolbar);
+    };
+
+    window.setSelectedDrainfieldLaterals = function (value) {
+      const g = selectedDrainfieldGraphic();
+      if (!g) return;
+      applyDrainfieldLateralCountToGraphic(g, value, true);
+      closeDrainfieldLateralMenu();
+      requestAnimationFrame(positionSelectionToolbar);
+    };
+
     function isSelectableDrawGraphic(graphic) {
       if (!graphic || !graphic.geometry) return false;
-      if (graphic.__liveMeasurementPreview || graphic.__polyEdgeLabelOf || graphic.__dfRole || graphic.__lineHitTarget) return false;
+      if (graphic.__liveMeasurementPreview || graphic.__polyEdgeLabelOf || graphic.__dfRole || graphic.__lineHitTarget || graphic.__isDboxInner) return false;
       return !!drawLayer.graphics.find(g => g === graphic);
     }
 
@@ -1542,6 +1874,24 @@
           g.__setbackId === graphic.__setbackId && g.__setbackRole === 'leader'
         );
         if (leader) return leader;
+      }
+      if (graphic && graphic.__septicLineId) {
+        const leader = drawLayer.graphics.find(g =>
+          g.__septicLineId === graphic.__septicLineId && g.__septicLineRole === 'leader'
+        );
+        if (leader) return leader;
+      }
+      if (graphic && graphic.__dfId) {
+        const parentDrainfield = drainfieldParentForGraphic(graphic);
+        if (parentDrainfield) return parentDrainfield;
+      }
+      if (graphic && graphic.__septicId) {
+        const parentSeptic = septicParentForGraphic(graphic);
+        if (parentSeptic) return parentSeptic;
+      }
+      if (graphic && graphic.__isDboxInner && graphic.__dboxId) {
+        const outer = drawLayer.graphics.find(g => g.__isDbox && g.__dboxId === graphic.__dboxId);
+        if (outer) return outer;
       }
       return graphic;
     }
@@ -1592,6 +1942,7 @@
       selectedToolbarGraphic = normalized;
       bar.classList.add('visible');
       updateLabelToolVisibility();
+      updateDrainfieldLateralTool();
       requestAnimationFrame(positionSelectionToolbar);
     }
 
@@ -1608,6 +1959,9 @@
         const lblBtn = document.getElementById('btn-label-tool');
         if (lblBtn) lblBtn.style.display = 'none';
       }
+      closeDrainfieldLateralMenu();
+      const dfTool = drainfieldLateralToolElement();
+      if (dfTool) dfTool.style.display = 'none';
       const bar = toolbarElement();
       if (bar) bar.classList.remove('visible');
       selectedToolbarGraphic = null;
@@ -1663,21 +2017,42 @@
       });
     }
 
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeDrainfieldLateralMenu();
+    });
+
+    // Drainfield laterals and septic tank internal markers are support graphics in the label layer.
+    // When clicked, redirect selection to the parent polygon so each object behaves as one editable item.
+    view.on('click', ev => {
+      if (activePlacementHandle || (sketch && sketch._pendingType)) return;
+      view.hitTest(ev, { include: [labelLayer] }).then(response => {
+        const supportGraphic = (response.results || [])
+          .map(result => result && result.graphic)
+          .find(g => isDrainfieldSupportGraphic(g) || isSepticSupportGraphic(g));
+        if (!supportGraphic) return;
+        if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        if (isDrainfieldSupportGraphic(supportGraphic)) selectDrainfieldParentFromSupport(supportGraphic);
+        else if (isSepticSupportGraphic(supportGraphic)) selectSepticParentFromSupport(supportGraphic);
+      }).catch(() => {});
+    });
+
     // Hide the floating toolbar when the user clicks empty map space. This keeps
     // the toolbar from feeling like it is stuck after deselecting a drawing.
     view.on('click', ev => {
-      if (!selectedToolbarGraphic && !activeCalloutEditId && !activeSetbackEditId) return;
+      if (!selectedToolbarGraphic && !activeCalloutEditId && !activeSetbackEditId && !activeSepticLineEditId) return;
       // Give Sketch a moment to process its own hit-test/update first.
       setTimeout(() => {
-        if (!selectedToolbarGraphic && !activeCalloutEditId && !activeSetbackEditId) return;
+        if (!selectedToolbarGraphic && !activeCalloutEditId && !activeSetbackEditId && !activeSepticLineEditId) return;
         view.hitTest(ev).then(response => {
           const hitEditable = (response.results || []).some(result => {
             const hitGraphic = result && result.graphic;
             if (!hitGraphic) return false;
-            const sourceGraphic = hitGraphic.__lineHitTarget ? sourceLineForHitTarget(hitGraphic) : hitGraphic;
+            let sourceGraphic = hitGraphic.__lineHitTarget ? sourceLineForHitTarget(hitGraphic) : hitGraphic;
+            if (isDrainfieldSupportGraphic(sourceGraphic)) sourceGraphic = drainfieldParentForGraphic(sourceGraphic);
+            if (isSepticSupportGraphic(sourceGraphic)) sourceGraphic = septicParentForGraphic(sourceGraphic);
             return isSelectableDrawGraphic(sourceGraphic);
           });
-          if (!hitEditable) { hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSetbackHandles(); }
+          if (!hitEditable) { hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSetbackHandles(); hideAllSepticLineHandles(); }
         }).catch(() => {});
       }, 0);
     });
@@ -1762,7 +2137,7 @@
       const newId = 'df_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       const copy = cloneGraphicWithOffset(graphic, dx, dy, { __dfId: newId });
       drawLayer.add(copy);
-      buildDrainfieldOverlay(copy.geometry, newId, copy.__isDrainfield === 'reserve').forEach(x => labelLayer.add(x));
+      buildDrainfieldOverlay(copy.geometry, newId, copy.__isDrainfield === 'reserve', copy.__dfLaterals || 3, ensureDrainfieldHeaderEdgeIndex(copy)).forEach(x => labelLayer.add(x));
       sketch.update([copy], { tool:'transform', toggleToolOnClick:false });
       showSelectionToolbar(copy);
       setStatus('Drainfield duplicated.');
@@ -1870,6 +2245,56 @@
       return true;
     }
 
+
+    function duplicateSepticLine(graphic, dx, dy) {
+      const oldId = graphic.__septicLineId;
+      if (!oldId) return false;
+      const newId = 'septicline_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const originals = drawLayer.graphics.filter(g => g.__septicLineId === oldId).toArray();
+      const updateParts = [];
+
+      originals.forEach(src => {
+        const copy = cloneGraphicWithOffset(src, dx, dy, { __septicLineId: newId });
+        if (copy.__septicLineRole === 'start' || copy.__septicLineRole === 'end') {
+          copy.symbol = septicLineHandleSym(false, false, false);
+          updateParts.push(copy);
+        }
+        drawLayer.add(copy);
+      });
+      updateSepticLineGraphics(newId);
+      const newLeader = drawLayer.graphics.find(g => g.__septicLineId === newId && g.__septicLineRole === 'leader');
+      if (newLeader) createOrUpdateLineHitTarget(newLeader);
+      setSepticLineHandlesVisible(newId, true);
+      if (newLeader) {
+        sketch.update([newLeader], { tool:'move', toggleToolOnClick:false });
+        showSelectionToolbar(newLeader);
+      } else if (updateParts.length) {
+        sketch.update([updateParts.find(g => g.__septicLineRole === 'end') || updateParts[0]], { tool:'move', toggleToolOnClick:false });
+        showSelectionToolbar(updateParts[0]);
+      }
+      showSepticLineMeasure(newId);
+      setStatus('Septic line duplicated.');
+      return true;
+    }
+
+    function duplicateDbox(graphic, dx, dy) {
+      if (!graphic || !graphic.__isDbox || !graphic.__dboxId) return false;
+      const newId = 'dbox_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const copy = cloneGraphicWithOffset(graphic, dx, dy, { __dboxId:newId });
+      delete copy.__parentDfId;
+      copy.__skipMeasure = true;
+      copy.__skipEdgeLabels = true;
+      copy.__label = 'Distribution box (D-box)';
+      drawLayer.add(copy);
+      rebuildDboxInner(copy);
+      bringAllDboxesToFront();
+      refreshSnapSources();
+      openDboxMoveEdit(copy);
+      showSelectionToolbar(copy);
+      setStatus('Distribution box (D-box) duplicated. Move only. Drop on a primary drainfield to attach.');
+      return true;
+    }
+
     window.duplicateSelectedGraphic = function () {
       let source = selectedToolbarGraphic || getCurrentUpdateGraphic();
       if (source && source.__lineHitTarget) source = sourceLineForHitTarget(source) || source;
@@ -1882,9 +2307,11 @@
       const dy = duplicateOffset();
 
       if (source.__setbackId) { duplicateSetback(source, dx, dy); return; }
+      if (source.__septicLineId) { duplicateSepticLine(source, dx, dy); return; }
       if (source.__calloutId) { duplicateCallout(source, dx, dy); return; }
       if (source.__wellId) { duplicateWell(source, dx, dy); return; }
       if (source.__isDrainfield && source.__dfId) { duplicateDrainfield(source, dx, dy); return; }
+      if (source.__isDbox && source.__dboxId) { duplicateDbox(source, dx, dy); return; }
 
       const copy = cloneGraphicWithOffset(source, dx, dy, {});
       delete copy.__sitePlanId;
@@ -1899,11 +2326,15 @@
         createOrUpdateLineHitTarget(copy);
       }
 
-      const tool = copy.geometry.type === 'point' ? 'move' :
-        (copy.geometry.type === 'polygon' && shouldUseVertexEdit(copy) ? 'reshape' : 'transform');
-      sketch.update([copy], { tool, enableRotation:true, enableScaling:true, preserveAspectRatio:false, toggleToolOnClick:false });
-      showSelectionToolbar(copy);
-      setStatus('Item duplicated.');
+      if (copy.__isSepticTank) {
+        openSepticMoveRotateEdit(copy, 'Septic tank duplicated. Move or rotate only. Use the fixed-size fields to place a different tank size.');
+      } else {
+        const tool = copy.geometry.type === 'point' ? 'move' :
+          (copy.geometry.type === 'polygon' && shouldUseVertexEdit(copy) ? 'reshape' : 'transform');
+        sketch.update([copy], { tool, enableRotation:true, enableScaling:true, preserveAspectRatio:false, toggleToolOnClick:false });
+        showSelectionToolbar(copy);
+        setStatus('Item duplicated.');
+      }
     };
 
     // ── Symbols ───────────────────────────────────────────────
@@ -1941,6 +2372,14 @@
       },
       septicLine: {
         type:'simple-line', color:[0,110,45,1], width:2, style:'solid'
+      },
+      dbox: {
+        type:'simple-fill', color:[102,187,106,0.55],
+        outline:{type:'simple-line',color:[27,94,32,1],width:1.8}
+      },
+      dboxInner: {
+        type:'simple-fill', color:[27,94,32,0.75],
+        outline:{type:'simple-line',color:[13,71,27,1],width:1}
       }
     };
 
@@ -1956,82 +2395,449 @@
       };
     }
 
-    // Build the 4 overlay graphics for a drainfield polygon.
-    // Pattern: one closed short side + top/middle/bottom lines, so the graphic
-    // matches the rectangle extent while leaving the opposite short side open.
+    // Build the drainfield overlay graphics.
+    // Pattern: one closed short side/header + user-defined lateral lines.
+    // The lateral count defaults to 3 and is clamped from 2 through 9 pipes.
     // Works in local polygon space so lines stay correct after rotation/resizing.
-    function calcDrainfieldLines(polygon) {
-      if (!polygon || !polygon.rings || !polygon.rings[0] || polygon.rings[0].length < 4) {
-        return { header: [], laterals: [] };
-      }
-      const ring = polygon.rings[0];
-      const pts  = ring.slice(0, 4).map(p => ({ x:p[0], y:p[1] }));
+    function clampDrainfieldLateralCount(value) {
+      let n = parseInt(value, 10);
+      if (!Number.isFinite(n)) n = 3;
+      return Math.max(2, Math.min(9, n));
+    }
 
-      const d01 = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
-      const d12 = Math.hypot(pts[2].x-pts[1].x, pts[2].y-pts[1].y);
+    function getDrainfieldLateralCount(isReserve) {
+      const input = document.getElementById(isReserve ? 'rv-laterals' : 'df-laterals');
+      if (!input) return 3;
+      const n = clampDrainfieldLateralCount(input.value);
+      if (String(input.value) !== String(n)) input.value = n;
+      return n;
+    }
 
-      // A-B is the closed short side. D-C is the open side.
-      let A, B, C, D;
-      if (d01 <= d12) { A=pts[0]; B=pts[1]; C=pts[2]; D=pts[3]; }
-      else            { A=pts[1]; B=pts[2]; C=pts[3]; D=pts[0]; }
-
-      const midClosed = { x:(A.x+B.x)/2, y:(A.y+B.y)/2 };
-      const midOpen   = { x:(D.x+C.x)/2, y:(D.y+C.y)/2 };
-
+    function drainfieldLineSymbol(isReserve, width) {
       return {
-        header: [[A.x, A.y], [B.x, B.y]],
-        laterals: [
-          [[A.x, A.y], [D.x, D.y]],
-          [[midClosed.x, midClosed.y], [midOpen.x, midOpen.y]],
-          [[B.x, B.y], [C.x, C.y]]
-        ]
+        type:'simple-line',
+        color:[0,110,45,1],
+        width,
+        style:isReserve ? 'short-dash' : 'solid'
       };
     }
 
-    function buildDrainfieldOverlay(polygon, dfId, isReserve) {
+    function inferDrainfieldHeaderEdgeIndex(polygon) {
+      if (!polygon || !polygon.rings || !polygon.rings[0] || polygon.rings[0].length < 4) return 0;
+      const ring = polygon.rings[0];
+      const pts  = ring.slice(0, 4).map(p => ({ x:p[0], y:p[1] }));
+      const d01 = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
+      const d12 = Math.hypot(pts[2].x-pts[1].x, pts[2].y-pts[1].y);
+      // Initial default: laterals run from one short side/header to the opposite side.
+      // This value is stored on each drainfield so square or near-square shapes do not
+      // flip lateral orientation after rotation, resize, or pipe-count changes.
+      return d01 <= d12 ? 0 : 1;
+    }
+
+    function normalizeDrainfieldHeaderEdgeIndex(value) {
+      return value === 1 || value === '1' ? 1 : 0;
+    }
+
+    function ensureDrainfieldHeaderEdgeIndex(graphic) {
+      if (!graphic || !graphic.__isDrainfield) return 0;
+      if (graphic.__dfHeaderEdgeIndex !== 0 && graphic.__dfHeaderEdgeIndex !== 1) {
+        graphic.__dfHeaderEdgeIndex = inferDrainfieldHeaderEdgeIndex(graphic.geometry);
+      }
+      return normalizeDrainfieldHeaderEdgeIndex(graphic.__dfHeaderEdgeIndex);
+    }
+
+    function calcDrainfieldLines(polygon, lateralCount, headerEdgeIndex) {
+      if (!polygon || !polygon.rings || !polygon.rings[0] || polygon.rings[0].length < 4) {
+        return { header: [], laterals: [] };
+      }
+      const count = clampDrainfieldLateralCount(lateralCount);
+      const ring = polygon.rings[0];
+      const pts  = ring.slice(0, 4).map(p => ({ x:p[0], y:p[1] }));
+
+      // A-B is the closed header side. D-C is the open side.
+      // Use the stored edge index after creation rather than recalculating the
+      // short side every time. This keeps square drainfields from flipping.
+      let A, B, C, D;
+      if (normalizeDrainfieldHeaderEdgeIndex(headerEdgeIndex) === 1) {
+        A=pts[1]; B=pts[2]; C=pts[3]; D=pts[0];
+      } else {
+        A=pts[0]; B=pts[1]; C=pts[2]; D=pts[3];
+      }
+
+      const laterals = [];
+      for (let i = 0; i < count; i++) {
+        const t = count === 1 ? 0 : i / (count - 1);
+        const start = {
+          x: A.x + (B.x - A.x) * t,
+          y: A.y + (B.y - A.y) * t
+        };
+        const end = {
+          x: D.x + (C.x - D.x) * t,
+          y: D.y + (C.y - D.y) * t
+        };
+        laterals.push([[start.x, start.y], [end.x, end.y]]);
+      }
+
+      return {
+        header: [[A.x, A.y], [B.x, B.y]],
+        laterals
+      };
+    }
+
+    function drainfieldCentroidPoint(polygon) {
+      if (!polygon) return null;
+      try {
+        const c = polygon.centroid;
+        if (c && isFinite(c.x) && isFinite(c.y)) return c;
+      } catch (e) {}
+      return polygon.extent ? polygon.extent.center : null;
+    }
+
+    function drainfieldTopLateralLabelPoint(polygon, lateralCount, headerEdgeIndex) {
+      if (!polygon) return null;
+      const lines = calcDrainfieldLines(polygon, lateralCount, headerEdgeIndex);
+      if (!lines.laterals || !lines.laterals.length) return null;
+      const sr = polygon.spatialReference;
+      const candidates = lines.laterals.map(path => {
+        const pt = pointGeometryFromXY((path[0][0] + path[1][0]) / 2, (path[0][1] + path[1][1]) / 2, sr);
+        let screenY = null;
+        try {
+          const sp = (view && typeof view.toScreen === 'function') ? view.toScreen(pt) : null;
+          if (sp && isFinite(sp.y)) screenY = sp.y;
+        } catch (e) {}
+        return { point:pt, screenY, mapY:pt.y };
+      }).filter(c => c.point && isFinite(c.point.x) && isFinite(c.point.y));
+      if (!candidates.length) return drainfieldCentroidPoint(polygon);
+      candidates.sort((a, b) => {
+        if (a.screenY !== null && b.screenY !== null) return a.screenY - b.screenY; // top of screen
+        if (a.screenY !== null) return -1;
+        if (b.screenY !== null) return 1;
+        return b.mapY - a.mapY; // fallback: north/top in map coordinates
+      });
+      return candidates[0].point;
+    }
+
+    function drainfieldMeasurementLabelPoint(polygon, isReserve, lateralCount, headerEdgeIndex) {
+      return isReserve
+        ? drainfieldCentroidPoint(polygon)
+        : (drainfieldTopLateralLabelPoint(polygon, lateralCount, headerEdgeIndex) || drainfieldCentroidPoint(polygon));
+    }
+
+    function drainfieldMeasurementText(polygon, isReserve, lateralCount, headerEdgeIndex) {
+      if (!polygon) return '';
+      if (isReserve) {
+        const sq = Math.abs(geometryEngine.geodesicArea(polygon, 'square-feet'));
+        return isFinite(sq) ? Math.round(sq).toLocaleString() + ' sq ft' : '';
+      }
+      const lines = calcDrainfieldLines(polygon, lateralCount, headerEdgeIndex);
+      const path = lines.laterals && lines.laterals.length ? lines.laterals[Math.floor(lines.laterals.length / 2)] : null;
+      if (!path) return '';
+      const geom = { type:'polyline', spatialReference:polygon.spatialReference, paths:[path] };
+      const len = Math.abs(geometryEngine.geodesicLength(geom, 'feet'));
+      return isFinite(len) ? len.toFixed(1) + "'" : '';
+    }
+
+    function drainfieldMeasurementLabelSymbol(text, isReserve) {
+      return {
+        type:'text',
+        text:text,
+        color:[0,0,0,1],
+        haloColor:[255,255,255,1],
+        haloSize:1.75,
+        font:{ size:8, weight:'bold', family:'Calibri, Segoe UI, Arial, sans-serif' },
+        horizontalAlignment:'center',
+        verticalAlignment:'middle',
+        yoffset:isReserve ? 0 : 9
+      };
+    }
+
+    function makeDrainfieldMeasurementLabel(polygon, dfId, isReserve, lateralCount, headerEdgeIndex) {
+      const text = drainfieldMeasurementText(polygon, isReserve, lateralCount, headerEdgeIndex);
+      const pt = drainfieldMeasurementLabelPoint(polygon, isReserve, lateralCount, headerEdgeIndex);
+      if (!text || !pt) return null;
+      const g = new Graphic({ geometry:pt, symbol:drainfieldMeasurementLabelSymbol(text, isReserve) });
+      g.__dfId = dfId;
+      g.__dfRole = 'measureLabel';
+      g.__dfParent = true;
+      g.__skipMeasure = true;
+      return g;
+    }
+
+    function syncDrainfieldMeasurementLabel(polygon, dfId, isReserve, lateralCount, headerEdgeIndex) {
+      const text = drainfieldMeasurementText(polygon, isReserve, lateralCount, headerEdgeIndex);
+      const pt = drainfieldMeasurementLabelPoint(polygon, isReserve, lateralCount, headerEdgeIndex);
+      let label = labelLayer.graphics.find(g => g.__dfId===dfId && g.__dfRole==='measureLabel');
+      if (!text || !pt) {
+        if (label) labelLayer.remove(label);
+        return;
+      }
+      if (label) {
+        label.geometry = pt;
+        label.symbol = drainfieldMeasurementLabelSymbol(text, isReserve);
+      } else {
+        label = makeDrainfieldMeasurementLabel(polygon, dfId, isReserve, lateralCount, headerEdgeIndex);
+        if (label) labelLayer.add(label);
+      }
+    }
+
+    function buildDrainfieldOverlay(polygon, dfId, isReserve, lateralCount, headerEdgeIndex) {
       const sr        = polygon.spatialReference;
-      const dashStyle = isReserve ? 'short-dash' : 'solid';
-      const lineSym   = w => ({ type:'simple-line', color:[0,110,45,1], width:w, style:dashStyle });
-      const lines     = calcDrainfieldLines(polygon);
+      const lines     = calcDrainfieldLines(polygon, lateralCount, headerEdgeIndex);
 
       const header = new Graphic({
         geometry:{ type:'polyline', spatialReference:sr, paths:[lines.header] },
-        symbol: lineSym(2)
+        symbol: drainfieldLineSymbol(isReserve, 2)
       });
-      header.__dfId = dfId; header.__dfRole = 'header';
+      header.__dfId = dfId; header.__dfRole = 'header'; header.__dfParent = true;
 
       const laterals = lines.laterals.map((path, i) => {
         const g = new Graphic({
           geometry:{ type:'polyline', spatialReference:sr, paths:[path] },
-          symbol: lineSym(1.5)
+          symbol: drainfieldLineSymbol(isReserve, 1.5)
         });
-        g.__dfId = dfId; g.__dfRole = 'lat_' + i;
+        g.__dfId = dfId; g.__dfRole = 'lat_' + i; g.__dfParent = true;
         return g;
       });
 
-      return [header, ...laterals];
+      const label = makeDrainfieldMeasurementLabel(polygon, dfId, isReserve, lateralCount, headerEdgeIndex);
+      return label ? [header, ...laterals, label] : [header, ...laterals];
     }
 
-    function syncDrainfield(polygon, dfId, isReserve) {
+    function syncDrainfield(polygon, dfId, isReserve, lateralCount, headerEdgeIndex) {
       if (!polygon || !polygon.rings || !polygon.rings[0]) return;
       const sr    = polygon.spatialReference;
-      const lines = calcDrainfieldLines(polygon);
+      const lines = calcDrainfieldLines(polygon, lateralCount, headerEdgeIndex);
 
-      const header = labelLayer.graphics.find(g => g.__dfId===dfId && g.__dfRole==='header');
-      if (header) header.geometry = { type:'polyline', spatialReference:sr, paths:[lines.header] };
+      let header = labelLayer.graphics.find(g => g.__dfId===dfId && g.__dfRole==='header');
+      if (header) {
+        header.geometry = { type:'polyline', spatialReference:sr, paths:[lines.header] };
+        header.symbol = drainfieldLineSymbol(isReserve, 2);
+      } else {
+        header = new Graphic({
+          geometry:{ type:'polyline', spatialReference:sr, paths:[lines.header] },
+          symbol: drainfieldLineSymbol(isReserve, 2)
+        });
+        header.__dfId = dfId; header.__dfRole = 'header'; header.__dfParent = true;
+        labelLayer.add(header);
+      }
 
       lines.laterals.forEach((path, i) => {
-        const lat = labelLayer.graphics.find(g => g.__dfId===dfId && g.__dfRole==='lat_'+i);
-        if (lat) lat.geometry = { type:'polyline', spatialReference:sr, paths:[path] };
+        let lat = labelLayer.graphics.find(g => g.__dfId===dfId && g.__dfRole==='lat_'+i);
+        if (lat) {
+          lat.geometry = { type:'polyline', spatialReference:sr, paths:[path] };
+          lat.symbol = drainfieldLineSymbol(isReserve, 1.5);
+        } else {
+          lat = new Graphic({
+            geometry:{ type:'polyline', spatialReference:sr, paths:[path] },
+            symbol: drainfieldLineSymbol(isReserve, 1.5)
+          });
+          lat.__dfId = dfId; lat.__dfRole = 'lat_' + i; lat.__dfParent = true;
+          labelLayer.add(lat);
+        }
+      });
+
+      labelLayer.graphics
+        .filter(g => g.__dfId===dfId && /^lat_/.test(g.__dfRole || ''))
+        .toArray()
+        .forEach(g => {
+          const idx = parseInt(String(g.__dfRole).replace('lat_', ''), 10);
+          if (!Number.isFinite(idx) || idx >= lines.laterals.length) labelLayer.remove(g);
+        });
+
+      syncDrainfieldMeasurementLabel(polygon, dfId, isReserve, lateralCount, headerEdgeIndex);
+    }
+
+
+    // ── D-box (Distribution Box) system ───────────────────────
+    // The D-box is a fixed-size square component that can be parented to a
+    // drainfield. When parented, it sits at the drainfield centroid and follows
+    // any move/resize/rotation of that drainfield. It is a "locked" shape —
+    // sketch opens it in move-only mode (no rotate, no scale, no reshape).
+    //
+    // Drop logic: placing or moving a D-box such that its centroid falls within
+    // a drainfield polygon snaps it to that drainfield's centroid and creates a
+    // parent link. Dragging it out of the drainfield breaks the link.
+    //
+    // Rendering: outer + inner graphics both live in drawLayer. Drainfield
+    // lateral lines render in labelLayer and will visibly cross the D-box
+    // outer; the dense inner box is the primary visual indicator. Septic lines
+    // (in drawLayer) are pushed beneath the D-box on placement.
+
+    function isDboxGraphic(g) {
+      return !!(g && g.__isDbox && g.__dboxId && g.geometry && g.geometry.type === 'polygon');
+    }
+
+    function findDrainfieldContainingPoint(pt) {
+      if (!pt) return null;
+      // Distribution boxes attach only to the primary/active drainfield.
+      // Reserve drainfield is a dedicated reserve area, not the installed system.
+      const dfs = drawLayer.graphics
+        .filter(g => isDrainfieldGraphic(g) && g.__isDrainfield === 'primary')
+        .toArray();
+      for (const df of dfs) {
+        try {
+          if (geometryEngine.contains(df.geometry, pt)) return df;
+        } catch (e) { /* skip malformed geometry */ }
+      }
+      return null;
+    }
+
+    function findDrainfieldContainingDboxCentroid(dbox) {
+      if (!dbox || !dbox.geometry) return null;
+      const c = dbox.geometry.centroid;
+      return c ? findDrainfieldContainingPoint(c) : null;
+    }
+
+    function dboxCenterForDrainfield(df) {
+      if (!df || !df.geometry) return null;
+      // Snap the distribution box to the primary drainfield's header/connection point.
+      return drainfieldConnectionPoint(df) || df.geometry.centroid || (df.geometry.extent && df.geometry.extent.center);
+    }
+
+    function clearDboxSnapPreview() {
+      if (activeDboxSnapPreview) {
+        labelLayer.remove(activeDboxSnapPreview);
+        activeDboxSnapPreview = null;
+      }
+    }
+
+    function showDboxSnapPreview(point) {
+      if (!point) { clearDboxSnapPreview(); return; }
+      const symbol = {
+        type:'simple-marker',
+        style:'circle',
+        size:10,
+        color:[242,140,40,1],
+        outline:{ color:[255,255,255,1], width:1.5 }
+      };
+      if (!activeDboxSnapPreview) {
+        activeDboxSnapPreview = new Graphic({ geometry:point, symbol });
+        activeDboxSnapPreview.__liveMeasurementPreview = true;
+        activeDboxSnapPreview.__dboxSnapPreview = true;
+        labelLayer.add(activeDboxSnapPreview);
+      } else {
+        activeDboxSnapPreview.geometry = point;
+        activeDboxSnapPreview.symbol = symbol;
+      }
+    }
+
+    function updateDboxSnapPreviewForPoint(point) {
+      const target = findDrainfieldContainingPoint(point);
+      if (target) showDboxSnapPreview(dboxCenterForDrainfield(target));
+      else clearDboxSnapPreview();
+      return target;
+    }
+
+    function rebuildDboxInner(dbox) {
+      if (!dbox || !dbox.__dboxId) return;
+      const center = dbox.geometry.centroid || (dbox.geometry.extent && dbox.geometry.extent.center);
+      if (!center) return;
+      // Inner box is 50% of outer dimensions, same center.
+      const innerGeom = buildFixedRect(center, dbox.__dboxL * 0.5, dbox.__dboxW * 0.5);
+      let inner = dboxInnerMap.get(dbox.__dboxId);
+      if (inner) {
+        inner.geometry = innerGeom;
+      } else {
+        inner = new Graphic({ geometry: innerGeom, symbol: SYM.dboxInner });
+        inner.__isDboxInner = true;
+        inner.__dboxId = dbox.__dboxId;
+        inner.__skipMeasure = true;
+        drawLayer.add(inner);
+        dboxInnerMap.set(dbox.__dboxId, inner);
+      }
+      bringGraphicToFront(inner);
+    }
+
+    function removeDboxInner(dboxId) {
+      if (!dboxId) return;
+      const inner = dboxInnerMap.get(dboxId);
+      if (inner) {
+        drawLayer.remove(inner);
+        dboxInnerMap.delete(dboxId);
+      }
+    }
+
+    function unlinkDbox(dbox) {
+      if (!dbox || !dbox.__parentDfId) return;
+      const pid = dbox.__parentDfId;
+      const parent = drawLayer.graphics.find(g => isDrainfieldGraphic(g) && g.__dfId === pid);
+      if (parent && parent.__childDboxId === dbox.__dboxId) delete parent.__childDboxId;
+      drainfieldChildDboxMap.delete(pid);
+      delete dbox.__parentDfId;
+    }
+
+    function linkDboxToDrainfield(dbox, df) {
+      if (!dbox || !df) return;
+      // If d-box was previously linked to a different drainfield, clear that first.
+      if (dbox.__parentDfId && dbox.__parentDfId !== df.__dfId) unlinkDbox(dbox);
+      // If the target drainfield already had a different child d-box, unlink it.
+      const existingChild = drainfieldChildDboxMap.get(df.__dfId);
+      if (existingChild && existingChild !== dbox) unlinkDbox(existingChild);
+      dbox.__parentDfId = df.__dfId;
+      df.__childDboxId = dbox.__dboxId;
+      drainfieldChildDboxMap.set(df.__dfId, dbox);
+    }
+
+    function syncDboxToParentDrainfield(df) {
+      if (!df || !df.__childDboxId) return;
+      const dbox = drainfieldChildDboxMap.get(df.__dfId);
+      if (!dbox) return;
+      const newCenter = dboxCenterForDrainfield(df);
+      if (!newCenter) return;
+      dbox.geometry = buildFixedRect(newCenter, dbox.__dboxL, dbox.__dboxW);
+      rebuildDboxInner(dbox);
+      bringGraphicToFront(dbox);
+      const inner = dboxInnerMap.get(dbox.__dboxId);
+      if (inner) bringGraphicToFront(inner);
+      hideMeasure();
+    }
+
+    function removeDbox(dbox) {
+      if (!dbox || !dbox.__isDbox) return;
+      removeDboxInner(dbox.__dboxId);
+      unlinkDbox(dbox);
+      drawLayer.remove(dbox);
+    }
+
+    function bringAllDboxesToFront() {
+      drawLayer.graphics.filter(g => g.__isDbox).toArray().forEach(d => {
+        bringGraphicToFront(d);
+        const inner = dboxInnerMap.get(d.__dboxId);
+        if (inner) bringGraphicToFront(inner);
       });
     }
 
+    function dboxMoveOnlyOptions() {
+      return { tool:'move', toggleToolOnClick:false };
+    }
 
-    // ── Septic tank lid overlays ─────────────────────────────
+    function openDboxMoveEdit(graphic) {
+      if (!isDboxGraphic(graphic) || graphic.__openingDboxMoveEdit) return false;
+      graphic.__openingDboxMoveEdit = true;
+      try { if (sketch.state !== 'idle') sketch.cancel(); }
+      catch (err) { console.warn('Unable to cancel current sketch update before D-box move edit.', err); }
+
+      setTimeout(() => {
+        try {
+          sketch.update([graphic], dboxMoveOnlyOptions());
+          showSelectionToolbar(graphic);
+          hideMeasure();
+          setStatus('Distribution box (D-box) selected. Move only. Drop on a primary drainfield to attach, drag off to detach.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to select the distribution box (D-box) for move.', false);
+        }
+        setTimeout(() => { graphic.__openingDboxMoveEdit = false; }, 750);
+      }, 0);
+      return true;
+    }
+
+
+    // ── Septic tank visual overlays ───────────────────────────
     // The septic tank remains a normal resizable polygon for editing. The
-    // footprint is drawn as a rounded rectangle and two non-selectable lid
-    // symbols are drawn above it so the map symbol reads less like a generic
-    // rectangle.
+    // footprint is drawn as a rounded rectangle, with child graphics for the
+    // access lids only. Clicks on those child graphics are redirected back to
+    // the parent tank so the tank behaves as one object.
     function ensureSepticId(graphic) {
       if (!graphic) return null;
       if (!graphic.__septicId) graphic.__septicId = 'septic_' + Date.now() + '_' + Math.random().toString(36).slice(2);
@@ -2136,7 +2942,7 @@
       [labelLayer, drawLayer, previewLayer, wellLayer].forEach(layer => {
         if (!layer || !layer.graphics) return;
         layer.graphics
-          .filter(g => g.__septicId === id && g.__septicRole === 'lid')
+          .filter(g => g.__septicId === id && g.__septicRole)
           .toArray()
           .forEach(g => layer.remove(g));
       });
@@ -2169,12 +2975,20 @@
           .map(g => g.__septicId)
       );
       labelLayer.graphics
-        .filter(g => g.__septicRole === 'lid' && (!g.__septicId || !activeIds.has(g.__septicId)))
+        .filter(g => g.__septicRole && (!g.__septicId || !activeIds.has(g.__septicId)))
         .toArray()
         .forEach(g => labelLayer.remove(g));
     }
 
+    function isActiveSepticTankGraphic(graphic) {
+      return !!(graphic && drawLayer && drawLayer.graphics && drawLayer.graphics.find(g => g === graphic));
+    }
+
     function syncSepticLids(graphic) {
+      if (graphic && graphic.__septicId && !isActiveSepticTankGraphic(graphic)) {
+        removeSepticLidsById(graphic.__septicId);
+        return;
+      }
       if (!graphic || !graphic.__isSepticTank || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
       const id = ensureSepticId(graphic);
       const lidPts = calcSepticLidPoints(graphic.geometry);
@@ -2209,6 +3023,7 @@
           lid.symbol = septicLidSymbol(lidSize);
         });
       }
+
     }
 
 
@@ -2734,6 +3549,7 @@
       if (dup) dup.style.display = '';
       if (del) del.style.display = '';
       updateLabelToolVisibility();
+      updateDrainfieldLateralTool();
       positionSelectionToolbar();
     }
 
@@ -2746,9 +3562,12 @@
       const lbl = document.getElementById('btn-label-tool');
       const del = document.getElementById('btn-delete-tool');
       const wrap = document.getElementById('label-editor-wrap');
+      const dfTool = drainfieldLateralToolElement();
+      closeDrainfieldLateralMenu();
       if (dup) dup.style.display = 'none';
       if (lbl) lbl.style.display = 'none';
       if (del) del.style.display = 'none';
+      if (dfTool) dfTool.style.display = 'none';
       if (wrap) wrap.style.display = 'flex';
       const input = document.getElementById('obj-label-input');
       if (input) {
@@ -3180,8 +3999,12 @@
       Object.assign(g, { __isFixedObject:true, __twoSideLabels:true }, extraProps);
       drawLayer.add(g);
       syncPolygonEdgeLabels(g);
-      if (g.__isSepticTank) scheduleSepticLidSync(g);
-      sketch.update([g],{tool:'transform',toggleToolOnClick:false});
+      if (g.__isSepticTank) {
+        scheduleSepticLidSync(g);
+        openSepticMoveRotateEdit(g, 'Septic tank placed. Move or rotate only. Use the fixed-size fields to place a different tank size.');
+      } else {
+        sketch.update([g],{tool:'transform',toggleToolOnClick:false});
+      }
       const sq = Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
       if (shouldShowSelectedShapeOnly(g)) showSelectedShapeOnly(extraProps.__label || 'Shape');
       else if (shouldSkipShapeMeasurement(g)) hideMeasure();
@@ -3199,6 +4022,8 @@
       clearActivePlacementHandle();
       clearCalloutPreview();
       clearSetbackPreview();
+      clearSepticLinePreview();
+      clearDboxSnapPreview();
       hideSetbackPerpendicularGuide();
       clearLiveMeasurePreview();
       hideSelectionToolbar();
@@ -3300,8 +4125,8 @@
         const w=parseFloat(document.getElementById('septic-w').value)||10;
         const h=view.on('click',ev=>{
           clearActivePlacementHandle(); deactivateAll();
-          placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__skipEdgeLabels:true,__label:'Septic tank',__measureLabel:'Selected shape'});
-          setStatus('Septic tank placed ('+l+' × '+w+' ft). Resize or move as needed.');
+          placeFixed(ev.mapPoint,l,w,SYM.septic,{__isSepticTank:true,__skipEdgeLabels:true,__label:'Septic tank',__measureLabel:'Selected shape',__septicLengthFt:l,__septicWidthFt:w});
+          setStatus('Septic tank placed ('+l+' × '+w+' ft). Move or rotate as needed.');
         });
         setActivePlacementHandle(h);
         setStatus('Click to place the septic tank.');
@@ -3313,6 +4138,70 @@
       }
     };
 
+    // ── D-BOX TOOL ────────────────────────────────────────────
+    // The distribution box (D-box) is fixed-size and locked from manual reshape/scale.
+    // If the click point falls inside a primary drainfield polygon, the D-box snaps
+    // to that drainfield's header/connection point and is linked as a child.
+    window.startDboxTool = function () {
+      const dboxFixedCheck = document.getElementById('chk-dbox');
+      if (dboxFixedCheck) dboxFixedCheck.checked = true;
+      cancelAndReset('btn-dbox');
+      const l = parseFloat(document.getElementById('dbox-l').value) || 3;
+      const w = parseFloat(document.getElementById('dbox-w').value) || 3;
+      if (!isFinite(l) || !isFinite(w) || l <= 0 || w <= 0) {
+        setStatus('Enter valid distribution box (D-box) dimensions first.', false);
+        deactivateAll();
+        return;
+      }
+
+      const clickHandle = view.on('click', ev => {
+        clearActivePlacementHandle();
+        clearDboxSnapPreview();
+        deactivateAll();
+
+        const dropPt = ev.mapPoint;
+        const parentDf = findDrainfieldContainingPoint(dropPt);
+        const placePt = parentDf ? dboxCenterForDrainfield(parentDf) : dropPt;
+        if (!placePt) { setStatus('Unable to place D-box at that location.', false); return; }
+
+        const geom = buildFixedRect(placePt, l, w);
+        const dbox = new Graphic({ geometry: geom, symbol: SYM.dbox });
+        dbox.__isDbox = true;
+        dbox.__dboxId = 'dbox_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+        dbox.__dboxL = l;
+        dbox.__dboxW = w;
+        dbox.__skipEdgeLabels = true;
+        dbox.__skipMeasure = true;
+        dbox.__label = 'Distribution box (D-box)';
+
+        drawLayer.add(dbox);
+        rebuildDboxInner(dbox);
+
+        if (parentDf) linkDboxToDrainfield(dbox, parentDf);
+
+        bringAllDboxesToFront();
+        refreshSnapSources();
+        hideMeasure();
+        setStatus(parentDf
+          ? 'Distribution box (D-box) placed and attached to the primary drainfield header.'
+          : 'Distribution box (D-box) placed. Click and drag it onto a primary drainfield to attach.');
+      });
+
+      const moveHandle = view.on('pointer-move', ev => {
+        const mp = view.toMap({ x:ev.x, y:ev.y });
+        if (mp) updateDboxSnapPreviewForPoint(mp);
+      });
+
+      setActivePlacementHandle({
+        remove:function () {
+          clickHandle.remove();
+          moveHandle.remove();
+          clearDboxSnapPreview();
+        }
+      });
+      setStatus('Click to place the distribution box (D-box). Drop on a primary drainfield to auto-attach.');
+    };
+
     // ── DRAINFIELD TOOL ───────────────────────────────────────
     window.startDrainfieldTool = function (isReserve) {
       const btnId = isReserve ? 'btn-reserve' : 'btn-drainfield';
@@ -3322,6 +4211,7 @@
       cancelAndReset(btnId);
       const sym = drainfieldSym(isReserve);
       const useFixed = document.getElementById(chkId).checked;
+      const lateralCount = getDrainfieldLateralCount(isReserve);
 
       if (useFixed) {
         const l=parseFloat(document.getElementById(lId).value);
@@ -3334,11 +4224,14 @@
           const g=new Graphic({geometry:rect,symbol:sym});
           g.__isDrainfield=isReserve?'reserve':'primary';
           g.__dfId=dfId;
+          g.__dfLaterals=lateralCount;
+          g.__dfHeaderEdgeIndex=inferDrainfieldHeaderEdgeIndex(rect);
           drawLayer.add(g);
-          buildDrainfieldOverlay(rect,dfId,isReserve).forEach(x=>labelLayer.add(x));
+          buildDrainfieldOverlay(rect,dfId,isReserve,lateralCount,g.__dfHeaderEdgeIndex).forEach(x=>labelLayer.add(x));
           sketch.update([g],{tool:'transform',toggleToolOnClick:false});
           const sq=Math.abs(geometryEngine.geodesicArea(rect,'square-feet'));
-          showMeasure(isReserve?'Reserve drainfield':'Drainfield',Math.round(sq).toLocaleString()+' sq ft',l+' × '+w+' ft');
+          if (isReserve) showMeasure('Reserve drainfield', Math.round(sq).toLocaleString()+' sq ft', null);
+          else showMeasure('Drainfield', Math.round(sq).toLocaleString()+' sq ft', l+' × '+w+' ft');
           setStatus((isReserve?'Reserve drainfield':'Drainfield')+' placed. Resize or rotate as needed.');
         });
         setActivePlacementHandle(h);
@@ -3351,12 +4244,442 @@
       }
     };
 
+    // ── SEPTIC LINE CUSTOM TOOL ─────────────────────────────────
+    // Septic lines borrow the setback tool's live preview/snap behavior, but
+    // remain a simple green line after placement. They do not receive permanent
+    // length labels or arrowheads.
+    const SEPTIC_LINE_SNAP_TOLERANCE_PX = 14;
+    const SEPTIC_LINE_DEDICATED_SNAP_TOLERANCE_PX = 24;
+
+    function clearSepticLinePreview() {
+      if (activeSepticLinePreview) {
+        ['firstMoveHandle', 'moveHandle'].forEach(k => {
+          const h = activeSepticLinePreview[k];
+          if (h && typeof h.remove === 'function') h.remove();
+        });
+        ['line', 'point', 'snapPoint', 'measureLabel', 'hoverSnapPoint'].forEach(k => {
+          const g = activeSepticLinePreview[k];
+          if (g) previewLayer.remove(g);
+        });
+      }
+      activeSepticLinePreview = null;
+    }
+
+    function pointGeometryFromXY(x, y, sr) {
+      return { type:'point', x:x, y:y, spatialReference:sr };
+    }
+
+    function septicLineGeometry(startPt, endPt) {
+      return {
+        type:'polyline',
+        spatialReference:startPt.spatialReference,
+        paths:[[[startPt.x,startPt.y],[endPt.x,endPt.y]]]
+      };
+    }
+
+    function septicLineSnapPointSymbol() {
+      return { type:'simple-marker', style:'circle', size:8, color:[242,140,40,1], outline:{ color:[255,255,255,1], width:1 } };
+    }
+
+    function septicLineEligibleSnapGraphic(g) {
+      if (!g || !g.geometry || g.geometry.type !== 'polygon') return false;
+      if (g.__isEasement || g.__isGrading || g.__wellId) return false;
+      return !!(
+        g.__structureType ||
+        g.__isSepticTank ||
+        g.__isDbox ||
+        g.__isDrainfield ||
+        g.__isDrawTool ||
+        g.__isDrawRectangle
+      );
+    }
+
+    function polygonSnapRingPoints(graphic) {
+      const geom = graphic && graphic.geometry;
+      if (!geom || !geom.rings || !geom.rings[0]) return [];
+      return geom.rings[0]
+        .slice(0, -1)
+        .map(p => pointGeometryFromXY(p[0], p[1], geom.spatialReference))
+        .filter(p => isFinite(p.x) && isFinite(p.y));
+    }
+
+    function calcSepticEndpointPoints(polygon) {
+      if (!polygon || !polygon.rings || !polygon.rings[0] || polygon.rings[0].length < 4) return [];
+      const pts = polygon.rings[0].slice(0, -1)
+        .map(p => ({ x:p[0], y:p[1] }))
+        .filter(p => isFinite(p.x) && isFinite(p.y));
+      if (pts.length < 4) return [];
+      const center = pts.reduce((acc, p) => ({ x:acc.x + p.x, y:acc.y + p.y }), { x:0, y:0 });
+      center.x /= pts.length;
+      center.y /= pts.length;
+      let longest = null;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        const vx = b.x - a.x;
+        const vy = b.y - a.y;
+        const d = Math.hypot(vx, vy);
+        if (isFinite(d) && d > 0 && (!longest || d > longest.d)) longest = { vx, vy, d };
+      }
+      if (!longest) return [];
+      const ux = longest.vx / longest.d;
+      const uy = longest.vy / longest.d;
+      const projections = pts.map(p => (p.x - center.x) * ux + (p.y - center.y) * uy);
+      const minP = Math.min.apply(null, projections);
+      const maxP = Math.max.apply(null, projections);
+      if (!isFinite(minP) || !isFinite(maxP)) return [];
+      const sr = polygon.spatialReference;
+      return [
+        pointGeometryFromXY(center.x + ux * minP, center.y + uy * minP, sr),
+        pointGeometryFromXY(center.x + ux * maxP, center.y + uy * maxP, sr)
+      ];
+    }
+
+    function drainfieldConnectionPoint(graphic) {
+      if (!graphic || !graphic.__isDrainfield || !graphic.geometry) return null;
+      const lines = calcDrainfieldLines(graphic.geometry, graphic.__dfLaterals || 3, ensureDrainfieldHeaderEdgeIndex(graphic));
+      const h = lines.header;
+      if (!h || h.length < 2) return null;
+      return pointGeometryFromXY((h[0][0] + h[1][0]) / 2, (h[0][1] + h[1][1]) / 2, graphic.geometry.spatialReference);
+    }
+
+    function dboxConnectionPoints(graphic) {
+      const geom = graphic && graphic.geometry;
+      if (!geom || !geom.rings || !geom.rings[0]) return [];
+      const ring = geom.rings[0].slice(0, -1);
+      const sr = geom.spatialReference;
+      const out = [];
+      const center = geom.centroid || (geom.extent && geom.extent.center);
+      if (center) out.push(center);
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i];
+        const b = ring[(i + 1) % ring.length];
+        if (!a || !b) continue;
+        out.push(pointGeometryFromXY((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, sr));
+      }
+      return out.filter(p => p && isFinite(p.x) && isFinite(p.y));
+    }
+
+    function isDedicatedSepticLineSnapRole(role) {
+      return role === 'septic-endpoint' || role === 'drainfield-connection' || role === 'dbox-connection';
+    }
+
+    function addSepticLineSnapPointCandidate(candidates, point, rawScreen, role, priority) {
+      if (!point) return;
+      const sp = view.toScreen(point);
+      if (!sp || !isFinite(sp.x) || !isFinite(sp.y)) return;
+      const d = Math.hypot(sp.x - rawScreen.x, sp.y - rawScreen.y);
+      candidates.push({
+        point,
+        distance:d,
+        role:role || 'point',
+        priority:priority || 0,
+        dedicated:isDedicatedSepticLineSnapRole(role)
+      });
+    }
+
+    function addSepticLineSnapSegmentCandidate(candidates, a, b, rawScreen, role, priority) {
+      const sa = view.toScreen(a);
+      const sb = view.toScreen(b);
+      if (!sa || !sb || !isFinite(sa.x) || !isFinite(sa.y) || !isFinite(sb.x) || !isFinite(sb.y)) return;
+      const vx = sb.x - sa.x;
+      const vy = sb.y - sa.y;
+      const len2 = vx * vx + vy * vy;
+      if (!isFinite(len2) || len2 <= 0) return;
+      let t = ((rawScreen.x - sa.x) * vx + (rawScreen.y - sa.y) * vy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const sx = sa.x + vx * t;
+      const sy = sa.y + vy * t;
+      const d = Math.hypot(sx - rawScreen.x, sy - rawScreen.y);
+      const pt = view.toMap({ x:sx, y:sy });
+      if (!pt) return;
+      candidates.push({ point:pt, distance:d, role:role || 'edge', priority:priority || 0 });
+    }
+
+    function septicLineSnapPointInfo(rawPoint) {
+      const rawScreen = view.toScreen(rawPoint);
+      if (!rawScreen || !isFinite(rawScreen.x) || !isFinite(rawScreen.y)) {
+        return { point:rawPoint, snapped:false };
+      }
+      const candidates = [];
+      drawLayer.graphics
+        .filter(g => septicLineEligibleSnapGraphic(g))
+        .toArray()
+        .forEach(g => {
+          // Dedicated connection targets: septic tank end points and the drainfield header midpoint.
+          // These are intentionally preferred over the general polygon edge/vertex targets so users can
+          // reliably connect septic lines to the expected tank/drainfield connection locations.
+          if (g.__isSepticTank) {
+            calcSepticEndpointPoints(g.geometry).forEach(pt =>
+              addSepticLineSnapPointCandidate(candidates, pt, rawScreen, 'septic-endpoint', -10)
+            );
+            return;
+          }
+          if (g.__isDrainfield) {
+            addSepticLineSnapPointCandidate(candidates, drainfieldConnectionPoint(g), rawScreen, 'drainfield-connection', -10);
+            return;
+          }
+          if (g.__isDbox) {
+            dboxConnectionPoints(g).forEach(pt =>
+              addSepticLineSnapPointCandidate(candidates, pt, rawScreen, 'dbox-connection', -9)
+            );
+            return;
+          }
+
+          const pts = polygonSnapRingPoints(g);
+          pts.forEach(pt => addSepticLineSnapPointCandidate(candidates, pt, rawScreen, 'vertex', 0));
+          for (let i = 0; i < pts.length; i++) {
+            addSepticLineSnapSegmentCandidate(candidates, pts[i], pts[(i + 1) % pts.length], rawScreen, 'edge', 1);
+          }
+        });
+
+      const byDistanceThenPriority = (a, b) => (a.distance - b.distance) || ((a.priority || 0) - (b.priority || 0));
+      const dedicated = candidates.filter(c => c.dedicated).sort(byDistanceThenPriority)[0];
+      if (dedicated && dedicated.distance <= SEPTIC_LINE_DEDICATED_SNAP_TOLERANCE_PX) {
+        return { point:dedicated.point, snapped:true, role:dedicated.role, distance:dedicated.distance };
+      }
+
+      const generic = candidates.filter(c => !c.dedicated).sort(byDistanceThenPriority)[0];
+      if (generic && generic.distance <= SEPTIC_LINE_SNAP_TOLERANCE_PX) {
+        return { point:generic.point, snapped:true, role:generic.role, distance:generic.distance };
+      }
+      return { point:rawPoint, snapped:false };
+    }
+
+    function updateSepticLinePreviewMeasure(label, startPt, endPt) {
+      if (!label || !startPt || !endPt) return;
+      const geom = septicLineGeometry(startPt, endPt);
+      const len = Math.abs(geometryEngine.geodesicLength(geom, 'feet'));
+      const mid = geom.extent && geom.extent.center;
+      if (!mid || !isFinite(len)) return;
+      label.geometry = mid;
+      label.symbol = {
+        type:'text',
+        text:len.toFixed(1) + "'",
+        color:[0,0,0,1],
+        haloColor:[255,255,255,1],
+        haloSize:1.75,
+        font:{size:9,weight:'bold',family:'Calibri, Segoe UI, Arial, sans-serif'},
+        yoffset:-10
+      };
+    }
+
+    function septicLineHandleSym(visible, active, snapped) {
+      if (snapped) {
+        return { type:'simple-marker', style:'circle', size:10, color:[242,140,40,1], outline:{ color:[255,255,255,1], width:1.5 } };
+      }
+      return setbackHandleSym(visible, active);
+    }
+
+    function septicLineParts(sid) {
+      return {
+        leader: drawLayer.graphics.find(g => g.__septicLineId === sid && g.__septicLineRole === 'leader'),
+        start:  drawLayer.graphics.find(g => g.__septicLineId === sid && g.__septicLineRole === 'start'),
+        end:    drawLayer.graphics.find(g => g.__septicLineId === sid && g.__septicLineRole === 'end')
+      };
+    }
+
+    function septicLineHandles(sid) {
+      if (!sid) return [];
+      return drawLayer.graphics
+        .filter(g => g.__septicLineId === sid && (g.__septicLineRole === 'start' || g.__septicLineRole === 'end'))
+        .toArray();
+    }
+
+    function bringSepticLineHandlesToFront(sid) {
+      septicLineHandles(sid).forEach(g => bringGraphicToFront(g));
+    }
+
+    function setSepticLineHandlesVisible(sid, visible) {
+      septicLineHandles(sid).forEach(g => { g.symbol = septicLineHandleSym(!!visible, false, false); });
+      if (visible) {
+        bringSepticLineHandlesToFront(sid);
+        activeSepticLineEditId = sid;
+      } else if (activeSepticLineEditId === sid) activeSepticLineEditId = null;
+    }
+
+    function setActiveSepticLineHandle(graphic, snapped) {
+      if (!graphic || !graphic.__septicLineId || (graphic.__septicLineRole !== 'start' && graphic.__septicLineRole !== 'end')) return;
+      setSepticLineHandlesVisible(graphic.__septicLineId, true);
+      graphic.symbol = septicLineHandleSym(true, true, !!snapped);
+      bringGraphicToFront(graphic);
+    }
+
+    function hideAllSepticLineHandles(exceptSid) {
+      drawLayer.graphics
+        .filter(g => g.__septicLineId && (g.__septicLineRole === 'start' || g.__septicLineRole === 'end'))
+        .toArray()
+        .forEach(g => {
+          if (exceptSid && g.__septicLineId === exceptSid) return;
+          g.symbol = septicLineHandleSym(false, false, false);
+        });
+      if (!exceptSid || activeSepticLineEditId !== exceptSid) activeSepticLineEditId = null;
+    }
+
+    function septicLineLengthText(startPt, endPt) {
+      if (!startPt || !endPt) return '—';
+      const geom = septicLineGeometry(startPt, endPt);
+      const len = Math.abs(geometryEngine.geodesicLength(geom, 'feet'));
+      return isFinite(len) ? len.toFixed(1) + "'" : '—';
+    }
+
+    function septicLineLeaderEndpointSpec(leader) {
+      if (!leader || !leader.geometry || leader.geometry.type !== 'polyline') return null;
+      const path = (leader.geometry.paths && leader.geometry.paths[0]) || [];
+      if (path.length < 2) return null;
+      const first = path[0];
+      const last = path[path.length - 1];
+      if (!first || !last) return null;
+      return {
+        start: { type:'point', x:first[0], y:first[1], spatialReference:leader.geometry.spatialReference },
+        end:   { type:'point', x:last[0],  y:last[1],  spatialReference:leader.geometry.spatialReference }
+      };
+    }
+
+    function updateSepticLineGraphics(sid) {
+      const parts = septicLineParts(sid);
+      if (!parts.leader || !parts.start || !parts.end) return;
+      parts.leader.geometry = septicLineGeometry(parts.start.geometry, parts.end.geometry);
+      createOrUpdateLineHitTarget(parts.leader);
+    }
+
+    function syncSepticLineFromLeader(sid) {
+      const parts = septicLineParts(sid);
+      const spec = septicLineLeaderEndpointSpec(parts.leader);
+      if (!parts.leader || !parts.start || !parts.end || !spec) return;
+      parts.start.geometry = spec.start;
+      parts.end.geometry = spec.end;
+      updateSepticLineGraphics(sid);
+      if (activeSepticLineEditId === sid) setSepticLineHandlesVisible(sid, true);
+    }
+
+    function showSepticLineMeasure(sid) {
+      const parts = septicLineParts(sid);
+      if (!parts.start || !parts.end) return;
+      showMeasure('Septic line', septicLineLengthText(parts.start.geometry, parts.end.geometry).replace("'", ' ft'), null);
+    }
+
+    function showSepticLineForEditing(sid, toolbarGraphic) {
+      if (!sid) return;
+      hideAllSepticLineHandles(sid);
+      setSepticLineHandlesVisible(sid, true);
+      const leader = toolbarGraphic || drawLayer.graphics.find(g => g.__septicLineId === sid && g.__septicLineRole === 'leader');
+      if (leader) showSelectionToolbar(leader);
+      showSepticLineMeasure(sid);
+      setStatus('Septic line selected. Drag the line to move it, or drag either endpoint handle to adjust and snap.');
+    }
+
+    function openSepticLineMove(sid, leaderGraphic) {
+      const leader = leaderGraphic || drawLayer.graphics.find(g => g.__septicLineId === sid && g.__septicLineRole === 'leader');
+      if (!leader || leader.__openingSepticLineMove) return false;
+      leader.__openingSepticLineMove = true;
+      try {
+        if (sketch.state !== 'idle') sketch.cancel();
+      } catch (err) {
+        console.warn('Unable to cancel current sketch update before septic line move.', err);
+      }
+
+      setTimeout(() => {
+        try {
+          hideAllSepticLineHandles(sid);
+          setSepticLineHandlesVisible(sid, true);
+          sketch.update([leader], { tool:'move', toggleToolOnClick:false });
+          showSelectionToolbar(leader);
+          showSepticLineMeasure(sid);
+          setStatus('Septic line move enabled. Drag the line to reposition it, or drag either endpoint handle to adjust and snap.');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to start septic line move mode.', false);
+        }
+        setTimeout(() => { leader.__openingSepticLineMove = false; }, 750);
+      }, 0);
+      return true;
+    }
+
+    function createSepticLineObject(startPt, endPt) {
+      const sid = 'septicline_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const leader = new Graphic({ geometry:septicLineGeometry(startPt, endPt), symbol:SYM.septicLine });
+      leader.__isLine = true;
+      leader.__lineType = 'septicline';
+      leader.__septicLine = true;
+      leader.__septicLineId = sid;
+      leader.__septicLineRole = 'leader';
+      leader.__label = 'Septic line';
+      const startHandle = new Graphic({ geometry:startPt, symbol:septicLineHandleSym(false, false, false) });
+      startHandle.__septicLineId = sid;
+      startHandle.__septicLineRole = 'start';
+      const endHandle = new Graphic({ geometry:endPt, symbol:septicLineHandleSym(false, false, false) });
+      endHandle.__septicLineId = sid;
+      endHandle.__septicLineRole = 'end';
+      drawLayer.addMany([leader, startHandle, endHandle]);
+      createOrUpdateLineHitTarget(leader);
+      setSepticLineHandlesVisible(sid, true);
+      sketch.update([leader], { tool:'move', toggleToolOnClick:false });
+      showSelectionToolbar(leader);
+      showSepticLineMeasure(sid);
+      // Keep D-boxes above the newly-added septic line in render order.
+      bringAllDboxesToFront();
+      setStatus('Septic line placed. Drag either endpoint handle to adjust and snap. No permanent length label is added.');
+      return leader;
+    }
+
     window.startSepticLineTool = function () {
       cancelAndReset('btn-septicline');
-      sketch.viewModel.polylineSymbol = SYM.septicLine;
-      sketch._pendingType = 'septicline';
-      sketch.create('polyline');
-      setStatus('Click to start septic line. Double-click to finish.');
+      let startPt = null;
+      let pLine = null;
+      let pPt = null;
+      let pMeasure = null;
+      let pHoverSnapPoint = null;
+      let firstMoveHandle = view.on('pointer-move', me => {
+        if (startPt) return;
+        const mp = view.toMap({x:me.x, y:me.y});
+        if (!mp) return;
+        const snap = septicLineSnapPointInfo(mp);
+        if (snap.snapped) {
+          pHoverSnapPoint = makeOrUpdatePreviewGraphic(pHoverSnapPoint, snap.point, septicLineSnapPointSymbol());
+          setStatus('Septic line start will snap to the highlighted site-plan object point or edge. Click to place the first point.');
+        } else if (pHoverSnapPoint) {
+          previewLayer.remove(pHoverSnapPoint);
+          pHoverSnapPoint = null;
+          setStatus('Click the first septic line point. Snaps to structures, septic tank ends, drainfield connection points, and drawing edges.');
+        }
+      });
+
+      const h = view.on('click', ev => {
+        if (!startPt) {
+          const snap = septicLineSnapPointInfo(ev.mapPoint);
+          startPt = snap.point;
+          if (pHoverSnapPoint) { previewLayer.remove(pHoverSnapPoint); pHoverSnapPoint = null; }
+          if (firstMoveHandle) { firstMoveHandle.remove(); firstMoveHandle = null; }
+          pLine = new Graphic({ geometry:septicLineGeometry(startPt, startPt), symbol:SYM.septicLine });
+          pPt = new Graphic({ geometry:startPt, symbol:snap.snapped ? septicLineSnapPointSymbol() : previewPtSym() });
+          pMeasure = new Graphic({ geometry:startPt, symbol:{ type:'text', text:"0.0'", color:[0,0,0,1], haloColor:[255,255,255,1], haloSize:1.75, font:{size:9,weight:'bold',family:'Calibri, Segoe UI, Arial, sans-serif'}, yoffset:-10 } });
+          previewLayer.addMany([pLine, pPt, pMeasure]);
+          const moveHandle = view.on('pointer-move', me => {
+            const mp = view.toMap({x:me.x, y:me.y});
+            if (!mp) return;
+            const snap2 = septicLineSnapPointInfo(mp);
+            const nextPt = snap2.point;
+            pLine.geometry = septicLineGeometry(startPt, nextPt);
+            pPt.geometry = nextPt;
+            pPt.symbol = snap2.snapped ? septicLineSnapPointSymbol() : previewPtSym();
+            updateSepticLinePreviewMeasure(pMeasure, startPt, nextPt);
+            setStatus(snap2.snapped ? 'Septic line endpoint will snap to the highlighted site-plan object. Click to place.' : 'Click the second septic line point. Live length is shown while drawing.');
+          });
+          activeSepticLinePreview = { line:pLine, point:pPt, measureLabel:pMeasure, moveHandle };
+          setStatus('Click the second septic line point. Live length is shown while drawing.');
+          return;
+        }
+
+        const endSnap = septicLineSnapPointInfo(ev.mapPoint);
+        clearActivePlacementHandle();
+        clearSepticLinePreview();
+        deactivateAll();
+        createSepticLineObject(startPt, endSnap.point);
+      });
+      setActivePlacementHandle(h);
+      activeSepticLinePreview = { firstMoveHandle, hoverSnapPoint:pHoverSnapPoint };
+      setStatus('Click the first septic line point. Snaps to structures, septic tank ends, drainfield connection points, and drawing edges.');
     };
     const SETBACK_SNAP_TOLERANCE_PX = 14;
     const SETBACK_PERP_TOLERANCE_PX = 8;
@@ -4444,13 +5767,22 @@
       return !!(pendingTypes && pendingTypes.includes(sketch._pendingType));
     }
 
+    function inactiveFixedDimensionInputChange(ev, checkboxId) {
+      const target = ev && ev.target;
+      const chk = document.getElementById(checkboxId);
+      // Typing dimensions while the fixed-size checkbox is off should only edit
+      // the input value. It should not cancel/restart the active drawing tool.
+      return !!(target && target.id !== checkboxId && chk && !chk.checked);
+    }
+
     function deferFixedControlSync(fn) {
       // Let the checkbox/input value settle before restarting the active tool.
       setTimeout(fn, 0);
     }
 
-    function syncStructureFixedControls(type) {
+    function syncStructureFixedControls(type, ev) {
       deferFixedControlSync(() => {
+        if (inactiveFixedDimensionInputChange(ev, 'chk-' + type)) return;
         const btnId = 'btn-' + type;
         if (!fixedControlChangeIsRelevant(btnId, [type])) return;
         const useFixed = document.getElementById('chk-' + type).checked;
@@ -4462,21 +5794,23 @@
       });
     }
 
-    function syncSepticFixedControls() {
+    function syncSepticFixedControls(ev) {
       deferFixedControlSync(() => {
+        if (inactiveFixedDimensionInputChange(ev, 'chk-septic')) return;
         if (!fixedControlChangeIsRelevant('btn-septic', ['septic'])) return;
         window.startSepticTool();
       });
     }
 
-    function syncDrainfieldFixedControls(isReserve) {
+    function syncDrainfieldFixedControls(isReserve, ev) {
       deferFixedControlSync(() => {
         const btnId = isReserve ? 'btn-reserve' : 'btn-drainfield';
         const pending = isReserve ? 'reserve' : 'drainfield';
         const lId = isReserve ? 'rv-l' : 'df-l';
         const wId = isReserve ? 'rv-w' : 'df-w';
-        if (!fixedControlChangeIsRelevant(btnId, [pending])) return;
         const chkId = isReserve ? 'chk-reserve' : 'chk-drainfield';
+        if (inactiveFixedDimensionInputChange(ev, chkId)) return;
+        if (!fixedControlChangeIsRelevant(btnId, [pending])) return;
         if (document.getElementById(chkId).checked && !dimsValid(lId, wId)) {
           cancelPendingToolForDimensions(btnId, 'Enter valid ' + (isReserve ? 'reserve drainfield' : 'drainfield') + ' dimensions first.');
           return;
@@ -4485,8 +5819,9 @@
       });
     }
 
-    function syncEasementFixedControls() {
+    function syncEasementFixedControls(ev) {
       deferFixedControlSync(() => {
+        if (inactiveFixedDimensionInputChange(ev, 'chk-easement')) return;
         if (!fixedControlChangeIsRelevant('btn-easement', ['easement'])) return;
         if (document.getElementById('chk-easement').checked && !dimsValid('easement-l', 'easement-w')) {
           cancelPendingToolForDimensions('btn-easement', 'Enter valid easement dimensions first.');
@@ -4496,8 +5831,9 @@
       });
     }
 
-    function syncRectangleFixedControls() {
+    function syncRectangleFixedControls(ev) {
       deferFixedControlSync(() => {
+        if (inactiveFixedDimensionInputChange(ev, 'chk-rect')) return;
         if (!fixedControlChangeIsRelevant('btn-rectangle', ['rectangle'])) return;
         if (document.getElementById('chk-rect').checked && !dimsValid('rect-l', 'rect-w')) {
           cancelPendingToolForDimensions('btn-rectangle', 'Enter valid rectangle dimensions first.');
@@ -4516,13 +5852,48 @@
       });
     }
 
-    addFixedControlListeners(['chk-proposed','proposed-l','proposed-w'], () => syncStructureFixedControls('proposed'));
-    addFixedControlListeners(['chk-existing','existing-l','existing-w'], () => syncStructureFixedControls('existing'));
+    addFixedControlListeners(['chk-proposed','proposed-l','proposed-w'], ev => syncStructureFixedControls('proposed', ev));
+    addFixedControlListeners(['chk-existing','existing-l','existing-w'], ev => syncStructureFixedControls('existing', ev));
     addFixedControlListeners(['chk-septic','septic-l','septic-w'], syncSepticFixedControls);
-    addFixedControlListeners(['chk-drainfield','df-l','df-w'], () => syncDrainfieldFixedControls(false));
-    addFixedControlListeners(['chk-reserve','rv-l','rv-w'], () => syncDrainfieldFixedControls(true));
+    addFixedControlListeners(['chk-drainfield','df-l','df-w','df-laterals'], ev => {
+      syncDrainfieldFixedControls(false, ev);
+      updateSelectedDrainfieldLateralsFromSidebar(false);
+    });
+    addFixedControlListeners(['chk-reserve','rv-l','rv-w','rv-laterals'], ev => {
+      syncDrainfieldFixedControls(true, ev);
+      updateSelectedDrainfieldLateralsFromSidebar(true);
+    });
     addFixedControlListeners(['chk-easement','easement-l','easement-w'], syncEasementFixedControls);
     addFixedControlListeners(['chk-rect','rect-l','rect-w'], syncRectangleFixedControls);
+
+    function syncDboxFixedControls() {
+      // If a D-box is currently selected, update it in place.
+      const sel = selectedToolbarGraphic;
+      if (!sel || !sel.__isDbox) return;
+      const l = parseFloat(document.getElementById('dbox-l').value);
+      const w = parseFloat(document.getElementById('dbox-w').value);
+      if (!isFinite(l) || !isFinite(w) || l <= 0 || w <= 0) return;
+      sel.__dboxL = l;
+      sel.__dboxW = w;
+      sel.__skipMeasure = true;
+      sel.__label = 'Distribution box (D-box)';
+      const center = sel.geometry.centroid || (sel.geometry.extent && sel.geometry.extent.center);
+      if (!center) return;
+      sel.geometry = buildFixedRect(center, l, w);
+      rebuildDboxInner(sel);
+      bringGraphicToFront(sel);
+      const inner = dboxInnerMap.get(sel.__dboxId);
+      if (inner) bringGraphicToFront(inner);
+      hideMeasure();
+    }
+    addFixedControlListeners(['chk-dbox','dbox-l','dbox-w'], syncDboxFixedControls);
+
+    // Prevent map/sketch keyboard handlers from intercepting sidebar typing.
+    document.querySelectorAll('.dim-input, #text-input').forEach(input => {
+      ['keydown','keypress','keyup'].forEach(evtName => {
+        input.addEventListener(evtName, evt => evt.stopPropagation());
+      });
+    });
 
     // ── Sketch events ─────────────────────────────────────────
     sketch.on('create', ev => {
@@ -4542,6 +5913,8 @@
         hideAllCalloutHandles();
         hideAllSetbackHandles();
         clearLiveMeasurePreview();
+        sketch._pendingType = null;
+        deactivateAll();
         return;
       }
       if (ev.state!=='complete') return;
@@ -4549,6 +5922,7 @@
       const g=ev.graphic;
       const pt=sketch._pendingType;
       sketch._pendingType=null;
+      deactivateAll();
       let resizedToMinimum = false;
 
       // Apply correct symbol for freehand draws
@@ -4569,10 +5943,13 @@
           g.geometry = buildFixedRect(center, 30, 10);
           setStatus('Shape was too small — resized to minimum 10 × 30 ft. Resize as needed.');
         }
+        const lateralCount = getDrainfieldLateralCount(isRes);
         g.symbol=drainfieldSym(isRes);
         g.__isDrainfield=isRes?'reserve':'primary';
         g.__dfId='df_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-        buildDrainfieldOverlay(g.geometry,g.__dfId,isRes).forEach(x=>labelLayer.add(x));
+        g.__dfLaterals=lateralCount;
+        g.__dfHeaderEdgeIndex=inferDrainfieldHeaderEdgeIndex(g.geometry);
+        buildDrainfieldOverlay(g.geometry,g.__dfId,isRes,lateralCount,g.__dfHeaderEdgeIndex).forEach(x=>labelLayer.add(x));
       } else if (pt==='setback') {
         g.symbol=SYM.setback;
         createOrUpdateLineLabel(g);
@@ -4623,6 +6000,10 @@
         }
       }
       if (!resizedToMinimum) setStatus('Shape placed. Click to select and edit.');
+
+      // Keep D-boxes rendered above any newly-placed graphic in drawLayer
+      // (especially septic lines that pass through the parent drainfield).
+      bringAllDboxesToFront();
     });
 
     sketch.on('update', ev => {
@@ -4651,6 +6032,33 @@
         showToolbarAfterEditIfStillSelected(g, 140);
       } else if (ev.state === 'cancel') {
         hideSelectionToolbar();
+      }
+
+      // Septic tanks are fixed-size objects. When selected directly, reopen the
+      // Sketch update in move/rotate-only mode so scale handles and vertex editing
+      // do not crowd the small tank symbol.
+      if (ev.state === 'start' && isSepticGraphic(g) && !g.__openingSepticMoveRotateEdit) {
+        openSepticMoveRotateEdit(g);
+        return;
+      }
+
+      // Distribution box inner graphic is a support graphic only. If clicked,
+      // redirect selection/editing to the parent D-box so the center square never
+      // moves independently or leaves the parent behind.
+      if (g.__isDboxInner && g.__dboxId) {
+        if (ev.state === 'start') {
+          try { sketch.cancel(); } catch (err) { console.warn('Unable to cancel D-box inner selection.', err); }
+          const outer = drawLayer.graphics.find(x => x.__isDbox && x.__dboxId === g.__dboxId);
+          if (outer) setTimeout(() => openDboxMoveEdit(outer), 0);
+        }
+        hideMeasure();
+        return;
+      }
+
+      // Distribution box (D-box): locked shape, move-only edit mode (no rotate, no scale, no reshape).
+      if (ev.state === 'start' && isDboxGraphic(g) && !g.__openingDboxMoveEdit) {
+        openDboxMoveEdit(g);
+        return;
       }
 
       // Apply the selected edit mode when supported polygons are selected.
@@ -4710,6 +6118,50 @@
           hideSetbackPerpendicularGuide();
         }
         hideMeasure();
+        return;
+      }
+
+      // Septic lines use two endpoint handles, like a simplified setback.
+      // Selecting the line moves the whole septic line; selecting either handle
+      // moves only that endpoint and re-applies the septic-line snap targets.
+      if (g.__septicLineId && g.__septicLineRole === 'leader') {
+        if (ev.state === 'start') {
+          if (!g.__openingSepticLineMove && sketchActiveToolName() !== 'move') {
+            openSepticLineMove(g.__septicLineId, g);
+            return;
+          }
+          showSepticLineForEditing(g.__septicLineId, g);
+        } else if (ev.state === 'active') {
+          syncSepticLineFromLeader(g.__septicLineId);
+          showSepticLineMeasure(g.__septicLineId);
+          hideSelectionToolbar();
+        } else if (ev.state === 'complete') {
+          syncSepticLineFromLeader(g.__septicLineId);
+          showToolbarAfterEditIfStillSelected(g, 140);
+          showSepticLineMeasure(g.__septicLineId);
+        } else if (ev.state === 'cancel') {
+          hideAllSepticLineHandles();
+        }
+        return;
+      }
+
+      if (g.__septicLineId && (g.__septicLineRole === 'start' || g.__septicLineRole === 'end')) {
+        const snapInfo = septicLineSnapPointInfo(g.geometry);
+        if (snapInfo && snapInfo.snapped) g.geometry = snapInfo.point;
+        hideAllSepticLineHandles(g.__septicLineId);
+        setSepticLineHandlesVisible(g.__septicLineId, true);
+        setActiveSepticLineHandle(g, !!(snapInfo && snapInfo.snapped));
+        updateSepticLineGraphics(g.__septicLineId);
+        showSepticLineMeasure(g.__septicLineId);
+        if (ev.state === 'start') {
+          showSelectionToolbar(g);
+          setStatus('Septic line handle selected. Drag to adjust the endpoint; it will snap to eligible site-plan features.');
+        } else if (ev.state === 'active') {
+          setStatus((snapInfo && snapInfo.snapped) ? 'Septic line endpoint snapped. Release to place.' : 'Drag to adjust the septic line endpoint.');
+        } else if (ev.state === 'complete') {
+          setActiveSepticLineHandle(g, false);
+          showToolbarAfterEditIfStillSelected(g, 140);
+        }
         return;
       }
 
@@ -4782,6 +6234,13 @@
               openSetbackMove(sid, sourceLine);
               setTimeout(() => showSetbackForEditing(sid, sourceLine), 160);
             }, 0);
+          } else if (sourceLine.__septicLineId) {
+            const sid = sourceLine.__septicLineId;
+            showSepticLineForEditing(sid, sourceLine);
+            setTimeout(() => {
+              openSepticLineMove(sid, sourceLine);
+              setTimeout(() => showSepticLineForEditing(sid, sourceLine), 160);
+            }, 0);
           } else if (sourceLine.__calloutId) {
             const cid = sourceLine.__calloutId;
             // When the invisible callout line hit target is clicked, treat it
@@ -4820,9 +6279,46 @@
         hideMeasure();
         return;
       }
-      if (g.__isDrainfield&&g.__dfId) syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve');
+      if (g.__isDrainfield&&g.__dfId) {
+        syncDrainfield(g.geometry, g.__dfId, g.__isDrainfield==='reserve', g.__dfLaterals || 3, ensureDrainfieldHeaderEdgeIndex(g));
+        updateDrainfieldLateralTool();
+        syncDboxToParentDrainfield(g);
+      }
       if (g.__isSepticTank) scheduleSepticLidSync(g);
       if (g.__calloutId) updateCalloutGraphics(g.__calloutId);
+
+      // D-box live sync: keep inner box centred on outer during move; on drop,
+      // re-evaluate whether the D-box is over a drainfield and update parenting.
+      if (isDboxGraphic(g)) {
+        rebuildDboxInner(g);
+        if (ev.state === 'active') {
+          const c = g.geometry && (g.geometry.centroid || (g.geometry.extent && g.geometry.extent.center));
+          if (c) updateDboxSnapPreviewForPoint(c);
+        }
+        if (ev.state === 'cancel') clearDboxSnapPreview();
+        if (ev.state === 'complete') {
+          clearDboxSnapPreview();
+          const target = findDrainfieldContainingDboxCentroid(g);
+          if (target) {
+            const newCenter = dboxCenterForDrainfield(target);
+            if (newCenter) {
+              g.geometry = buildFixedRect(newCenter, g.__dboxL, g.__dboxW);
+              rebuildDboxInner(g);
+            }
+            linkDboxToDrainfield(g, target);
+            setStatus('Distribution box (D-box) snapped to the primary drainfield header.');
+          } else if (g.__parentDfId) {
+            unlinkDbox(g);
+            setStatus('Distribution box (D-box) detached from drainfield.');
+          }
+          bringGraphicToFront(g);
+          const inner = dboxInnerMap.get(g.__dboxId);
+          if (inner) bringGraphicToFront(inner);
+          refreshSnapSources();
+        }
+        hideMeasure();
+      }
+
       if (g.geometry.type==='polygon') {
         enforceMinimumRect(g, g.__label || (g.__structureType === 'existing' ? 'Existing structure' : g.__structureType === 'proposed' ? 'Proposed structure' : 'Shape'));
         syncPolygonEdgeLabels(g);
@@ -4851,6 +6347,12 @@
       const deletedSepticIds = [];
       ev.graphics.forEach(g => {
         if (g && (g.__isSepticTank || g.__septicId) && g.__septicId) deletedSepticIds.push(g.__septicId);
+        if (g.__isDboxInner && g.__dboxId) {
+          const outer = drawLayer.graphics.find(x => x.__isDbox && x.__dboxId === g.__dboxId);
+          if (outer) removeDbox(outer);
+          else removeDboxInner(g.__dboxId);
+          return;
+        }
         if (g.__lineHitTarget) {
           const sourceLine = sourceLineForHitTarget(g);
           if (sourceLine && sourceLine.__setbackId) {
@@ -4858,6 +6360,10 @@
             hideAllSetbackHandles();
             drawLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>drawLayer.remove(x));
             labelLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>labelLayer.remove(x));
+          } else if (sourceLine && sourceLine.__septicLineId) {
+            const sid = sourceLine.__septicLineId;
+            hideAllSepticLineHandles();
+            drawLayer.graphics.filter(x=>x.__septicLineId===sid).toArray().forEach(x=>drawLayer.remove(x));
           } else if (sourceLine && sourceLine.__calloutId) {
             const cid = sourceLine.__calloutId;
             hideAllCalloutHandles();
@@ -4884,12 +6390,25 @@
         if (g.__isDrainfield&&g.__dfId) {
           const did=g.__dfId;
           labelLayer.graphics.filter(x=>x.__dfId===did).toArray().forEach(x=>labelLayer.remove(x));
+          // Cascade-delete any child D-box attached to this drainfield.
+          const childDbox = drainfieldChildDboxMap.get(did);
+          if (childDbox) removeDbox(childDbox);
+        }
+        // D-box deletion: clean up inner-box visual and any parent link.
+        if (g.__isDbox && g.__dboxId) {
+          removeDboxInner(g.__dboxId);
+          unlinkDbox(g);
         }
         if (g.__setbackId) {
           const sid=g.__setbackId;
           hideAllSetbackHandles();
           drawLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
           labelLayer.graphics.filter(x=>x.__setbackId===sid).toArray().forEach(x=>labelLayer.remove(x));
+        }
+        if (g.__septicLineId) {
+          const sid=g.__septicLineId;
+          hideAllSepticLineHandles();
+          drawLayer.graphics.filter(x=>x.__septicLineId===sid).toArray().forEach(x=>{if(x!==g)drawLayer.remove(x);});
         }
         if (g.__calloutId) {
           const cid=g.__calloutId;
@@ -4906,7 +6425,7 @@
     });
 
     document.addEventListener('keydown', e => {
-      if (e.key==='Escape') { clearCalloutPreview(); clearLiveMeasurePreview(); if(sketch.state!=='idle')sketch.cancel(); }
+      if (e.key==='Escape') { clearCalloutPreview(); clearSepticLinePreview(); clearLiveMeasurePreview(); if(sketch.state!=='idle')sketch.cancel(); }
       if ((e.key==='Delete'||e.key==='Backspace')&&sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
     });
 
@@ -5147,6 +6666,12 @@
         const did = g.__dfId;
         labelLayer.graphics.filter(x=>x.__dfId===did).toArray().forEach(x=>labelLayer.remove(x));
         drawLayer.remove(g);
+      } else if (g.__septicLineId) {
+        const sid = g.__septicLineId;
+        hideAllSepticLineHandles();
+        drawLayer.graphics.filter(x=>x.__septicLineId===sid).toArray().forEach(x=>drawLayer.remove(x));
+        const hit = lineHitTargetFor(g.__septicLineRole === 'leader' ? g : drawLayer.graphics.find(x=>x.__septicLineId===sid&&x.__septicLineRole==='leader'));
+        if (hit) drawLayer.remove(hit);
       } else if (g.__calloutId) {
         const cid = g.__calloutId;
         hideAllCalloutHandles();
@@ -5175,11 +6700,13 @@
     };
 
     function performClearAll() {
-      clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); hideAllCalloutHandles(); sketch.cancel();
+      clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSepticLineHandles(); sketch.cancel();
       drawLayer.removeAll(); wellLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
       objectLabelMap.clear();
+      dboxInnerMap.clear();
+      drainfieldChildDboxMap.clear();
       document.getElementById('measure-box').style.display='none';
       setStatus('All items cleared.');
     }
@@ -5228,9 +6755,11 @@
       hideSelectionToolbar();
       const calloutToRestoreAfterPrint = activeCalloutEditId;
       const setbackToRestoreAfterPrint = activeSetbackEditId;
+      const septicLineToRestoreAfterPrint = activeSepticLineEditId;
       hideAllCalloutHandles();
       hideSetbackPerpendicularGuide();
       hideAllSetbackHandles();
+      hideAllSepticLineHandles();
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
       const prePrintBasemap = map.basemap;
@@ -5281,6 +6810,7 @@
         if (polygonGraphicExists(g => g.__isSepticTank)) items.push(['legend-septic','Septic tank']);
         if (drawLayer.graphics.toArray().some(g => g.__isDrainfield === 'primary')) items.push(['legend-drainfield','Drainfield']);
         if (drawLayer.graphics.toArray().some(g => g.__isDrainfield === 'reserve')) items.push(['legend-reserve','Reserve drainfield']);
+        if (drawLayer.graphics.toArray().some(g => g.__isDbox)) items.push(['legend-dbox','Distribution box (D-box)']);
         if (lineGraphicExists(g => g.__isLine && !g.__wellRole && !g.__calloutId && !g.__isDrainfield && !g.__isSepticTank && g.symbol && g.symbol.style === 'solid' && g.symbol.color && g.symbol.color[1] !== 110)) items.push(['legend-line','Line']);
         if (lineGraphicExists(g => g.__setbackRole === 'leader' || (!g.__isLine && !g.__calloutId && g.symbol && g.symbol.style === 'short-dash'))) items.push(['legend-setback','Setback']);
         if (polygonGraphicExists(g => g.__isGrading)) items.push(['legend-grading','Proposed grading']);
@@ -5508,6 +7038,19 @@ html, body {
   border-top: 2px solid #006e2d;
 }
 .legend-reserve { border-top-style: dashed; opacity: .75; }
+.legend-dbox {
+  background: rgba(102, 187, 106, 0.55);
+  border: 1.4px solid #1b5e20;
+  position: relative;
+}
+.legend-dbox::after {
+  content: '';
+  position: absolute;
+  left: 25%; top: 22%;
+  width: 50%; height: 56%;
+  background: rgba(27, 94, 32, 0.85);
+  border: 0.8px solid #0d471b;
+}
 .legend-line { height: 0; border-top: 1.5px solid #000; margin-top: 6px; }
 .legend-setback { height: 0; border-top: 1.5px dashed #000; margin-top: 6px; }
 .legend-setback::before, .legend-setback::after {
@@ -5688,6 +7231,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
             restoreTextStyles(orig);
             if (calloutToRestoreAfterPrint) setCalloutHandlesVisible(calloutToRestoreAfterPrint, true);
             if (setbackToRestoreAfterPrint) setSetbackHandlesVisible(setbackToRestoreAfterPrint, true);
+            if (septicLineToRestoreAfterPrint) setSepticLineHandlesVisible(septicLineToRestoreAfterPrint, true);
             if (prePrintPadding) view.padding = prePrintPadding;
             if (prePrintBasemap) map.basemap = prePrintBasemap;
             if (prePrintViewpoint) view.goTo(prePrintViewpoint, { duration:0 }).catch(() => {});
