@@ -521,6 +521,153 @@
       transition:transform .08s linear;
     }
 
+
+    .measure-flyout-control.esri-component {
+      position:relative;
+      width:32px;
+      height:32px;
+      overflow:visible;
+      box-shadow:none;
+      background:transparent;
+    }
+    .measure-flyout-control.expanded {
+      width:248px;
+      height:auto;
+    }
+    .measure-toggle-btn {
+      width:32px;
+      height:32px;
+      min-height:32px;
+      padding:0;
+      border:0;
+      background:#fff;
+      color:#111827;
+      box-shadow:0 1px 2px rgba(0,0,0,.3);
+      cursor:pointer;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif;
+      font-size:12px;
+      line-height:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .measure-toggle-btn:hover { background:#f5f7fa; color:#0b2d4c; }
+    .measure-toggle-btn.active {
+      background:#deeeff;
+      color:#0b2d4c;
+      box-shadow:0 1px 2px rgba(0,0,0,.3), inset 0 0 0 1px #0b2d4c;
+    }
+    .measure-toggle-btn svg { width:19px; height:19px; display:block; }
+    .measure-flyout-control.expanded .measure-toggle-btn {
+      visibility:hidden;
+      pointer-events:none;
+    }
+    .measure-panel {
+      display:none;
+      position:absolute;
+      top:0;
+      left:0;
+      width:248px;
+      background:#fff;
+      color:#000;
+      border:2px solid #0b2d4c;
+      border-radius:6px;
+      box-shadow:0 2px 8px rgba(0,0,0,.35);
+      overflow:hidden;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif;
+      z-index:1000;
+    }
+    .measure-flyout-control.expanded .measure-panel { display:block; }
+    .measure-panel-head {
+      height:30px;
+      background:#0b2d4c;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:0 9px;
+      cursor:pointer;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.03em;
+      user-select:none;
+    }
+    .measure-panel-head:hover { background:#123f68; }
+    .measure-close-btn {
+      width:22px;
+      height:30px;
+      padding:0;
+      border:0;
+      border-radius:3px;
+      background:transparent;
+      color:#fff;
+      cursor:pointer;
+      font:inherit;
+      font-size:18px;
+      line-height:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .measure-close-btn:hover { background:rgba(255,255,255,.18); }
+    .measure-panel-body {
+      padding:8px 10px 9px;
+      background:#fff;
+    }
+    .measure-mode-row {
+      display:flex;
+      flex-direction:column;
+      gap:0;
+      margin:0;
+    }
+    .measure-check-row,
+    .measure-clear-btn {
+      width:100%;
+      min-height:28px;
+      border:0;
+      border-radius:0;
+      background:#fff;
+      color:#000;
+      cursor:pointer;
+      font:inherit;
+      font-size:12px;
+      font-weight:400;
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap:7px;
+      padding:5px 2px;
+      text-align:left;
+    }
+    .measure-check-row:hover:not(:disabled),
+    .measure-clear-btn:hover:not(:disabled) {
+      background:#f5f7fa;
+      color:#000;
+    }
+    .measure-check-row input[type="checkbox"] {
+      margin:0;
+      width:13px;
+      height:13px;
+      flex:0 0 13px;
+      pointer-events:none;
+    }
+    .measure-check-row.active span {
+      color:#0b2d4c;
+      font-weight:700;
+    }
+    .measure-clear-btn {
+      margin-top:6px;
+      padding-top:8px;
+      border-top:1px solid #eef1f4;
+      gap:0;
+    }
+    .measure-clear-btn:disabled {
+      background:#fff;
+      color:#9ca3af;
+      cursor:not-allowed;
+    }
+
     #loading {
       position:absolute; inset:0; background:rgba(255,255,255,.92); z-index:20;
       display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
@@ -698,6 +845,30 @@
     .df-lateral-option:last-child { border-bottom:0; }
     .df-lateral-option:hover,
     .df-lateral-option.active { background:#deeeff; color:#0b2d4c; font-weight:700; }
+
+    /* ── 45-degree rotation buttons (inside selection toolbar) ─ */
+    .rotation-tool-wrap {
+      display:none;
+      align-items:center;
+      gap:4px;
+      pointer-events:auto;
+    }
+    .selection-tool-btn.rotation-step-btn {
+      font-size:18px;
+      font-weight:700;
+      line-height:1;
+    }
+    .selection-tool-btn.rotation-step-btn:disabled {
+      background:#f3f4f6;
+      color:#9ca3af;
+      border-color:#d1d5db;
+      cursor:not-allowed;
+    }
+    .selection-tool-btn.rotation-step-btn:disabled:hover {
+      background:#f3f4f6;
+      color:#9ca3af;
+      border-color:#d1d5db;
+    }
 
     /* ── Object label editor (inside selection toolbar) ─────── */
     .selection-tool-btn.label-tool { font-size:13px; font-weight:700; line-height:1; }
@@ -1056,6 +1227,10 @@
             <rect x="8" y="4" width="12" height="12" rx="2"/>
           </svg>
         </button>
+        <div id="rotation-tool-wrap" class="rotation-tool-wrap" style="display:none;">
+          <button type="button" id="rotate-ccw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(45)" title="Rotate counterclockwise 45°" aria-label="Rotate selected item counterclockwise 45 degrees">↶</button>
+          <button type="button" id="rotate-cw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(-45)" title="Rotate clockwise 45°" aria-label="Rotate selected item clockwise 45 degrees">↷</button>
+        </div>
         <div id="df-lateral-tool-wrap" class="df-lateral-tool-wrap" style="display:none;">
           <button type="button" id="df-lateral-menu-btn" class="selection-tool-btn df-lateral-menu-btn" onclick="toggleDrainfieldLateralMenu(event)" title="Change number of drainfield laterals" aria-label="Change number of drainfield laterals" aria-haspopup="listbox" aria-expanded="false">
             <span id="df-lateral-menu-count" class="df-lateral-count">3</span>
@@ -1360,6 +1535,7 @@
     const drawLayer      = new GraphicsLayer({ title:'Drawings' });
     const labelLayer     = new GraphicsLayer({ title:'Labels',         listMode:'hide' });
     const previewLayer   = new GraphicsLayer({ title:'Preview',        listMode:'hide' });
+    const measureLayer   = new GraphicsLayer({ title:'Temporary Measurements', listMode:'hide' });
     const highlightLayer = new GraphicsLayer({ title:'Selected Parcel',listMode:'hide' });
 
     let activeBasemapId = cfg.map.basemap || 'streets-vector';
@@ -1381,6 +1557,7 @@
         wellLayer,
         drawLayer,
         labelLayer,
+        measureLayer,
         previewLayer
       ]
     });
@@ -1419,6 +1596,39 @@
     view.ui.add(northResetBtn, 'top-left');
     view.watch('rotation', updateNorthResetButton);
     updateNorthResetButton();
+
+    const measureControl = document.createElement('div');
+    measureControl.className = 'esri-component measure-flyout-control';
+    measureControl.innerHTML = `
+      <button type="button" class="measure-toggle-btn" id="measure-toggle-btn" title="Measurement tools" aria-label="Measurement tools" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 17.5 17.5 3 21 6.5 6.5 21 3 17.5Z"></path>
+          <path d="M14.5 6 16.5 8"></path>
+          <path d="M11.5 9 13.5 11"></path>
+          <path d="M8.5 12 10.5 14"></path>
+          <path d="M5.5 15 7.5 17"></path>
+        </svg>
+      </button>
+      <div class="measure-panel" role="dialog" aria-label="Measure">
+        <div class="measure-panel-head" id="measure-panel-head" title="Collapse measurement tools">
+          <span>Measure</span>
+          <button type="button" class="measure-close-btn" id="measure-close-btn" title="Collapse measurement tools" aria-label="Collapse measurement tools">‹</button>
+        </div>
+        <div class="measure-panel-body">
+          <div class="measure-mode-row" role="group" aria-label="Measurement type">
+            <button type="button" class="measure-check-row" id="measure-distance-btn" role="checkbox" aria-checked="false" title="Measure distance" aria-label="Measure distance">
+              <input type="checkbox" id="measure-distance-check" tabindex="-1" aria-hidden="true" />
+              <span>Distance</span>
+            </button>
+            <button type="button" class="measure-check-row" id="measure-area-btn" role="checkbox" aria-checked="false" title="Measure area" aria-label="Measure area">
+              <input type="checkbox" id="measure-area-check" tabindex="-1" aria-hidden="true" />
+              <span>Area</span>
+            </button>
+            <button type="button" class="measure-clear-btn" id="measure-clear-btn" title="Clear temporary measurements">Clear</button>
+          </div>
+        </div>
+      </div>`;
+    view.ui.add(measureControl, 'top-left');
 
     view.ui.add(new ScaleBar({ view, unit:'dual' }), 'bottom-right');
     /* ── Parcel Search ─────────────────────────────────────────
@@ -1732,6 +1942,8 @@
 
     // ── Selected-object floating toolbar ──────────────────────
     let selectedToolbarGraphic = null;
+    let programmaticRotationActive = false;
+    let programmaticRotationGraphic = null;
 
     function toolbarElement() {
       return document.getElementById('selection-toolbar');
@@ -1856,6 +2068,379 @@
         opt.setAttribute('aria-selected', active ? 'true' : 'false');
       });
     }
+
+    function attachedDboxParent(graphic) {
+      if (!graphic || !graphic.__parentDfId) return null;
+      return drawLayer.graphics.find(g => isDrainfieldGraphic(g) && g.__dfId === graphic.__parentDfId) || null;
+    }
+
+    function isAttachedDboxGraphic(graphic) {
+      return !!(graphic && isDboxGraphic(graphic) && graphic.__parentDfId && attachedDboxParent(graphic));
+    }
+
+    function normalizeRotationDegrees(value) {
+      const n = Number(value);
+      if (!isFinite(n)) return 0;
+      const normalized = ((n % 360) + 360) % 360;
+      return Math.abs(normalized - 360) < 0.0001 ? 0 : normalized;
+    }
+
+    function formatRotationDegrees(value) {
+      const n = normalizeRotationDegrees(value);
+      const rounded = Math.round(n * 10) / 10;
+      const safe = Math.abs(rounded - 360) < 0.0001 ? 0 : rounded;
+      const display = Math.abs(safe - Math.round(safe)) < 0.0001
+        ? String(Math.round(safe))
+        : String(safe.toFixed(1)).replace(/\.0$/, '');
+      return display + '°';
+    }
+
+    function parseRotationInputValue(value) {
+      const raw = String(value || '').replace(/°/g, '').trim();
+      if (!raw) return NaN;
+      return parseFloat(raw);
+    }
+
+    function rotationCenterForGeometry(geometry) {
+      if (!geometry) return null;
+      if (geometry.type === 'point') return geometry;
+      try {
+        if (geometry.type === 'polygon' && geometry.centroid && isFinite(geometry.centroid.x) && isFinite(geometry.centroid.y)) return geometry.centroid;
+      } catch (e) {}
+      const ext = geometry.extent;
+      return ext ? ext.center : null;
+    }
+
+    function firstUsableRingEdgeAngle(polygon) {
+      if (!polygon || !polygon.rings || !polygon.rings[0] || polygon.rings[0].length < 2) return 0;
+      const ring = polygon.rings[0];
+      for (let i = 0; i < ring.length - 1; i++) {
+        const a = ring[i];
+        const b = ring[i + 1];
+        if (!a || !b) continue;
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        if (Math.hypot(dx, dy) > 0.000001) {
+          return normalizeRotationDegrees(Math.atan2(dy, dx) * 180 / Math.PI);
+        }
+      }
+      return 0;
+    }
+
+    function rotationDeltaDegrees(targetDeg, currentDeg) {
+      let delta = normalizeRotationDegrees(targetDeg) - normalizeRotationDegrees(currentDeg);
+      if (delta > 180) delta -= 360;
+      if (delta <= -180) delta += 360;
+      return delta;
+    }
+
+    function setGraphicRotationState(graphic, angleDeg) {
+      if (!graphic || !graphic.geometry) return;
+      const angle = normalizeRotationDegrees(angleDeg);
+      graphic.__rotationDeg = angle;
+      if (graphic.geometry.type === 'polygon') {
+        const currentEdge = firstUsableRingEdgeAngle(graphic.geometry);
+        graphic.__rotationBaseAngleDeg = normalizeRotationDegrees(currentEdge - angle);
+      }
+    }
+
+    function ensureGraphicRotationState(graphic) {
+      if (!graphic || !graphic.geometry) return;
+      const stored = Number(graphic.__rotationDeg);
+      if (graphic.geometry.type !== 'polygon') {
+        graphic.__rotationDeg = isFinite(stored) ? normalizeRotationDegrees(stored) : 0;
+        return;
+      }
+
+      const base = Number(graphic.__rotationBaseAngleDeg);
+      if (!isFinite(base)) {
+        // This establishes the selected object's starting orientation as 0°.
+        // The toolbar then reports rotation relative to that original ESRI-rendered shape,
+        // rather than the map bearing of the polygon's first edge.
+        const initialAngle = isFinite(stored) ? normalizeRotationDegrees(stored) : 0;
+        const currentEdge = firstUsableRingEdgeAngle(graphic.geometry);
+        graphic.__rotationBaseAngleDeg = normalizeRotationDegrees(currentEdge - initialAngle);
+        graphic.__rotationDeg = initialAngle;
+      }
+    }
+
+    function updateGraphicRotationFromGeometry(graphic) {
+      if (!graphic || !graphic.geometry) return 0;
+      ensureGraphicRotationState(graphic);
+      if (graphic.geometry.type !== 'polygon') {
+        const stored = Number(graphic.__rotationDeg);
+        return isFinite(stored) ? normalizeRotationDegrees(stored) : 0;
+      }
+      const base = Number(graphic.__rotationBaseAngleDeg) || 0;
+      const currentEdge = firstUsableRingEdgeAngle(graphic.geometry);
+      const angle = normalizeRotationDegrees(currentEdge - base);
+      graphic.__rotationDeg = angle;
+      return angle;
+    }
+
+    function graphicRotationDegrees(graphic) {
+      if (!graphic || !graphic.geometry) return 0;
+      const parent = isAttachedDboxGraphic(graphic) ? attachedDboxParent(graphic) : null;
+      if (parent) return graphicRotationDegrees(parent);
+      return updateGraphicRotationFromGeometry(graphic);
+    }
+
+    function rotateCoordAround(coord, center, radians) {
+      const x = coord[0] - center.x;
+      const y = coord[1] - center.y;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+      return [
+        center.x + x * cos - y * sin,
+        center.y + x * sin + y * cos
+      ];
+    }
+
+    function rotateGeometryAroundCenter(geometry, deltaAngleDeg) {
+      if (!geometry) return geometry;
+      const deltaDeg = Number(deltaAngleDeg);
+      if (!isFinite(deltaDeg) || Math.abs(deltaDeg) < 0.0001) return geometry.clone ? geometry.clone() : geometry;
+      const center = rotationCenterForGeometry(geometry);
+      if (!center) return geometry;
+      const radians = deltaDeg * Math.PI / 180;
+
+      if (geometry.type === 'polygon') {
+        return new Polygon({
+          spatialReference: geometry.spatialReference,
+          rings: geometry.rings.map(ring => ring.map(coord => rotateCoordAround(coord, center, radians)))
+        });
+      }
+
+      if (geometry.type === 'polyline') {
+        return {
+          type: 'polyline',
+          spatialReference: geometry.spatialReference,
+          paths: geometry.paths.map(path => path.map(coord => rotateCoordAround(coord, center, radians)))
+        };
+      }
+
+      return geometry.clone ? geometry.clone() : geometry;
+    }
+
+    function buildFixedRectRotated(center, lFt, wFt, angleDeg) {
+      const rect = buildFixedRect(center, lFt, wFt);
+      const angle = normalizeRotationDegrees(angleDeg);
+      if (Math.abs(angle) < 0.0001) return rect;
+      return rotateGeometryAroundCenter(rect, angle);
+    }
+
+    function isRotationEligibleGraphic(graphic) {
+      const g = selectionToolbarGraphicFor(graphic);
+      if (!g || !g.geometry || g.geometry.type !== 'polygon') return false;
+      if (!isSelectableDrawGraphic(g)) return false;
+      if (g.__wellId || g.__dfRole || g.__isDboxInner || g.__lineHitTarget) return false;
+      return true;
+    }
+
+    function selectedRotationGraphic() {
+      const g = selectionToolbarGraphicFor(selectedToolbarGraphic || getCurrentUpdateGraphic());
+      return isRotationEligibleGraphic(g) ? g : null;
+    }
+
+    function closeRotationMenu() {
+      // Rotation is now handled by two direct 45-degree buttons, so there is no menu to close.
+    }
+
+    function updateRotationPresetActiveState(angle) {
+      // Kept as a no-op for compatibility with older helper calls.
+    }
+
+    function updateRotationInputDisplay(angle) {
+      // Kept as a no-op for compatibility with older helper calls.
+    }
+
+    function updateRotationToolVisibility() {
+      const wrap = document.getElementById('rotation-tool-wrap');
+      const ccw = document.getElementById('rotate-ccw-tool');
+      const cw = document.getElementById('rotate-cw-tool');
+      if (!wrap) return;
+      const g = selectedRotationGraphic();
+      const shouldShow = !!g && !labelEditorActive;
+      wrap.style.display = shouldShow ? 'flex' : 'none';
+      if (!shouldShow) return;
+
+      const disabled = isAttachedDboxGraphic(g);
+      const title = disabled
+        ? 'D-box rotation is controlled by the attached drainfield.'
+        : 'Rotate selected item 45 degrees.';
+      if (ccw) {
+        ccw.disabled = disabled;
+        ccw.title = disabled ? title : 'Rotate counterclockwise 45°';
+        ccw.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      }
+      if (cw) {
+        cw.disabled = disabled;
+        cw.title = disabled ? title : 'Rotate clockwise 45°';
+        cw.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      }
+    }
+
+    function refreshAfterRotation(graphic) {
+      if (!graphic || !graphic.geometry) return;
+      graphic.__rotationDeg = graphicRotationDegrees(graphic);
+
+      if (isDrainfieldGraphic(graphic)) {
+        syncDrainfield(graphic.geometry, graphic.__dfId, graphic.__isDrainfield === 'reserve', graphic.__dfLaterals || 3, ensureDrainfieldHeaderEdgeIndex(graphic));
+        updateDrainfieldLateralTool();
+        syncDboxToParentDrainfield(graphic);
+      }
+
+      if (isDboxGraphic(graphic)) {
+        rebuildDboxInner(graphic);
+        bringGraphicToFront(graphic);
+        const inner = dboxInnerMap.get(graphic.__dboxId);
+        if (inner) bringGraphicToFront(inner);
+      }
+
+      if (isSepticGraphic(graphic)) scheduleSepticLidSync(graphic);
+      if (graphic.geometry.type === 'polygon') {
+        syncPolygonEdgeLabels(graphic);
+        syncObjectLabelPosition(graphic);
+        if (shouldShowSelectedShapeOnly(graphic)) showSelectedShapeOnly(graphic.__label || 'Shape');
+        else if (shouldSkipShapeMeasurement(graphic)) hideMeasure();
+        else showPolygonAreaMeasure(graphic, graphic.__measureLabel || graphic.__label || 'Selected shape');
+      }
+
+      bringAllDboxesToFront();
+      refreshSnapSources();
+    }
+
+    function reopenAfterRotation(graphic) {
+      if (!graphic || !graphic.geometry) return;
+      setTimeout(() => {
+        try {
+          if (isDboxGraphic(graphic)) {
+            openDboxMoveEdit(graphic);
+          } else if (isSepticGraphic(graphic)) {
+            openSepticMoveRotateEdit(graphic, 'Object rotated. Move or rotate as needed.');
+          } else {
+            sketch.update([graphic], { tool:'transform', enableRotation:true, enableScaling:true, preserveAspectRatio:false, toggleToolOnClick:false });
+            showSelectionToolbar(graphic);
+          }
+          updateRotationToolVisibility();
+          requestAnimationFrame(positionSelectionToolbar);
+        } catch (err) {
+          console.error(err);
+          showSelectionToolbar(graphic);
+        }
+      }, 0);
+    }
+
+    function rotateGraphicToAngle(graphic, angleDeg) {
+      const g = selectionToolbarGraphicFor(graphic);
+      if (!isRotationEligibleGraphic(g)) {
+        setStatus('This selected item cannot be rotated.', false);
+        return false;
+      }
+      if (isAttachedDboxGraphic(g)) {
+        setStatus('D-box rotation is controlled by the attached drainfield.', true);
+        updateRotationToolVisibility();
+        return false;
+      }
+
+      const angle = normalizeRotationDegrees(angleDeg);
+      const currentAngle = graphicRotationDegrees(g);
+      const deltaAngle = rotationDeltaDegrees(angle, currentAngle);
+
+      programmaticRotationActive = true;
+      programmaticRotationGraphic = g;
+      selectedToolbarGraphic = g;
+      try { if (sketch.state !== 'idle') sketch.cancel(); }
+      catch (err) { console.warn('Unable to cancel current sketch update before rotation.', err); }
+
+      g.geometry = rotateGeometryAroundCenter(g.geometry, deltaAngle);
+      setGraphicRotationState(g, angle);
+      refreshAfterRotation(g);
+      selectedToolbarGraphic = g;
+      closeRotationMenu();
+      reopenAfterRotation(g);
+      setTimeout(() => {
+        programmaticRotationActive = false;
+        programmaticRotationGraphic = null;
+        if (isSelectableDrawGraphic(g)) {
+          selectedToolbarGraphic = g;
+          showSelectionToolbar(g);
+          updateRotationToolVisibility();
+          requestAnimationFrame(positionSelectionToolbar);
+        }
+      }, 450);
+      setStatus('Object rotated.');
+      return true;
+    }
+
+    window.toggleRotationMenu = function (event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const g = selectedRotationGraphic();
+      if (!g || isAttachedDboxGraphic(g)) {
+        updateRotationToolVisibility();
+        return;
+      }
+      const wrap = document.getElementById('rotation-tool-wrap');
+      const arrow = document.getElementById('rotation-menu-arrow');
+      const input = document.getElementById('rotation-combo-input');
+      if (!wrap) return;
+      if (input) {
+        input.blur();
+        input.value = formatRotationDegrees(graphicRotationDegrees(g));
+      }
+      wrap.classList.toggle('open');
+      if (arrow) arrow.setAttribute('aria-expanded', wrap.classList.contains('open') ? 'true' : 'false');
+      updateRotationPresetActiveState(graphicRotationDegrees(g));
+      requestAnimationFrame(positionSelectionToolbar);
+    };
+
+    window.rotateSelectedBy = function (deltaDeg) {
+      const g = selectedRotationGraphic();
+      const delta = Number(deltaDeg || 0);
+      if (!g || !isFinite(delta) || !delta) return;
+      const ok = rotateGraphicToAngle(g, graphicRotationDegrees(g) + delta);
+      if (ok) setStatus('Object rotated ' + (delta > 0 ? 'counterclockwise' : 'clockwise') + ' 45°.');
+    };
+
+    window.setSelectedRotation = function (angleDeg) {
+      const g = selectedRotationGraphic();
+      if (!g) return;
+      rotateGraphicToAngle(g, angleDeg);
+    };
+
+    window.beginRotationInput = function () {
+      const g = selectedRotationGraphic();
+      const input = document.getElementById('rotation-combo-input');
+      if (!g || isAttachedDboxGraphic(g) || !input) return;
+      closeRotationMenu();
+      input.value = String(parseFloat(formatRotationDegrees(graphicRotationDegrees(g)).replace('°', '')));
+      setTimeout(() => input.select(), 0);
+    };
+
+    window.commitRotationInput = function () {
+      const input = document.getElementById('rotation-combo-input');
+      const value = input ? parseRotationInputValue(input.value) : NaN;
+      if (!isFinite(value)) {
+        setStatus('Enter a valid orientation angle in degrees.', false);
+        if (input) input.focus();
+        return;
+      }
+      const g = selectedRotationGraphic();
+      if (!g) return;
+      rotateGraphicToAngle(g, value);
+      if (input) input.blur();
+    };
+
+    window.resetRotationInputDisplay = function () {
+      const g = selectedRotationGraphic();
+      const input = document.getElementById('rotation-combo-input');
+      if (input && g) input.value = formatRotationDegrees(graphicRotationDegrees(g));
+    };
+
+    window.applyCustomRotation = window.commitRotationInput;
 
     function applyDrainfieldLateralCountToGraphic(graphic, lateralCount, statusMessage) {
       if (!isDrainfieldGraphic(graphic)) return false;
@@ -1988,14 +2573,24 @@
       const bar = toolbarElement();
       const normalized = selectionToolbarGraphicFor(graphic);
       if (!bar || !isSelectableDrawGraphic(normalized)) return;
+      setMeasureControlExpanded(false);
       selectedToolbarGraphic = normalized;
       bar.classList.add('visible');
       updateLabelToolVisibility();
+      updateRotationToolVisibility();
       updateDrainfieldLateralTool();
       requestAnimationFrame(positionSelectionToolbar);
     }
 
     function hideSelectionToolbar() {
+      // During a toolbar rotation click, Sketch may briefly fire cancel/active/complete
+      // update events. Do not clear the selected graphic during that programmatic
+      // transition, or the user may have to reselect the object between rotation clicks.
+      if (programmaticRotationActive && programmaticRotationGraphic && isSelectableDrawGraphic(programmaticRotationGraphic)) {
+        selectedToolbarGraphic = selectionToolbarGraphicFor(programmaticRotationGraphic);
+        return;
+      }
+
       // If the label editor is open, reset it to normal state without saving.
       if (labelEditorActive) {
         labelEditorActive = false;
@@ -2003,11 +2598,16 @@
         if (wrap) wrap.style.display = 'none';
         const dup = document.getElementById('btn-duplicate-tool');
         const del = document.getElementById('btn-delete-tool');
+        const rot = document.getElementById('rotation-tool-wrap');
         if (dup) dup.style.display = '';
         if (del) del.style.display = '';
+        if (rot) rot.style.display = 'none';
         const lblBtn = document.getElementById('btn-label-tool');
         if (lblBtn) lblBtn.style.display = 'none';
       }
+      closeRotationMenu();
+      const rotTool = document.getElementById('rotation-tool-wrap');
+      if (rotTool) rotTool.style.display = 'none';
       closeDrainfieldLateralMenu();
       const dfTool = drainfieldLateralToolElement();
       if (dfTool) dfTool.style.display = 'none';
@@ -2066,8 +2666,10 @@
       });
     }
 
+    // Rotation uses direct toolbar buttons, so no dropdown/input listener is needed.
+
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeDrainfieldLateralMenu();
+      if (e.key === 'Escape') { closeDrainfieldLateralMenu(); closeRotationMenu(); }
     });
 
     // Drainfield laterals and septic tank internal markers are support graphics in the label layer.
@@ -2781,8 +3383,8 @@
       if (!dbox || !dbox.__dboxId) return;
       const center = dbox.geometry.centroid || (dbox.geometry.extent && dbox.geometry.extent.center);
       if (!center) return;
-      // Inner box is 50% of outer dimensions, same center.
-      const innerGeom = buildFixedRect(center, dbox.__dboxL * 0.5, dbox.__dboxW * 0.5);
+      // Inner box is 50% of outer dimensions, same center and same orientation.
+      const innerGeom = buildFixedRectRotated(center, dbox.__dboxL * 0.5, dbox.__dboxW * 0.5, graphicRotationDegrees(dbox));
       let inner = dboxInnerMap.get(dbox.__dboxId);
       if (inner) {
         inner.geometry = innerGeom;
@@ -2825,6 +3427,7 @@
       dbox.__parentDfId = df.__dfId;
       df.__childDboxId = dbox.__dboxId;
       drainfieldChildDboxMap.set(df.__dfId, dbox);
+      syncDboxToParentDrainfield(df);
     }
 
     function syncDboxToParentDrainfield(df) {
@@ -2833,7 +3436,9 @@
       if (!dbox) return;
       const newCenter = dboxCenterForDrainfield(df);
       if (!newCenter) return;
-      dbox.geometry = buildFixedRect(newCenter, dbox.__dboxL, dbox.__dboxW);
+      const parentAngle = graphicRotationDegrees(df);
+      dbox.geometry = buildFixedRectRotated(newCenter, dbox.__dboxL, dbox.__dboxW, parentAngle);
+      setGraphicRotationState(dbox, parentAngle);
       rebuildDboxInner(dbox);
       bringGraphicToFront(dbox);
       const inner = dboxInnerMap.get(dbox.__dboxId);
@@ -3280,6 +3885,236 @@
       showMeasure(graphic.__measureLabel || fallbackLabel || 'Selected shape', main, sub);
     }
 
+    // ── Temporary measuring tools ────────────────────────────
+    const MEASURE_SYM = {
+      distanceLine: { type:'simple-line', color:[0,82,155,1], width:2, style:'short-dash' },
+      areaFill: {
+        type:'simple-fill',
+        color:[0,82,155,0.08],
+        outline:{ type:'simple-line', color:[0,82,155,1], width:2, style:'short-dash' }
+      }
+    };
+
+    let activeMeasureMode = null;
+
+    function formatMeasureLength(feet) {
+      if (!isFinite(feet)) return '—';
+      const abs = Math.abs(feet);
+      const val = abs >= 1000 ? Math.round(abs).toLocaleString() : abs.toFixed(1).replace(/\.0$/, '');
+      return val + ' ft';
+    }
+
+    function formatMeasureAreaText(sqft) {
+      if (!isFinite(sqft)) return '—';
+      const abs = Math.abs(sqft);
+      return Math.round(abs).toLocaleString() + ' sqft / ' + (abs / 43560).toFixed(2) + ' acres';
+    }
+
+    function temporaryMeasureText(graphic) {
+      if (!graphic || !graphic.geometry) return '';
+      if (graphic.geometry.type === 'polyline') {
+        return formatMeasureLength(Math.abs(geometryEngine.geodesicLength(graphic.geometry, 'feet')));
+      }
+      if (graphic.geometry.type === 'polygon') {
+        return formatMeasureAreaText(Math.abs(geometryEngine.geodesicArea(graphic.geometry, 'square-feet')));
+      }
+      return '';
+    }
+
+    function measureLabelSymbol(text) {
+      return {
+        type:'text', text:text || '', color:[0,0,0,1], haloColor:[255,255,255,1], haloSize:2,
+        font:{size:9,weight:'bold',family:'Calibri, Segoe UI, Arial, sans-serif'}, yoffset:-10
+      };
+    }
+
+    function setMeasureControlExpanded(open) {
+      if (!measureControl) return;
+      const expanded = !!open;
+      const wasExpanded = measureControl.classList.contains('expanded');
+      measureControl.classList.toggle('expanded', expanded);
+      const toggle = measureControl.querySelector('#measure-toggle-btn');
+      if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      if (!expanded && wasExpanded) {
+        if (sketch && (sketch._pendingType === 'measure-distance' || sketch._pendingType === 'measure-area') && sketch.state !== 'idle') {
+          try { sketch.cancel(); } catch (err) { console.warn('Unable to cancel temporary measurement.', err); }
+        }
+        clearTemporaryMeasurements({ silent:true });
+        setStatus('Measurement tools closed. Temporary measurements cleared.');
+      }
+      if (expanded) {
+        const basemapControl = document.getElementById('basemap-control');
+        const layerControl = document.getElementById('layer-control');
+        if (basemapControl) basemapControl.classList.remove('expanded');
+        if (layerControl) layerControl.classList.remove('expanded');
+      }
+    }
+
+    function updateMeasureButtons() {
+      const toggle = document.getElementById('measure-toggle-btn');
+      const distanceBtn = document.getElementById('measure-distance-btn');
+      const areaBtn = document.getElementById('measure-area-btn');
+      const distanceCheck = document.getElementById('measure-distance-check');
+      const areaCheck = document.getElementById('measure-area-check');
+      const clearBtn = document.getElementById('measure-clear-btn');
+      const distanceActive = activeMeasureMode === 'distance';
+      const areaActive = activeMeasureMode === 'area';
+      if (toggle) toggle.classList.toggle('active', !!activeMeasureMode || (measureControl && measureControl.classList.contains('expanded')));
+      if (distanceBtn) {
+        distanceBtn.classList.toggle('active', distanceActive);
+        distanceBtn.setAttribute('aria-checked', distanceActive ? 'true' : 'false');
+      }
+      if (areaBtn) {
+        areaBtn.classList.toggle('active', areaActive);
+        areaBtn.setAttribute('aria-checked', areaActive ? 'true' : 'false');
+      }
+      if (distanceCheck) distanceCheck.checked = distanceActive;
+      if (areaCheck) areaCheck.checked = areaActive;
+      if (clearBtn) clearBtn.disabled = !activeMeasureMode && (!measureLayer || measureLayer.graphics.length === 0);
+    }
+
+    function clearMeasureMode() {
+      activeMeasureMode = null;
+      updateMeasureButtons();
+    }
+
+    function clearTemporaryMeasurements(options) {
+      options = options || {};
+      if (measureLayer) measureLayer.removeAll();
+      clearLiveMeasurePreview();
+      clearMeasureMode();
+      hideMeasure();
+      if (!options.silent) {
+        setStatus('Temporary measurements cleared.');
+      }
+    }
+
+    function refreshTemporaryMeasurementLabels() {
+      if (!measureLayer) return;
+      measureLayer.graphics.forEach(g => {
+        if (!g || !g.__isTemporaryMeasureLabel || !g.__measureSourceId) return;
+        const source = measureLayer.graphics.find(x => x && x.__measureId === g.__measureSourceId);
+        if (!source) return;
+        g.symbol = measureLabelSymbol(temporaryMeasureText(source));
+      });
+    }
+
+    function startTemporaryMeasure(mode) {
+      const isArea = mode === 'area';
+      if (!isArea && mode !== 'distance') return;
+      cancelAndReset();
+      activeMeasureMode = mode;
+      setMeasureControlExpanded(true);
+      updateMeasureButtons();
+      hideMeasure();
+      if (isArea) {
+        sketch.viewModel.polygonSymbol = MEASURE_SYM.areaFill;
+        sketch._pendingType = 'measure-area';
+        sketch.create('polygon');
+        setStatus('Measure area: click to draw a temporary polygon. Double-click to finish.');
+      } else {
+        sketch.viewModel.polylineSymbol = MEASURE_SYM.distanceLine;
+        sketch._pendingType = 'measure-distance';
+        sketch.create('polyline');
+        setStatus('Measure distance: click to start a temporary line. Double-click to finish.');
+      }
+    }
+
+    function addTemporaryMeasurement(graphic, pendingType) {
+      if (!graphic || !graphic.geometry) return;
+      drawLayer.remove(graphic);
+      graphic.__isTemporaryMeasure = true;
+      graphic.__skipMeasure = true;
+      graphic.__measureId = 'measure_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+
+      if (pendingType === 'measure-distance') {
+        graphic.symbol = MEASURE_SYM.distanceLine;
+        const text = temporaryMeasureText(graphic);
+        const label = new Graphic({
+          geometry: graphic.geometry.extent.center,
+          symbol: measureLabelSymbol(text)
+        });
+        label.__isTemporaryMeasure = true;
+        label.__isTemporaryMeasureLabel = true;
+        label.__measureSourceId = graphic.__measureId;
+        measureLayer.addMany([graphic, label]);
+        hideMeasure();
+        setStatus('Temporary distance measured.');
+      } else if (pendingType === 'measure-area') {
+        graphic.symbol = MEASURE_SYM.areaFill;
+        const text = temporaryMeasureText(graphic);
+        const labelPoint = graphic.geometry.centroid || (graphic.geometry.extent && graphic.geometry.extent.center);
+        const label = new Graphic({
+          geometry: labelPoint,
+          symbol: measureLabelSymbol(text)
+        });
+        label.__isTemporaryMeasure = true;
+        label.__isTemporaryMeasureLabel = true;
+        label.__measureSourceId = graphic.__measureId;
+        measureLayer.addMany([graphic, label]);
+        hideMeasure();
+        setStatus('Temporary area measured.');
+      }
+      clearMeasureMode();
+      updateMeasureButtons();
+    }
+
+    const measureToggleButton = measureControl.querySelector('#measure-toggle-btn');
+    const measureCloseButton = measureControl.querySelector('#measure-close-btn');
+    const measureDistanceButton = measureControl.querySelector('#measure-distance-btn');
+    const measureAreaButton = measureControl.querySelector('#measure-area-btn');
+    const measureClearButton = measureControl.querySelector('#measure-clear-btn');
+    const measurePanelHead = measureControl.querySelector('#measure-panel-head');
+    if (measureToggleButton) {
+      measureToggleButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setMeasureControlExpanded(!measureControl.classList.contains('expanded'));
+        updateMeasureButtons();
+      });
+    }
+    if (measureCloseButton) {
+      measureCloseButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setMeasureControlExpanded(false);
+        updateMeasureButtons();
+      });
+    }
+    if (measureDistanceButton) {
+      measureDistanceButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        startTemporaryMeasure('distance');
+      });
+    }
+    if (measureAreaButton) {
+      measureAreaButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        startTemporaryMeasure('area');
+      });
+    }
+    if (measureClearButton) {
+      measureClearButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (sketch && (sketch._pendingType === 'measure-distance' || sketch._pendingType === 'measure-area') && sketch.state !== 'idle') {
+          try { sketch.cancel(); } catch (err) { console.warn('Unable to cancel temporary measurement.', err); }
+        }
+        clearTemporaryMeasurements();
+      });
+    }
+    if (measurePanelHead) {
+      measurePanelHead.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setMeasureControlExpanded(false);
+        updateMeasureButtons();
+      });
+    }
+    updateMeasureButtons();
+
     // ── Line labels (setback / distance) ─────────────────────
     function createOrUpdateLineLabel(graphic) {
       if (!graphic||!graphic.geometry||graphic.geometry.type!=='polyline'||graphic.__lineHitTarget) return;
@@ -3598,6 +4433,7 @@
       if (dup) dup.style.display = '';
       if (del) del.style.display = '';
       updateLabelToolVisibility();
+      updateRotationToolVisibility();
       updateDrainfieldLateralTool();
       positionSelectionToolbar();
     }
@@ -3612,11 +4448,14 @@
       const del = document.getElementById('btn-delete-tool');
       const wrap = document.getElementById('label-editor-wrap');
       const dfTool = drainfieldLateralToolElement();
+      const rotTool = document.getElementById('rotation-tool-wrap');
       closeDrainfieldLateralMenu();
+      closeRotationMenu();
       if (dup) dup.style.display = 'none';
       if (lbl) lbl.style.display = 'none';
       if (del) del.style.display = 'none';
       if (dfTool) dfTool.style.display = 'none';
+      if (rotTool) rotTool.style.display = 'none';
       if (wrap) wrap.style.display = 'flex';
       const input = document.getElementById('obj-label-input');
       if (input) {
@@ -3649,10 +4488,11 @@
     let liveMeasureGraphics = [];
     let liveActiveMeasureGraphic = null;
     let liveClosingMeasureGraphic = null;
+    let liveTemporaryAreaGraphic = null;
     let liveCommittedSegmentKeys = new Set();
 
     function shouldShowLiveDrawingMeasure(pendingType) {
-      return ['drawTool', 'grading', 'easement', 'setback', 'line', 'septicline'].includes(pendingType);
+      return ['drawTool', 'grading', 'easement', 'setback', 'line', 'septicline', 'measure-distance'].includes(pendingType);
     }
 
     function removeLiveMeasureGraphic(graphic) {
@@ -3661,6 +4501,7 @@
       liveMeasureGraphics = liveMeasureGraphics.filter(g => g !== graphic);
       if (graphic === liveActiveMeasureGraphic) liveActiveMeasureGraphic = null;
       if (graphic === liveClosingMeasureGraphic) liveClosingMeasureGraphic = null;
+      if (graphic === liveTemporaryAreaGraphic) liveTemporaryAreaGraphic = null;
     }
 
     function clearLiveMeasurePreview() {
@@ -3670,6 +4511,7 @@
       liveMeasureGraphics = [];
       liveActiveMeasureGraphic = null;
       liveClosingMeasureGraphic = null;
+      liveTemporaryAreaGraphic = null;
       liveCommittedSegmentKeys = new Set();
     }
 
@@ -3768,7 +4610,7 @@
           y: (seg.from[1] + seg.to[1]) / 2,
           spatialReference: seg.spatialReference
         },
-        text: len.toFixed(1) + "'"
+        text: formatMeasureLength(len)
       };
     }
 
@@ -3855,8 +4697,37 @@
       }
     }
 
+    function updateLiveTemporaryAreaPreview(ev) {
+      const geometry = ev && ev.graphic && ev.graphic.geometry;
+      if (!geometry || geometry.type !== 'polygon') {
+        if (liveTemporaryAreaGraphic) removeLiveMeasureGraphic(liveTemporaryAreaGraphic);
+        return;
+      }
+      const area = Math.abs(geometryEngine.geodesicArea(geometry, 'square-feet'));
+      if (!isFinite(area) || area < 1) {
+        if (liveTemporaryAreaGraphic) removeLiveMeasureGraphic(liveTemporaryAreaGraphic);
+        return;
+      }
+      const point = geometry.centroid || (geometry.extent && geometry.extent.center);
+      if (!point) return;
+      const text = formatMeasureAreaText(area);
+      if (!liveTemporaryAreaGraphic) {
+        liveTemporaryAreaGraphic = new Graphic({ geometry: point, symbol: measureLabelSymbol(text) });
+        liveTemporaryAreaGraphic.__liveMeasurementPreview = true;
+        previewLayer.add(liveTemporaryAreaGraphic);
+        liveMeasureGraphics.push(liveTemporaryAreaGraphic);
+      } else {
+        liveTemporaryAreaGraphic.geometry = point;
+        liveTemporaryAreaGraphic.symbol = measureLabelSymbol(text);
+      }
+    }
+
     function updateLiveMeasurePreview(ev) {
       const pendingType = sketch._pendingType;
+      if (pendingType === 'measure-area') {
+        updateLiveTemporaryAreaPreview(ev);
+        return;
+      }
       if (!shouldShowLiveDrawingMeasure(pendingType)) {
         clearLiveMeasurePreview();
         return;
@@ -4075,10 +4946,12 @@
       clearDboxSnapPreview();
       hideSetbackPerpendicularGuide();
       clearLiveMeasurePreview();
+      clearTemporaryMeasurements({ silent:true });
       hideSelectionToolbar();
       hideAllCalloutHandles();
       hideAllSetbackHandles();
       deactivateAll();
+      clearMeasureMode();
       if (sketch.state!=='idle') sketch.cancel();
       if (btnId) activateBtn(btnId);
     }
@@ -4213,7 +5086,9 @@
         const placePt = parentDf ? dboxCenterForDrainfield(parentDf) : dropPt;
         if (!placePt) { setStatus('Unable to place D-box at that location.', false); return; }
 
-        const geom = buildFixedRect(placePt, l, w);
+        const geom = parentDf
+          ? buildFixedRectRotated(placePt, l, w, graphicRotationDegrees(parentDf))
+          : buildFixedRect(placePt, l, w);
         const dbox = new Graphic({ geometry: geom, symbol: SYM.dbox });
         dbox.__isDbox = true;
         dbox.__dboxId = 'dbox_' + Date.now() + '_' + Math.random().toString(36).slice(2);
@@ -4222,6 +5097,7 @@
         dbox.__skipEdgeLabels = true;
         dbox.__skipMeasure = true;
         dbox.__label = 'Distribution box (D-box)';
+        setGraphicRotationState(dbox, parentDf ? graphicRotationDegrees(parentDf) : 0);
 
         drawLayer.add(dbox);
         rebuildDboxInner(dbox);
@@ -5962,6 +6838,7 @@
         hideAllCalloutHandles();
         hideAllSetbackHandles();
         clearLiveMeasurePreview();
+        clearMeasureMode();
         sketch._pendingType = null;
         deactivateAll();
         return;
@@ -5972,6 +6849,10 @@
       const pt=sketch._pendingType;
       sketch._pendingType=null;
       deactivateAll();
+      if (pt === 'measure-distance' || pt === 'measure-area') {
+        addTemporaryMeasurement(g, pt);
+        return;
+      }
       let resizedToMinimum = false;
 
       // Apply correct symbol for freehand draws
@@ -6029,6 +6910,7 @@
       }
 
       if (g.geometry.type==='polygon') {
+        setGraphicRotationState(g, 0);
         syncPolygonEdgeLabels(g);
         if (g.__isSepticTank) scheduleSepticLidSync(g);
         if (shouldShowSelectedShapeOnly(g)) {
@@ -6351,7 +7233,9 @@
           if (target) {
             const newCenter = dboxCenterForDrainfield(target);
             if (newCenter) {
-              g.geometry = buildFixedRect(newCenter, g.__dboxL, g.__dboxW);
+              const targetAngle = graphicRotationDegrees(target);
+              g.geometry = buildFixedRectRotated(newCenter, g.__dboxL, g.__dboxW, targetAngle);
+              setGraphicRotationState(g, targetAngle);
               rebuildDboxInner(g);
             }
             linkDboxToDrainfield(g, target);
@@ -6369,6 +7253,7 @@
       }
 
       if (g.geometry.type==='polygon') {
+        if (isSelectableDrawGraphic(g) && !isAttachedDboxGraphic(g)) updateGraphicRotationFromGeometry(g);
         enforceMinimumRect(g, g.__label || (g.__structureType === 'existing' ? 'Existing structure' : g.__structureType === 'proposed' ? 'Proposed structure' : 'Shape'));
         syncPolygonEdgeLabels(g);
         syncObjectLabelPosition(g);
@@ -6750,7 +7635,8 @@
 
     function performClearAll() {
       clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSepticLineHandles(); sketch.cancel();
-      drawLayer.removeAll(); wellLayer.removeAll(); labelLayer.removeAll(); previewLayer.removeAll();
+      drawLayer.removeAll(); wellLayer.removeAll(); labelLayer.removeAll(); measureLayer.removeAll(); previewLayer.removeAll();
+      clearMeasureMode();
       lineLabelMap.clear();
       polyEdgeLabelMap.clear();
       objectLabelMap.clear();
@@ -6812,6 +7698,8 @@
       setStatus('Preparing printable map image...');
       prePrintViewpoint = view.viewpoint ? view.viewpoint.clone() : null;
       const prePrintBasemap = map.basemap;
+      const prePrintMeasureVisible = measureLayer.visible;
+      measureLayer.visible = false;
       const prePrintPadding = view.padding ? Object.assign({}, view.padding) : null;
       view.padding = { top: 0, right: 0, bottom: 0, left: 0 };
       // Only swap basemaps during print when the user is viewing imagery.
@@ -7281,6 +8169,7 @@ window.onafterprint = function(){ setTimeout(function(){ window.close(); }, 200)
             if (calloutToRestoreAfterPrint) setCalloutHandlesVisible(calloutToRestoreAfterPrint, true);
             if (setbackToRestoreAfterPrint) setSetbackHandlesVisible(setbackToRestoreAfterPrint, true);
             if (septicLineToRestoreAfterPrint) setSepticLineHandlesVisible(septicLineToRestoreAfterPrint, true);
+            measureLayer.visible = prePrintMeasureVisible;
             if (prePrintPadding) view.padding = prePrintPadding;
             if (prePrintBasemap) map.basemap = prePrintBasemap;
             if (prePrintViewpoint) view.goTo(prePrintViewpoint, { duration:0 }).catch(() => {});
