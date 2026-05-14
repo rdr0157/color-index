@@ -1,5 +1,4 @@
-/* Site Plan Builder V144 - extracted from V143 inline styles. */
-*, *::before, *::after { box-sizing: border-box; font-family: inherit; }
+    *, *::before, *::after { box-sizing: border-box; font-family: inherit; }
     html, body { margin:0; padding:0; height:100%; font-family:Calibri,'Segoe UI',Arial,sans-serif; font-size:14px; overflow:hidden; }
     #app { display:flex; flex-direction:column; height:100vh; }
 
