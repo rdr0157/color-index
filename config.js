@@ -1,6 +1,4 @@
-// Site Plan Builder configuration
-// Public map service URLs and field names only. Do not store passwords, tokens, or private keys here.
-window.SitePlanConfig = {
+var SitePlanConfig = {
   map: {
     center: [-118.26, 46.14],
     extent: { xmin: -118.64, ymin: 45.82, xmax: -117.88, ymax: 46.47 },
