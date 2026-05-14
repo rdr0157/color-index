@@ -1,8 +1,6 @@
-    *, *::before, *::after { box-sizing: border-box; font-family: inherit; }
+    *, *::before, *::after { box-sizing:border-box; font-family:inherit; }
     html, body { margin:0; padding:0; height:100%; font-family:Calibri,'Segoe UI',Arial,sans-serif; font-size:14px; overflow:hidden; }
     #app { display:flex; flex-direction:column; height:100vh; }
-
-    /* Accessibility */
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
     /* Header */
@@ -10,8 +8,7 @@
       height:72px; background:#0b2d4c; color:#fff;
       display:flex; align-items:center; gap:12px; padding:0 16px;
       flex-shrink:0; overflow:visible; position:relative; z-index:50;
-      border-bottom:1px solid #f1f3f6;
-      box-shadow:0 4px 10px rgba(0,0,0,0.15);
+      border-bottom:1px solid #f1f3f6; box-shadow:0 4px 10px rgba(0,0,0,0.15);
     }
     #header-seal {
       width:56px; height:56px; border:2px solid #bb3829; border-radius:50%;
@@ -20,8 +17,8 @@
     }
     #header-seal img { width:52px; height:52px; object-fit:contain; border-radius:50%; }
     #titlewrap { flex:0 0 275px; min-width:0; }
-    #agency      { font-size:16px; font-weight:700; color:#fff; line-height:1.2; }
-    #title       { font-size:14px; color:#fff; opacity:.85; margin-top:2px; white-space:nowrap; }
+    #agency { font-size:16px; font-weight:700; color:#fff; line-height:1.2; }
+    #title { font-size:14px; color:#fff; opacity:.85; margin-top:2px; white-space:nowrap; }
 
     /* Header parcel search */
     #header-search-wrap {
@@ -34,67 +31,39 @@
       background:#fff; border:1px solid #000; border-radius:5px;
       overflow:visible; box-shadow:none;
     }
-    #header-search:focus-within {
-      outline:2px solid #000; outline-offset:0;
-    }
+    #header-search:focus-within { outline:2px solid #000; outline-offset:0; }
     #header-search .esri-search {
-      width:100%; height:34px; max-width:none;
-      background:#fff; box-shadow:none; border:0; border-radius:5px;
-      overflow:visible; font-family:Calibri,'Segoe UI',Arial,sans-serif;
+      width:100%; height:34px; max-width:none; background:#fff;
+      box-shadow:none; border:0; border-radius:5px; overflow:visible;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif;
     }
     #header-search .esri-search__container {
-      height:34px; min-height:34px;
-      /* Keep this visible so the Esri suggestions menu can extend below the header. */
-      background:transparent; border:0; border-radius:4px;
-      box-shadow:none; overflow:visible;
-      clip-path:none;
+      height:34px; min-height:34px; background:transparent; border:0; border-radius:4px;
+      box-shadow:none; overflow:visible; clip-path:none;
     }
-    #header-search .esri-search__container:focus-within {
-      outline:none; box-shadow:none;
-    }
-    #header-search .esri-search__form {
-      height:34px; border-radius:4px; overflow:hidden; background:#fff;
-    }
-    #header-search .esri-search__input-container,
-    #header-search .esri-search__form { height:34px; }
-    #header-search .esri-search__input-container {
-      border-radius:4px 0 0 4px; overflow:hidden; background:#fff;
-    }
+    #header-search .esri-search__container:focus-within { outline:none; box-shadow:none; }
+    #header-search .esri-search__form { height:34px; border-radius:4px; overflow:hidden; background:#fff; }
+    #header-search .esri-search__input-container, #header-search .esri-search__form { height:34px; }
+    #header-search .esri-search__input-container { border-radius:4px 0 0 4px; overflow:hidden; background:#fff; }
     #header-search .esri-search__input {
-      height:34px; min-height:34px;
-      color:#000; background:#fff; border:0; border-radius:4px 0 0 4px;
-      font-family:Calibri,'Segoe UI',Arial,sans-serif;
-      font-size:14px; padding:0 10px 0 12px;
-      outline:none; box-shadow:none;
-    }
-    #header-search .esri-search__input:focus,
-    #header-search .esri-search__input:focus-visible {
+      height:34px; min-height:34px; color:#000; background:#fff; border:0; border-radius:4px 0 0 4px;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif; font-size:14px; padding:0 10px 0 12px;
       outline:none; box-shadow:none;
     }
     #header-search .esri-search__input::placeholder { color:#555; opacity:1; }
-    #header-search .esri-search__submit-button,
-    #header-search .esri-search__clear-button,
-    #header-search .esri-search__sources-button {
-      height:34px; min-height:34px;
-      background:#fff; color:#000; border:0; box-shadow:none;
+    #header-search .esri-search__submit-button, #header-search .esri-search__clear-button, #header-search .esri-search__sources-button {
+      height:34px; min-height:34px; background:#fff; color:#000; border:0; box-shadow:none;
     }
-    #header-search .esri-search__submit-button {
-      width:38px; border-radius:0 5px 5px 0;
+    #header-search .esri-search__submit-button { width:38px; border-radius:0 5px 5px 0; }
+    #header-search .esri-search__submit-button:hover, #header-search .esri-search__clear-button:hover { background:#f5f7fa; color:#000; }
+    #header-search .esri-search__suggestions-menu, #header-search .esri-menu {
+      z-index:10000; overflow:visible; font-family:Calibri,'Segoe UI',Arial,sans-serif;
     }
-    #header-search .esri-search__submit-button:hover,
-    #header-search .esri-search__clear-button:hover { background:#f5f7fa; color:#000; }
     #header-search .esri-search__suggestions-menu {
-      z-index:10000; font-family:Calibri,'Segoe UI',Arial,sans-serif;
       border-radius:4px; overflow:auto; box-shadow:0 3px 8px rgba(0,0,0,.25);
-      /* The header version needs explicit placement because the input shell is clipped for rounded corners. */
       top:calc(100% + 4px); left:0; right:0; width:100%;
     }
-    #header-search .esri-search__suggestions-menu,
-    #header-search .esri-menu {
-      z-index:10000;
-      overflow:visible;
-    }
-    @media (max-width: 1100px) {
+    @media (max-width:1100px) {
       #titlewrap { flex-basis:235px; }
       #header-search-wrap { flex-basis:340px; min-width:220px; margin-left:12px; }
     }
@@ -104,414 +73,86 @@
       color:#fff; border-radius:4px; padding:7px 10px; cursor:pointer; font:inherit; font-size:14px;
     }
     .hdr-btn:hover { background:rgba(255,255,255,.18); }
-    .hdr-btn.light {
-      background:#fff; color:#000; border:1px solid #000; font-weight:700;
-    }
-    .hdr-btn.light:hover { background:#f3f4f6; border-color:#000; }
-    .hdr-btn.gold {
-      background:#F2EDDC; color:#000; border:1px solid #000;
-      font-weight:700; display:flex; align-items:center; gap:7px; font-size:14px;
-    }
+    .hdr-btn.gold { background:#F2EDDC; color:#000; border:1px solid #000; font-weight:700; display:flex; align-items:center; gap:7px; font-size:14px; }
     .hdr-btn.gold:hover { background:#DEDAC3; }
+    .hdr-btn.light { background:#fff; color:#000; border:1px solid #000; font-weight:700; }
+    .hdr-btn.light:hover { background:#f3f4f6; border-color:#000; }
     .hdr-btn.clear-all-btn {
       background:#fff; color:#d32f2f; border:1px solid #d32f2f; font-weight:700;
       display:flex; align-items:center; gap:7px; margin-right:8px;
     }
-    .hdr-btn.clear-all-btn:hover {
-      background:#f5f7fa; border-color:#d32f2f; color:#d32f2f;
-    }
+    .hdr-btn.clear-all-btn:hover { background:#f5f7fa; border-color:#d32f2f; color:#d32f2f; }
     .hdr-btn.clear-all-btn svg { flex-shrink:0; }
 
-    /* Basemap / reference-layer controls */
-    #basemap-toggle {
-      position:absolute; top:12px; right:12px; z-index:10;
-      display:flex; flex-direction:column; gap:16px;
-      align-items:flex-end;
+    /* Clear-all confirmation modal */
+    #clear-modal {
+      position:fixed; inset:0; z-index:9999;
+      display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.55); padding:20px;
     }
-    .map-control {
-      position:relative;
-      width:64px;
-      height:64px;
-      flex-shrink:0;
-      z-index:11;
+    #clear-modal.visible { display:flex; }
+    .clear-modal-panel {
+      width:min(520px, calc(100vw - 40px)); background:#fff; color:#111827;
+      border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+      border:1px solid rgba(0,0,0,.18); overflow:hidden;
+      font-family:Calibri,'Segoe UI',Arial,sans-serif;
     }
-    .bm-btn {
-      width:64px; height:64px; border-radius:6px; border:2px solid #fff;
-      cursor:pointer; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.35);
-      position:relative; transition:border-color .15s;
-      display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-      padding-bottom:4px; background:#fff;
+    .clear-modal-header { padding:20px 24px 10px; font-size:22px; font-weight:700; color:#111827; line-height:1.2; }
+    .clear-modal-body { padding:8px 24px 22px; font-size:16px; line-height:1.45; color:#1f2937; }
+    .clear-modal-actions { display:flex; justify-content:flex-end; gap:12px; padding:0 24px 24px; }
+    .clear-modal-btn {
+      min-width:130px; border-radius:5px; border:1px solid #0b2d4c;
+      padding:11px 18px; font:inherit; font-size:15px; font-weight:700; cursor:pointer;
     }
-    .bm-btn:hover { border-color:#c8a84b; }
-    .bm-btn.active { border-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
-    .map-control.expanded .bm-btn.control-toggle { border-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
-    .bm-thumb { position:absolute; inset:0; width:100%; height:100%; display:block; }
-    .bm-label {
-      position:relative; z-index:1; font-size:9px; font-weight:700; color:#fff;
-      text-shadow:0 1px 2px rgba(0,0,0,.9); text-align:center; line-height:1.2;
-      background:rgba(0,0,0,.35); width:100%; padding:2px 3px; margin:0 -3px;
-    }
-
-    .bm-thumb-wrap {
-      position:absolute; inset:0; width:100%; height:100%; display:block;
-    }
-    .bm-thumb-wrap svg { width:100%; height:100%; display:block; }
-
-
-    .map-control .control-toggle {
-      position:absolute;
-      inset:0;
-    }
-    .map-control.expanded .control-toggle {
-      visibility:hidden;
-      pointer-events:none;
-    }
-    .map-panel {
-      display:none;
-      position:absolute;
-      top:0;
-      right:0;
-      width:248px;
-      background:#fff;
-      border:2px solid #0b2d4c;
-      border-radius:6px;
-      box-shadow:0 2px 8px rgba(0,0,0,.35);
-      overflow:hidden;
-      color:#000;
-    }
-    .map-control.expanded .map-panel { display:block; }
-
-    /* Horizontal basemap picker: expands left from the active Basemap button. */
-    #basemap-control.expanded {
-      width:430px;
-      height:78px;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      gap:8px;
-      padding:4px;
-      border:3px solid #0b2d4c;
-      border-radius:7px;
-      background:rgba(255,255,255,.96);
-      box-shadow:0 2px 8px rgba(0,0,0,.22);
-      z-index:30;
-    }
-    #basemap-control.expanded::before { content:none; }
-    #basemap-control.expanded .control-toggle {
-      position:relative;
-      inset:auto;
-      order:2;
-      width:64px;
-      height:64px;
-      flex:0 0 64px;
-      visibility:visible;
-      pointer-events:auto;
-      z-index:20;
-      border:3px solid #0b2d4c;
-      box-shadow:0 2px 6px rgba(0,0,0,.35);
-    }
-    #basemap-panel.basemap-panel-strip {
-      position:relative;
-      top:auto;
-      right:auto;
-      order:1;
-      width:auto;
-      height:64px;
-      background:transparent;
-      border:0;
-      border-right:2px solid #0b2d4c;
-      border-radius:0;
-      box-shadow:none;
-      overflow:visible;
-      color:#000;
-      align-items:center;
-      gap:8px;
-      padding:0 14px 0 0;
-      margin:0 6px 0 0;
-      display:none;
-      z-index:80;
-    }
-    #basemap-panel.basemap-panel-strip::after { content:none; }
-    #basemap-control.expanded #basemap-panel.basemap-panel-strip { display:flex; }
-    .basemap-collapse-btn {
-      width:34px;
-      height:64px;
-      border-radius:4px;
-      border:0;
-      background:#0b2d4c;
-      color:#fff;
-      cursor:pointer;
-      font:inherit;
-      font-size:24px;
-      line-height:1;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:0;
-      flex:0 0 34px;
-      box-shadow:none;
-    }
-    .basemap-collapse-btn:hover { background:#123f68; color:#fff; }
-    #basemap-panel .basemap-option.strip-option {
-      width:64px;
-      height:64px;
-      margin:0;
-      padding:0 0 4px;
-      border:2px solid #fff;
-      border-radius:6px;
-      background:#fff;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-end;
-      gap:0;
-      box-shadow:0 2px 6px rgba(0,0,0,.18);
-      overflow:hidden;
-      position:relative;
-      flex:0 0 64px;
-      color:#fff;
-      transition:border-color .15s, background .15s;
-    }
-    #basemap-panel .basemap-option.strip-option:hover { border-color:#c8a84b; background:#fff; }
-    #basemap-panel .basemap-option.strip-option.active {
-      background:#fff;
-      border-color:#fff;
-      color:#fff;
-      box-shadow:0 2px 6px rgba(0,0,0,.18);
-    }
-    #basemap-panel .basemap-option.strip-option.active:hover { border-color:#c8a84b; }
-    #basemap-panel .basemap-option.strip-option .bm-label {
-      position:relative;
-      z-index:1;
-      flex:0 0 auto;
-      width:100%;
-      margin:0 -3px;
-    }
-    #basemap-panel .basemap-option.strip-option.imagery-option {
-      overflow:visible;
-      z-index:90;
-    }
-    #basemap-panel .basemap-option.strip-option.imagery-option .imagery-print-note {
-      display:none;
-      position:absolute;
-      left:calc(100% + 5px);
-      top:5px;
-      width:max-content;
-      min-width:0;
-      max-width:none;
-      padding:6px 8px;
-      border-radius:4px;
-      background:#111;
-      color:#fff;
-      font-size:12px;
-      font-weight:700;
-      line-height:1.1;
-      text-align:left;
-      box-shadow:0 2px 8px rgba(0,0,0,.35);
-      pointer-events:none;
-      white-space:nowrap;
-      z-index:100000;
-    }
-    #basemap-panel .basemap-option.strip-option.imagery-option:hover .imagery-print-note,
-    #basemap-panel .basemap-option.strip-option.imagery-option:focus .imagery-print-note,
-    #basemap-panel .basemap-option.strip-option.imagery-option:focus-visible .imagery-print-note {
-      display:block;
-    }
-
-    .map-panel-head {
-      height:30px;
-      background:#0b2d4c;
-      color:#fff;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      padding:0 9px;
-      cursor:pointer;
-      font-size:12px;
-      font-weight:700;
-      letter-spacing:.03em;
-      user-select:none;
-    }
-    .map-panel-head:hover { background:#123f68; }
-    .map-panel-body {
-      padding:8px 10px 9px;
-      background:#fff;
-    }
-    .basemap-option {
-      width:100%;
-      height:42px;
-      border:1px solid #d5dbe3;
-      background:#fff;
-      border-radius:4px;
-      margin:0 0 6px;
-      display:flex;
-      align-items:center;
-      gap:9px;
-      cursor:pointer;
-      padding:5px 8px;
-      font:inherit;
-      font-size:12px;
-      color:#000;
-      text-align:left;
-    }
-    .basemap-option:last-child { margin-bottom:0; }
-    .basemap-option:hover { background:#f5f7fa; }
-    .basemap-option.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
-    .basemap-swatch {
-      width:34px;
-      height:26px;
-      border-radius:3px;
-      border:1px solid #cbd5e1;
-      overflow:hidden;
-      flex-shrink:0;
-      position:relative;
-      background:#f3f4f6;
-    }
-    .basemap-swatch svg { width:34px; height:26px; display:block; }
-    .basemap-option-label { flex:1; font-weight:700; }
-    .basemap-option-check {
-      width:12px;
-      height:12px;
-      border-radius:50%;
-      border:1px solid #9ca3af;
-      flex-shrink:0;
-      background:#fff;
-    }
-    .basemap-option.active .basemap-option-check {
-      border-color:#0b2d4c;
-      box-shadow: inset 0 0 0 3px #fff;
-      background:#0b2d4c;
-    }
-    .layer-check-row {
-      display:flex;
-      align-items:center;
-      gap:7px;
-      padding:5px 2px;
-      font-size:12px;
-      cursor:pointer;
-      user-select:none;
-    }
-    .layer-check-row input { margin:0; cursor:pointer; }
-    .layer-check-row span { cursor:pointer; }
-    .layer-check-row:hover { background:#f5f7fa; }
+    .clear-modal-btn.cancel { background:#0b2d4c; color:#fff; border-color:#0b2d4c; }
+    .clear-modal-btn.cancel:hover { background:#123f68; }
+    .clear-modal-btn.danger { background:#d32f2f; color:#fff; border-color:#d32f2f; }
+    .clear-modal-btn.danger:hover { background:#b71c1c; border-color:#b71c1c; }
 
     /* Layout */
+    main { flex:1; display:flex; flex-direction:column; min-height:0; }
     #main { flex:1; display:flex; min-height:0; overflow:hidden; }
-
-    /* Sidebar */
-    #sidebar { width:300px; background:#fff; border-right:4px solid #f1f3f6; overflow:auto; display:flex; flex-direction:column; position:relative; z-index:2; box-shadow:3px 0 8px rgba(0,0,0,0.05); }
-    .section-head {
-      background:#0b2d4c; color:#fff; font-size:12px;
-      text-transform:uppercase; letter-spacing:.09em; padding:7px 12px; font-weight:700;
+    #sidebar {
+      width:300px; background:#fff; border-right:4px solid #f1f3f6; overflow:auto;
+      display:flex; flex-direction:column; position:relative; z-index:2; box-shadow:3px 0 8px rgba(0,0,0,0.05);
     }
-    .section-body { padding:8px 10px; border-bottom:1px solid #eef1f4; }
+    .tool-section { border-bottom:1px solid #eef1f4; }
+    .section-head {
+      width:100%; border:0; border-radius:0; background:#0b2d4c; color:#fff;
+      font:inherit; font-size:12px; text-transform:uppercase; letter-spacing:.09em;
+      padding:7px 12px; font-weight:700; text-align:left;
+      display:block;
+    }
+    .section-body { padding:0; border-bottom:0; }
+    .tool-section-body:empty { padding:0; }
+
+    /* Core editing controls */
+    .editing-core-body { padding:8px 10px; }
     .tool-btn {
       width:100%; margin-bottom:0; padding:7px 10px; text-align:left;
       border-radius:4px; border:1px solid #d5dbe3; background:#fff;
-      cursor:pointer; font:inherit; font-size:12px; display:block;
+      cursor:pointer; font:inherit; font-size:12px; display:block; color:#000;
     }
-    .tool-btn + .tool-btn, .tool-btn + .size-row { margin-top:5px; }
-    .tool-btn:hover  { background:#f5f7fa; }
+    .tool-btn:hover { background:#f5f7fa; }
     .tool-btn.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
-
-    .tool-btn.icon-btn {
-      display:flex; align-items:center; gap:8px;
-    }
-    .tool-btn.icon-btn .tool-icon {
-      width:28px; min-width:28px; height:18px;
-      display:inline-flex; align-items:center; justify-content:center;
-      flex-shrink:0;
-    }
-    .tool-btn.icon-btn .tool-label {
-      flex:1; min-width:0;
-    }
-    .tool-btn.icon-btn .tool-icon svg {
-      width:28px; height:18px; display:block; overflow:visible;
-    }
-
-    .size-row { display:flex; align-items:center; gap:4px; padding:3px 0 1px; }
-    .size-row input[type="checkbox"] { margin:0; width:13px; height:13px; flex:0 0 13px; }
-    .dim-input { width:44px; padding:4px; border:1px solid #d5dbe3; border-radius:4px; font:inherit; font-size:11px; text-align:center; }
-    .dim-sep   { font-size:12px; color:#000; }
-    .size-lbl  { font-size:12px; color:#000; flex:1; cursor:pointer; }
-    .drainfield-lateral-row {
-      display:flex;
-      align-items:center;
-      gap:4px;
-      padding-top:1px;
-    }
-    .drainfield-lateral-row .lateral-checkbox-spacer {
-      width:13px;
-      flex:0 0 13px;
-    }
-    .drainfield-lateral-row .lateral-label {
-      flex:1;
-      min-width:0;
-      line-height:1.15;
-      cursor:default;
-    }
-    .drainfield-lateral-row .lateral-placeholder-input {
-      width:44px;
-      flex:0 0 44px;
-      visibility:hidden;
-      pointer-events:none;
-    }
-    .drainfield-lateral-row .lateral-placeholder-sep,
-    .drainfield-lateral-row .lateral-placeholder-ft {
-      visibility:hidden;
-      pointer-events:none;
-    }
-    .drainfield-lateral-row .lateral-input {
-      width:44px;
-      flex:0 0 44px;
-    }
-
-    .toggle-row {
-      display:flex; align-items:center; justify-content:flex-start; gap:6px;
-      padding:4px 0; margin:3px 0; font-size:12px;
-      border:0; border-radius:0; cursor:pointer;
-      user-select:none;
-    }
-    .toggle-row:hover { background:transparent; }
-    .toggle-row input { cursor:pointer; margin:0; flex-shrink:0; }
-    .toggle-row span { cursor:pointer; }
     .edit-mode-row { display:flex; align-items:stretch; gap:5px; margin-bottom:8px; }
-    .edit-mode-row .tool-btn + .tool-btn { margin-top:0; }
     .edit-mode-btn {
       flex:1; margin:0; text-align:center; height:34px; min-height:0;
       padding:0 8px; line-height:1; display:flex; align-items:center;
       justify-content:center; font-weight:400;
     }
-    .edit-mode-btn.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; font-weight:400; }
-
-    /* Map */
-    #map-wrap { flex:1; position:relative; min-width:0; }
-    #viewDiv  { width:100%; height:100%; }
-
-    .north-reset-btn {
-      width:32px;
-      height:32px;
-      padding:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#fff;
-      color:#111827;
-      border:0;
-      box-shadow:0 1px 2px rgba(0,0,0,.3);
-      cursor:pointer;
+    .edit-mode-btn.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
+    .toggle-row {
+      display:flex; align-items:center; justify-content:flex-start; gap:6px;
+      padding:4px 0; margin:3px 0; font-size:12px;
+      border:0; border-radius:0; cursor:pointer; user-select:none; color:#000;
     }
-    .north-reset-btn:hover { background:#f5f7fa; color:#0b2d4c; }
-    .north-reset-icon {
-      width:24px;
-      height:24px;
-      display:block;
-      transform-origin:50% 50%;
-      transition:transform .08s linear;
-    }
+    .toggle-row input { cursor:pointer; margin:0; flex-shrink:0; }
+    .toggle-row span { cursor:pointer; }
 
 
+
+    /* Core measurement flyout */
     .measure-flyout-control.esri-component {
       position:relative;
       width:32px;
@@ -658,391 +299,154 @@
       cursor:not-allowed;
     }
 
+    /* Core selected-object floating toolbar */
+    #selection-toolbar {
+      position:absolute; z-index:30; display:none; align-items:center; gap:4px; padding:4px;
+      background:rgba(255,255,255,.96); border:1px solid #9ca3af; border-radius:6px;
+      box-shadow:0 2px 7px rgba(0,0,0,.18); pointer-events:none;
+    }
+    #selection-toolbar.visible { display:flex; }
+    .selection-tool-btn {
+      pointer-events:auto; width:28px; height:28px; padding:0; border:1px solid #cbd5e1;
+      border-radius:4px; background:#fff; color:#000; cursor:pointer; display:flex;
+      align-items:center; justify-content:center; font:inherit; line-height:1;
+    }
+    .selection-tool-btn:hover { background:#deeeff; border-color:#0b2d4c; }
+    .selection-tool-btn svg { width:16px; height:16px; display:block; }
+    .selection-tool-btn.label-tool { font-size:13px; font-weight:700; line-height:1; }
+
+    /* Map */
+    #map-wrap { flex:1; position:relative; min-width:0; }
+    #viewDiv { width:100%; height:100%; }
     #loading {
       position:absolute; inset:0; background:rgba(255,255,255,.92); z-index:20;
       display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
     }
     #loading.hidden { display:none; }
 
-    #measure-box {
-      position:absolute; left:12px;
-      background:rgba(255,255,255,.96); border:1px solid #d5dbe3; border-left:3px solid #0b2d4c;
-      border-radius:5px; z-index:10; box-shadow:0 2px 6px rgba(0,0,0,.08);
+    /* Basemap / reference-layer controls */
+    #basemap-toggle {
+      position:absolute; top:12px; right:12px; z-index:10;
+      display:flex; flex-direction:column; gap:16px; align-items:flex-end;
     }
-    #measure-box  { bottom:120px; padding:8px 10px; min-width:200px; display:none; }
-
-    .ms-label { font-size:11px; text-transform:uppercase; color:#000; letter-spacing:.05em; }
-    .ms-main  { font-size:14px; font-weight:400; color:#000; }
-    .ms-sub   { font-size:14px; color:#000; }
-    .ms-row   { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
-
-    /* Status bar */
-    #statusbar {
-      height:28px; background:#f1f3f6; border-top:1px solid #d7dce3;
-      display:flex; align-items:center; gap:10px; padding:0 12px; color:#000; font-size:10px;
+    .map-control { position:relative; width:64px; height:64px; flex-shrink:0; z-index:11; }
+    .bm-btn {
+      width:64px; height:64px; border-radius:6px; border:2px solid #fff;
+      cursor:pointer; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.35);
+      position:relative; transition:border-color .15s; display:flex; flex-direction:column;
+      align-items:center; justify-content:flex-end; padding-bottom:4px; background:#fff;
     }
-    #statusdot { width:7px; height:7px; border-radius:50%; background:#9ca3af; }
-
-    /* ── Scale bar placement ─────────────────────────────────────
-       V137: Scale bar is moved to bottom-left so it fits below the
-       selected-shape measurement box instead of competing with attribution.
-    */
-    .esri-ui-bottom-left .esri-scale-bar {
-      margin-left: 12px !important;
-      margin-bottom: 10px !important;
+    .bm-btn:hover { border-color:#c8a84b; }
+    .bm-thumb, .bm-thumb-wrap { position:absolute; inset:0; width:100%; height:100%; display:block; }
+    .bm-thumb-wrap svg, .bm-thumb svg { width:100%; height:100%; display:block; }
+    .bm-label {
+      position:relative; z-index:1; font-size:9px; font-weight:700; color:#fff;
+      text-shadow:0 1px 2px rgba(0,0,0,.9); text-align:center; line-height:1.2;
+      background:rgba(0,0,0,.35); width:100%; padding:2px 3px; margin:0 -3px;
     }
-
-    /* ── Esri / data attribution strip ────────────────────────────
-       V137: Explicit bottom-right credits strip. This uses Esri's
-       attribution class names so the same CSS applies to the default
-       widget if it renders, while also supporting the local site
-       credits control added by the app.
-    */
-    .esri-ui-bottom-right {
-      right: 0 !important;
-      bottom: 0 !important;
-      align-items: flex-end !important;
-      pointer-events: none;
+    .map-control .control-toggle { position:absolute; inset:0; }
+    .map-control.expanded .control-toggle {
+      visibility:hidden;
+      pointer-events:none;
     }
-
-    .esri-ui-bottom-right .esri-attribution {
-      max-width: 350px !important;
-      background: rgba(255, 255, 255, 0.85) !important;
-      border-radius: 6px 0 0 0 !important;
-      box-shadow: none !important;
-      border: 0 !important;
-      overflow: hidden !important;
-      color: #000 !important;
-      font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
-      font-size: 11px !important;
-      line-height: 1.25 !important;
-      pointer-events: auto !important;
+    .map-panel {
+      display:none; position:absolute; top:0; right:0; width:248px; background:#fff;
+      border:2px solid #0b2d4c; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.35);
+      overflow:hidden; color:#000;
     }
-
-    .site-attribution.esri-attribution {
-      margin: 0 !important;
-      padding: 4px 8px !important;
-      cursor: pointer;
-      user-select: none;
-      min-height: 22px;
+    .map-control.expanded .map-panel { display:block; }
+    #basemap-control.expanded {
+      width:430px; height:78px; display:flex; align-items:center; justify-content:flex-end;
+      gap:8px; padding:4px; border:3px solid #0b2d4c; border-radius:7px;
+      background:rgba(255,255,255,.96); box-shadow:0 2px 8px rgba(0,0,0,.22); z-index:30;
     }
-
-    .site-attribution.esri-attribution:focus-visible {
-      outline: 2px solid #0b2d4c;
-      outline-offset: -2px;
+    #basemap-control.expanded .control-toggle {
+      position:relative; inset:auto; order:2; width:64px; height:64px; flex:0 0 64px;
+      visibility:visible; pointer-events:auto; z-index:20; border:3px solid #0b2d4c;
+      box-shadow:0 2px 6px rgba(0,0,0,.35);
     }
-
-    .site-attribution .site-attribution-prefix {
-      font-weight: 400;
-      margin-right: 4px;
+    #basemap-panel.basemap-panel-strip {
+      position:relative; top:auto; right:auto; order:1; width:auto; height:64px;
+      background:transparent; border:0; border-right:2px solid #0b2d4c; border-radius:0;
+      box-shadow:none; overflow:visible; color:#000; align-items:center; gap:8px;
+      padding:0 14px 0 0; margin:0 6px 0 0; display:none; z-index:80;
     }
-
-    /* Default state: keep credits to one line with ellipsis. */
-    .esri-ui-bottom-right .esri-attribution:not(.esri-attribution--open) .esri-attribution__sources {
-      display: block !important;
-      max-width: 350px !important;
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
+    #basemap-control.expanded #basemap-panel.basemap-panel-strip { display:flex; }
+    .basemap-collapse-btn {
+      width:34px; height:64px; border-radius:4px; border:0; background:#0b2d4c; color:#fff;
+      cursor:pointer; font:inherit; font-size:24px; line-height:1; display:flex; align-items:center;
+      justify-content:center; padding:0; flex:0 0 34px; box-shadow:none;
     }
-
-    /* Expanded state: allow wrapping and vertical growth. */
-    .esri-ui-bottom-right .esri-attribution.esri-attribution--open {
-      max-width: 350px !important;
-      height: auto !important;
-      max-height: 220px !important;
-      overflow: auto !important;
+    .basemap-collapse-btn:hover { background:#123f68; color:#fff; }
+    #basemap-panel .basemap-option.strip-option {
+      width:64px; height:64px; margin:0; padding:0 0 4px; border:2px solid #fff; border-radius:6px;
+      background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+      gap:0; box-shadow:0 2px 6px rgba(0,0,0,.18); overflow:hidden; position:relative;
+      flex:0 0 64px; color:#fff; transition:border-color .15s, background .15s;
     }
-
-    .esri-ui-bottom-right .esri-attribution.esri-attribution--open .esri-attribution__sources {
-      white-space: normal !important;
-      overflow: visible !important;
-      text-overflow: clip !important;
-      max-width: 350px !important;
-      height: auto !important;
-      max-height: none !important;
+    #basemap-panel .basemap-option.strip-option:hover { border-color:#c8a84b; background:#fff; }
+    #basemap-panel .basemap-option.strip-option.active { background:#fff; border-color:#fff; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.18); }
+    #basemap-panel .basemap-option.strip-option.active:hover { border-color:#c8a84b; }
+    .map-panel-head {
+      height:30px; background:#0b2d4c; color:#fff; display:flex; align-items:center;
+      justify-content:space-between; gap:8px; padding:0 9px; cursor:pointer; font-size:12px;
+      font-weight:700; letter-spacing:.03em; user-select:none;
     }
+    .map-panel-head:hover { background:#123f68; }
+    .map-panel-body { padding:8px 10px 9px; background:#fff; }
+    .layer-check-row { display:flex; align-items:center; gap:7px; padding:5px 2px; font-size:12px; cursor:pointer; user-select:none; }
+    .layer-check-row input { margin:0; cursor:pointer; }
+    .layer-check-row span { cursor:pointer; }
+    .layer-check-row:hover { background:#f5f7fa; }
 
-    /* V137 position fix: anchor the custom credits strip to the map frame itself,
-       not to the overall page or right information panel. */
+    .north-reset-btn {
+      width:32px; height:32px; padding:0; display:flex; align-items:center; justify-content:center;
+      background:#fff; color:#111827; border:0; box-shadow:0 1px 2px rgba(0,0,0,.3); cursor:pointer;
+    }
+    .north-reset-btn:hover { background:#f5f7fa; color:#0b2d4c; }
+    .north-reset-icon { width:24px; height:24px; display:block; transform-origin:50% 50%; transition:transform .08s linear; }
+    .esri-ui-bottom-left .esri-scale-bar { margin-left:12px !important; margin-bottom:10px !important; }
+
+    /* Attribution */
     #map-wrap .site-attribution-map-anchored.esri-attribution {
-      position: absolute !important;
-      right: 12px !important;
-      bottom: 8px !important;
-      z-index: 15 !important;
-      max-width: 350px !important;
-      background: rgba(255, 255, 255, 0.85) !important;
-      border-radius: 6px 0 0 0 !important;
-      box-shadow: none !important;
-      border: 0 !important;
-      overflow: hidden !important;
-      color: #000 !important;
-      font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
-      font-size: 11px !important;
-      line-height: 1.25 !important;
-      padding: 4px 8px !important;
-      cursor: pointer;
-      user-select: none;
-      pointer-events: auto !important;
-      font-weight: 400 !important;
+      position:absolute !important; right:12px !important; bottom:8px !important; z-index:15 !important;
+      max-width:350px !important; background:rgba(255,255,255,0.85) !important;
+      border-radius:6px 0 0 0 !important; box-shadow:none !important; border:0 !important;
+      overflow:hidden !important; color:#000 !important; font-family:Calibri,'Segoe UI',Arial,sans-serif !important;
+      font-size:11px !important; line-height:1.25 !important; padding:4px 8px !important;
+      cursor:pointer; user-select:none; pointer-events:auto !important; font-weight:400 !important;
     }
-
-    #map-wrap .site-attribution-map-anchored.esri-attribution .esri-attribution__sources {
-      font-weight: 400 !important;
-    }
-
     #map-wrap .site-attribution-map-anchored.esri-attribution .site-attribution-link {
-      color: #000 !important;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-      font-weight: 400;
+      color:#000 !important; text-decoration:underline; text-underline-offset:2px; font-weight:400;
     }
-    #map-wrap .site-attribution-map-anchored.esri-attribution .site-attribution-link:hover {
-      color: #0b2d4c !important;
-    }
-
+    #map-wrap .site-attribution-map-anchored.esri-attribution .site-attribution-link:hover { color:#0b2d4c !important; }
     #map-wrap .site-attribution-map-anchored.esri-attribution:not(.esri-attribution--open) .esri-attribution__sources {
-      display: block !important;
-      max-width: 350px !important;
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
+      display:block !important; max-width:350px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
     }
-
     #map-wrap .site-attribution-map-anchored.esri-attribution.esri-attribution--open {
-      max-width: 350px !important;
-      height: auto !important;
-      max-height: 220px !important;
-      overflow: auto !important;
+      max-width:350px !important; height:auto !important; max-height:220px !important; overflow:auto !important;
     }
-
     #map-wrap .site-attribution-map-anchored.esri-attribution.esri-attribution--open .esri-attribution__sources {
-      white-space: normal !important;
-      overflow: visible !important;
-      text-overflow: clip !important;
-      max-width: 350px !important;
-      height: auto !important;
-      max-height: none !important;
+      white-space:normal !important; overflow:visible !important; text-overflow:clip !important; max-width:350px !important; height:auto !important; max-height:none !important;
     }
-
-
-    /* Hidden native attribution reader.
-       ArcGIS calculates extent-aware basemap credits here; the app reads
-       that text and mirrors it into the visible map-anchored credits strip. */
     #native-attribution-reader {
-      position: absolute !important;
-      left: -10000px !important;
-      bottom: 0 !important;
-      width: 420px !important;
-      max-width: 420px !important;
-      height: auto !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-      z-index: -1 !important;
-      overflow: hidden !important;
+      position:absolute !important; left:-10000px !important; bottom:0 !important; width:420px !important;
+      max-width:420px !important; height:auto !important; opacity:0 !important; pointer-events:none !important;
+      z-index:-1 !important; overflow:hidden !important;
     }
-    #native-attribution-reader .esri-attribution {
-      width: 420px !important;
-      max-width: 420px !important;
-      white-space: normal !important;
-    }
-    
-    /* ── Right info panel ─────────────────────────────────── */
+
+    /* Right info panel */
     #info-panel {
-      width:280px; background:#fff; border-left:4px solid #f1f3f6;
-      display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0;
-      position:relative; z-index:2; box-shadow:-3px 0 8px rgba(0,0,0,0.05);
+      width:280px; background:#fff; border-left:4px solid #f1f3f6; display:flex;
+      flex-direction:column; overflow-y:auto; flex-shrink:0; position:relative; z-index:2;
+      box-shadow:-3px 0 8px rgba(0,0,0,0.05);
     }
-    .ip-head {
-      background:#0b2d4c; color:#fff; font-size:12px;
-      text-transform:uppercase; letter-spacing:.09em;
-      padding:7px 10px; font-weight:700;
-    }
+    .ip-head { background:#0b2d4c; color:#fff; font-size:12px; text-transform:uppercase; letter-spacing:.09em; padding:7px 10px; font-weight:700; }
     .ip-body { padding:8px 10px; border-bottom:1px solid #eef1f4; }
     .ip-row { display:flex; flex-direction:column; margin-bottom:7px; }
     .ip-row:last-child { margin-bottom:0; }
     .ip-label { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#000; font-weight:600; }
     .ip-value { font-size:12px; color:#1a1f2e; font-weight:500; margin-top:1px; }
     .ip-empty { font-size:12px; color:#000; font-style:italic; padding:8px 10px; }
-    .ca-item {
-      display:flex; flex-direction:column; margin-bottom:7px; font-size:12px; line-height:1.3;
-    }
+    .ca-item { display:flex; flex-direction:column; margin-bottom:7px; font-size:12px; line-height:1.3; }
     .ca-item:last-child { margin-bottom:0; }
-    .ca-dot {
-      width:7px; height:7px; border-radius:50%; background:#e85b2a;
-      flex-shrink:0; margin-top:3px;
-    }
-
-
-    /* ── Selected-object floating toolbar ───────────────────── */
-    #selection-toolbar {
-      position:absolute;
-      z-index:30;
-      display:none;
-      align-items:center;
-      gap:4px;
-      padding:4px;
-      background:rgba(255,255,255,.96);
-      border:1px solid #9ca3af;
-      border-radius:6px;
-      box-shadow:0 2px 7px rgba(0,0,0,.18);
-      /* Let the map keep receiving clicks except directly on the buttons. */
-      pointer-events:none;
-    }
-    #selection-toolbar.visible { display:flex; }
-
-
-    /* Clear-all confirmation modal */
-    #clear-modal {
-      position:fixed; inset:0; z-index:9999;
-      display:none; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.55); padding:20px;
-    }
-    #clear-modal.visible { display:flex; }
-    .clear-modal-panel {
-      width:min(520px, calc(100vw - 40px)); background:#fff; color:#111827;
-      border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.35);
-      border:1px solid rgba(0,0,0,.18); overflow:hidden;
-      font-family:Calibri,'Segoe UI',Arial,sans-serif;
-    }
-    .clear-modal-header {
-      padding:20px 24px 10px; font-size:22px; font-weight:700;
-      color:#111827; line-height:1.2;
-    }
-    .clear-modal-body {
-      padding:8px 24px 22px; font-size:16px; line-height:1.45;
-      color:#1f2937;
-    }
-    .clear-modal-actions {
-      display:flex; justify-content:flex-end; gap:12px;
-      padding:0 24px 24px;
-    }
-    .clear-modal-btn {
-      min-width:130px; border-radius:5px; border:1px solid #0b2d4c;
-      padding:11px 18px; font:inherit; font-size:15px; font-weight:700;
-      cursor:pointer;
-    }
-    .clear-modal-btn.cancel {
-      background:#0b2d4c; color:#fff; border-color:#0b2d4c;
-    }
-    .clear-modal-btn.cancel:hover { background:#123f68; }
-    .clear-modal-btn.danger {
-      background:#d32f2f; color:#fff; border-color:#d32f2f;
-    }
-    .clear-modal-btn.danger:hover { background:#b71c1c; border-color:#b71c1c; }
-    .selection-tool-btn {
-      pointer-events:auto;
-      width:28px;
-      height:28px;
-      padding:0;
-      border:1px solid #cbd5e1;
-      border-radius:4px;
-      background:#fff;
-      color:#000;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font:inherit;
-      line-height:1;
-    }
-    .selection-tool-btn:hover { background:#deeeff; border-color:#0b2d4c; }
-    .selection-tool-btn svg { width:16px; height:16px; display:block; }
-
-    .df-lateral-tool-wrap {
-      position:relative;
-      display:none;
-      pointer-events:auto;
-    }
-    .selection-tool-btn.df-lateral-menu-btn {
-      width:auto;
-      min-width:36px;
-      padding:0 6px;
-      gap:1px;
-      font-size:14px;
-      font-weight:700;
-      letter-spacing:-0.01em;
-    }
-    .df-lateral-count { min-width:8px; text-align:center; line-height:1; }
-    .df-lateral-caret { font-size:9px; line-height:1; margin-left:0; }
-    .df-lateral-menu {
-      position:absolute;
-      top:32px;
-      left:0;
-      z-index:80;
-      display:none;
-      flex-direction:column;
-      width:38px;
-      background:#fff;
-      border:1px solid #9ca3af;
-      border-radius:5px;
-      box-shadow:0 3px 9px rgba(0,0,0,.22);
-      overflow:hidden;
-      pointer-events:auto;
-    }
-    .df-lateral-tool-wrap.open .df-lateral-menu { display:flex; }
-    .df-lateral-option {
-      height:24px;
-      border:0;
-      border-bottom:1px solid #eef1f4;
-      background:#fff;
-      color:#000;
-      font:inherit;
-      font-size:12px;
-      cursor:pointer;
-      padding:0;
-      text-align:center;
-    }
-    .df-lateral-option:last-child { border-bottom:0; }
-    .df-lateral-option:hover,
-    .df-lateral-option.active { background:#deeeff; color:#0b2d4c; font-weight:700; }
-
-    /* ── 45-degree rotation buttons (inside selection toolbar) ─ */
-    .rotation-tool-wrap {
-      display:none;
-      align-items:center;
-      gap:4px;
-      pointer-events:auto;
-    }
-    .selection-tool-btn.rotation-step-btn {
-      font-size:18px;
-      font-weight:700;
-      line-height:1;
-    }
-    .selection-tool-btn.rotation-step-btn:disabled {
-      background:#f3f4f6;
-      color:#9ca3af;
-      border-color:#d1d5db;
-      cursor:not-allowed;
-    }
-    .selection-tool-btn.rotation-step-btn:disabled:hover {
-      background:#f3f4f6;
-      color:#9ca3af;
-      border-color:#d1d5db;
-    }
-
-    /* ── Object label editor (inside selection toolbar) ─────── */
-    .selection-tool-btn.label-tool { font-size:13px; font-weight:700; line-height:1; }
-    #label-editor-wrap { pointer-events:auto; }
-    .label-input-group { position:relative; display:flex; align-items:center; }
-    #obj-label-input {
-      width:168px; height:28px; padding:0 24px 0 8px;
-      border:1px solid #cbd5e1; border-radius:4px;
-      font:inherit; font-size:12px; color:#000; background:#fff;
-      box-sizing:border-box;
-    }
-    #obj-label-input:focus { border-color:#0b2d4c; outline:2px solid #0b2d4c; outline-offset:0; }
-    #obj-label-input::placeholder { color:#9ca3af; }
-    .label-x-btn {
-      position:absolute; right:3px; top:50%; transform:translateY(-50%);
-      width:20px; height:20px; border:0; background:transparent;
-      color:#9ca3af; cursor:pointer; display:flex; align-items:center; justify-content:center;
-      font-size:13px; font-weight:700; border-radius:3px; padding:0; pointer-events:auto;
-      line-height:1;
-    }
-    .label-x-btn:hover { color:#374151; background:#f3f4f6; }
-    .selection-tool-btn.label-confirm-btn {
-      background:#16a34a; border-color:#16a34a; color:#fff;
-      font-size:16px; font-weight:700;
-    }
-    .selection-tool-btn.label-confirm-btn:hover { background:#15803d; border-color:#15803d; }
