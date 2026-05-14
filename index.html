@@ -14,7 +14,7 @@
   <div class="clear-modal-panel">
     <div class="clear-modal-header" id="clear-modal-title">Clear all drawings?</div>
     <div class="clear-modal-body">
-      This will remove every drawing, label, and measurement from the map. This action cannot be undone.
+      This will remove every drawing from the map. This action cannot be undone.
     </div>
     <div class="clear-modal-actions">
       <button type="button" class="clear-modal-btn cancel" onclick="closeClearAllModal()">Cancel</button>
@@ -23,380 +23,154 @@
   </div>
 </div>
 <div id="app">
-
   <header role="banner">
-  <div id="header">
-    <h1 class="sr-only">Walla Walla County Community Development — Site Plan Builder</h1>
-    <div id="header-seal" aria-hidden="true">
-      <img src="https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg" alt="Walla Walla County Seal">
+    <div id="header">
+      <h1 class="sr-only">Walla Walla County Community Development — Site Plan Builder</h1>
+      <div id="header-seal" aria-hidden="true">
+        <img id="seal-img" src="https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg" alt="Walla Walla County Seal">
+      </div>
+      <div id="titlewrap">
+        <div id="agency"></div>
+        <div id="title"></div>
+      </div>
+      <div id="header-search-wrap" aria-label="Parcel search">
+        <div id="header-search"></div>
+      </div>
+      <button class="hdr-btn light clear-all-btn" onclick="clearAll()" title="Clear all drawn site plan items" aria-label="Clear all drawn site plan items">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        Clear Drawings
+      </button>
+      <button class="hdr-btn gold" onclick="printPlan()" aria-label="Print or save PDF of site plan" title="Print is temporarily disabled during rebuild">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / Save PDF
+      </button>
     </div>
-    <div id="titlewrap">
-      <div id="agency"></div>
-      <div id="title"></div>
-    </div>
-    <div id="header-search-wrap" aria-label="Parcel search">
-      <div id="header-search"></div>
-    </div>
-    <button class="hdr-btn light clear-all-btn" onclick="clearAll()" title="Clear all drawn site plan items" aria-label="Clear all drawn site plan items">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="3 6 5 6 21 6"></polyline>
-        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-        <line x1="10" y1="11" x2="10" y2="17"></line>
-        <line x1="14" y1="11" x2="14" y2="17"></line>
-      </svg>
-      Clear Drawings
-    </button>
-    <button class="hdr-btn gold" onclick="printPlan()" aria-label="Print or save PDF of site plan" title="Print is temporarily disabled in V137 during active development">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      Print / Save PDF
-    </button>
-  </div>
   </header>
 
-  <main role="main" style="flex:1;display:flex;flex-direction:column;min-height:0;">
-  <div id="main">
-    <div id="sidebar">
-
-      <!-- EDITING -->
-      <div class="section-head">Editing</div>
-      <div class="section-body">
-        <div class="edit-mode-row" role="group" aria-label="Object editing mode">
-          <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-reshape" aria-pressed="true" title="Reshape / edit points" onclick="setEditMode('reshape')">Reshape (Edit points)</button>
-          <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-resize" aria-pressed="false" title="Resize object" onclick="setEditMode('resize')">Resize</button>
-        </div>
-        <label class="toggle-row" for="snap-toggle" title="Toggle snapping while drawing and editing">
-          <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
-          <span>Snapping on</span>
-        </label>
-      </div>
-
-      <!-- STRUCTURES -->
-      <div class="section-head">Structures</div>
-      <div class="section-body">
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-proposed" onclick="startStructure('proposed')"><span class="tool-icon icon-proposed"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(200,0,0,0.12)" stroke="#c80000" stroke-width="2.2"/></svg></span><span class="tool-label">Proposed structure</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-proposed" />
-          <label for="chk-proposed" class="size-lbl">Fixed size</label>
-          <input id="proposed-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="proposed-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-existing" onclick="startStructure('existing')" style="margin-top:7px;"><span class="tool-icon icon-existing"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(0,0,0,0.04)" stroke="#444" stroke-width="2" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Existing structure</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-existing" />
-          <label for="chk-existing" class="size-lbl">Fixed size</label>
-          <input id="existing-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="existing-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-      </div>
-
-      <!-- WELL & SEPTIC -->
-      <div class="section-head">Well &amp; Septic</div>
-      <div class="section-body">
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-well" onclick="startWellTool()"><span class="tool-icon icon-well"><svg viewBox="0 0 28 18" aria-hidden="true"><circle cx="14" cy="9" r="7" fill="none" stroke="#666" stroke-width="1.4" stroke-dasharray="2 2"/><circle cx="14" cy="9" r="3" fill="#fff" stroke="#000" stroke-width="1.8"/></svg></span><span class="tool-label">Well + 100&apos; buffer</span></button>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-septic" onclick="startSepticTool()" style="margin-top:7px;"><span class="tool-icon icon-septic"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="3.5" y="2.5" width="21" height="13" rx="2.5" ry="2.5" fill="#66bb6a" stroke="#2e7d32" stroke-width="1.5"/><circle cx="10" cy="9" r="2" fill="#ffffff" stroke="#2e7d32" stroke-width="1"/><circle cx="18" cy="9" r="2" fill="#ffffff" stroke="#2e7d32" stroke-width="1"/></svg></span><span class="tool-label">Septic tank</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-septic" checked />
-          <label for="chk-septic" class="size-lbl">Fixed size</label>
-          <input id="septic-l" type="number" min="0.1" step="0.1" value="5.5" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="septic-w" type="number" min="1" step="1" value="10" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-dbox" onclick="startDboxTool()" style="margin-top:7px;"><span class="tool-icon icon-dbox"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="6" y="3" width="16" height="12" rx="0.8" fill="#66bb6a" stroke="#2e7d32" stroke-width="1.5"/><rect x="10" y="6" width="8" height="6" rx="0.5" fill="#2e7d32" opacity="0.8"/></svg></span><span class="tool-label">Distribution box (D-box)</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-dbox" checked title="Distribution box (D-box) uses the fixed dimensions entered here" />
-          <label for="chk-dbox" class="size-lbl">Fixed size</label>
-          <input id="dbox-l" type="number" min="0.5" step="0.5" value="3" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="dbox-w" type="number" min="0.5" step="0.5" value="3" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-drainfield" onclick="startDrainfieldTool(false)" style="margin-top:7px;"><span class="tool-icon icon-drainfield"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4"/></svg></span><span class="tool-label">Drainfield</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-drainfield" />
-          <label for="chk-drainfield" class="size-lbl">Fixed size</label>
-          <input id="df-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="df-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-        <div class="size-row drainfield-lateral-row">
-          <span class="lateral-checkbox-spacer" aria-hidden="true"></span>
-          <label for="df-laterals" class="size-lbl lateral-label">Number of Laterals (Pipes)</label>
-          <span class="lateral-placeholder-input" aria-hidden="true"></span>
-          <span class="dim-sep lateral-placeholder-sep" aria-hidden="true">×</span>
-          <input id="df-laterals" type="number" min="2" max="9" step="1" value="3" class="dim-input lateral-input" />
-          <span class="dim-sep lateral-placeholder-ft" aria-hidden="true">ft</span>
-        </div>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-reserve" onclick="startDrainfieldTool(true)" style="margin-top:7px;"><span class="tool-icon icon-reserve"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8" stroke-dasharray="4 2"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Reserve drainfield</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-reserve" />
-          <label for="chk-reserve" class="size-lbl">Fixed size</label>
-          <input id="rv-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="rv-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-        <div class="size-row drainfield-lateral-row">
-          <span class="lateral-checkbox-spacer" aria-hidden="true"></span>
-          <label for="rv-laterals" class="size-lbl lateral-label">Number of Laterals (Pipes)</label>
-          <span class="lateral-placeholder-input" aria-hidden="true"></span>
-          <span class="dim-sep lateral-placeholder-sep" aria-hidden="true">×</span>
-          <input id="rv-laterals" type="number" min="2" max="9" step="1" value="3" class="dim-input lateral-input" />
-          <span class="dim-sep lateral-placeholder-ft" aria-hidden="true">ft</span>
-        </div>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-septicline" onclick="startSepticLineTool()" style="margin-top:7px;"><span class="tool-icon icon-septicline"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#006e2d" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="tool-label">Septic line</span></button>
-      </div>
-
-      <!-- DRAW TOOLS -->
-      <div class="section-head">Draw tools</div>
-      <div class="section-body">
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-setback" onclick="startSetbackTool()"><span class="tool-icon icon-setback"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="9" x2="21" y2="9" stroke="#000" stroke-width="1.6" stroke-dasharray="3 2"/><path d="M4 9l5-3v6z" fill="#000"/><path d="M24 9l-5-3v6z" fill="#000"/></svg></span><span class="tool-label">Setback</span></button>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-grading" onclick="startGradingTool()" style="margin-top:5px;"><span class="tool-icon icon-grading"><svg viewBox="0 0 28 18" aria-hidden="true"><defs><pattern id="ui-grade" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(160,100,0,0.75)" stroke-width="2"/></pattern></defs><rect x="5" y="4" width="18" height="10" rx="1" fill="url(#ui-grade)" stroke="#6e4100" stroke-width="1.6"/></svg></span><span class="tool-label">Proposed Grading</span></button>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-easement" onclick="startEasementTool()" style="margin-top:5px;"><span class="tool-icon icon-easement"><svg viewBox="0 0 28 18" aria-hidden="true"><defs><pattern id="ui-ease" patternUnits="userSpaceOnUse" width="5" height="5"><line x1="0" y1="1" x2="5" y2="1" stroke="rgba(0,80,180,0.55)" stroke-width="2"/></pattern></defs><rect x="5" y="4" width="18" height="10" rx="1" fill="url(#ui-ease)" stroke="#003296" stroke-width="1.6"/></svg></span><span class="tool-label">Easement</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-easement" />
-          <label for="chk-easement" class="size-lbl">Fixed size</label>
-          <input id="easement-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="easement-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-line" onclick="startLineTool()" style="margin-top:5px;"><span class="tool-icon icon-line"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="tool-label">Line</span></button>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-polygon" onclick="startDrawTool('polygon')" style="margin-top:5px;"><span class="tool-icon icon-polygon"><svg viewBox="0 0 28 18" aria-hidden="true"><polygon points="6,13 10,4 21,5 23,12 14,15" fill="rgba(0,0,0,0.03)" stroke="#000" stroke-width="1.6"/></svg></span><span class="tool-label">Polygon</span></button>
-
-        <button class="tool-btn draw-tool-btn icon-btn" id="btn-rectangle" onclick="startDrawTool('rectangle')" style="margin-top:5px;"><span class="tool-icon icon-rectangle"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="none" stroke="#000" stroke-width="1.6"/></svg></span><span class="tool-label">Rectangle</span></button>
-        <div class="size-row">
-          <input type="checkbox" id="chk-rect" />
-          <label for="chk-rect" class="size-lbl">Fixed size</label>
-          <input id="rect-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
-          <span class="dim-sep">×</span>
-          <input id="rect-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
-          <span class="dim-sep">ft</span>
-        </div>
-
-        <div style="display:flex;gap:5px;margin-top:5px;">
-          <button class="tool-btn draw-tool-btn icon-btn" id="btn-callout" onclick="startCalloutTool()" style="flex:1;margin:0;"><span class="tool-icon icon-callout"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="6" y1="13" x2="17" y2="6" stroke="#000" stroke-width="1.5"/><circle cx="6" cy="13" r="2.5" fill="#4DBD64" stroke="#000" stroke-width="0.7"/><rect x="16" y="3" width="8" height="6" rx="1" fill="#fff" stroke="#000" stroke-width="1"/></svg></span><span class="tool-label">Callout</span></button>
-          <button class="tool-btn draw-tool-btn icon-btn" id="btn-text"    onclick="startTextTool()"    style="flex:1;margin:0;"><span class="tool-icon icon-text"><svg viewBox="0 0 28 18" aria-hidden="true"><text x="14" y="14" text-anchor="middle" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#000">T</text></svg></span><span class="tool-label">Text</span></button>
-        </div>
-        <input id="text-input" type="text" placeholder="Text / callout label"
-          style="width:100%;margin-top:5px;padding:7px 10px;border:1px solid #d5dbe3;border-radius:4px;font:inherit;font-size:12px;" />
-      </div>
-
-
-    </div>
-
-    <!-- MAP -->
-    <div id="map-wrap">
-      <div id="viewDiv"></div>
-
-      <!-- Basemap and optional layer controls -->
-      <div id="basemap-toggle">
-        <div id="basemap-control" class="map-control">
-          <button class="bm-btn control-toggle active" id="bm-basemap" type="button" onclick="toggleBasemapPanel(true)" title="Basemap">
-            <span class="bm-thumb-wrap" id="bm-current-thumb" aria-hidden="true">
-              <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                <rect width="64" height="64" fill="#e8e0d0"/>
-                <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
-                <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
-                <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
-                <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
-              </svg>
-            </span>
-            <span class="bm-label" id="bm-current-label">Basemap</span>
-          </button>
-          <div id="basemap-panel" class="map-panel basemap-panel-strip" onclick="event.stopPropagation();">
-            <button type="button" class="basemap-collapse-btn" onclick="toggleBasemapPanel(false)" title="Collapse basemaps" aria-label="Collapse basemap options">›</button>
-            <button type="button" class="basemap-option strip-option" id="bm-option-streets" onclick="switchBasemap('streets-vector', this)" title="Streets">
-              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect width="64" height="64" fill="#e8e0d0"/>
-                <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
-                <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
-                <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
-                <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
-              </svg>
-              <span class="bm-label">Streets</span>
-            </button>
-            <button type="button" class="basemap-option strip-option" id="bm-option-topo" onclick="switchBasemap('topo-vector', this)" title="Topo">
-              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect width="64" height="64" fill="#f0ebe0"/>
-                <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-                <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-                <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-                <ellipse cx="32" cy="36" rx="4" ry="2" fill="#b8a882"/>
-              </svg>
-              <span class="bm-label">Topo</span>
-            </button>
-            <button type="button" class="basemap-option strip-option active" id="bm-option-gray" onclick="switchBasemap('gray-vector', this)" title="Gray Canvas">
-              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect width="64" height="64" fill="#f0ede7"/>
-                <line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/>
-                <line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/>
-                <line x1="0" y1="20" x2="64" y2="20" stroke="#ccc9c2" stroke-width="1"/>
-                <line x1="0" y1="48" x2="64" y2="48" stroke="#ccc9c2" stroke-width="1"/>
-                <line x1="20" y1="0" x2="20" y2="64" stroke="#ccc9c2" stroke-width="1"/>
-                <line x1="48" y1="0" x2="48" y2="64" stroke="#ccc9c2" stroke-width="1"/>
-              </svg>
-              <span class="bm-label">Gray Canvas</span>
-            </button>
-            <button type="button" class="basemap-option strip-option imagery-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
-              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect width="64" height="64" fill="#2d4a1e"/>
-                <rect x="0"  y="0"  width="32" height="32" fill="#3a5c28" opacity=".8"/>
-                <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
-                <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
-                <rect x="36" y="38" width="12" height="8"  fill="#8ba888" opacity=".6"/>
-                <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
-              </svg>
-              <span class="bm-label">Imagery</span>
-              <span class="imagery-print-note" role="note">Screen reference only</span>
-            </button>
+  <main role="main">
+    <div id="main">
+      <aside id="sidebar" aria-label="Site plan tools">
+        <div class="tool-section">
+          <div class="section-head">Editing</div>
+          <div id="tools-editing" class="section-body tool-section-body editing-core-body">
+            <div class="edit-mode-row" role="group" aria-label="Object editing mode">
+              <button type="button" class="tool-btn edit-mode-btn active" id="edit-mode-reshape" aria-pressed="true" title="Reshape / edit points" onclick="setEditMode('reshape')">Reshape (Edit points)</button>
+              <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-resize" aria-pressed="false" title="Resize object" onclick="setEditMode('resize')">Resize</button>
+            </div>
+            <label class="toggle-row" for="snap-toggle" title="Toggle snapping while drawing and editing">
+              <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
+              <span>Snapping on</span>
+            </label>
           </div>
         </div>
+        <div class="tool-section">
+          <div class="section-head">Structures</div>
+          <div id="tools-structures" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Well &amp; Septic</div>
+          <div id="tools-well-septic" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Access / Driveway</div>
+          <div id="tools-access" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Utilities</div>
+          <div id="tools-utilities" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Parking</div>
+          <div id="tools-parking" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Draw Tools</div>
+          <div id="tools-draw" class="section-body tool-section-body"></div>
+        </div>
+      </aside>
 
-        <div id="layer-control" class="map-control">
-          <button class="bm-btn control-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
-            <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" fill="#eef2f6"/>
-              <polygon points="32,10 52,21 32,32 12,21" fill="#0b2d4c" opacity=".85"/>
-              <polygon points="32,23 52,34 32,45 12,34" fill="#4b7fa8" opacity=".75"/>
-              <polygon points="32,36 52,47 32,58 12,47" fill="#7fa7c7" opacity=".75"/>
-              <path d="M12 21l20 11 20-11M12 34l20 11 20-11M12 47l20 11 20-11" fill="none" stroke="#fff" stroke-width="1" opacity=".7"/>
-            </svg>
-            <span class="bm-label">Layers</span>
-          </button>
-          <div id="layers-panel" class="map-panel" onclick="event.stopPropagation();">
-            <div class="map-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers">
-              <span>Layers</span>
-              <span aria-hidden="true">›</span>
+      <div id="map-wrap">
+        <div id="viewDiv"></div>
+
+        <div id="basemap-toggle">
+          <div id="basemap-control" class="map-control">
+            <button class="bm-btn control-toggle active" id="bm-basemap" type="button" onclick="toggleBasemapPanel(true)" title="Basemap">
+              <span class="bm-thumb-wrap" id="bm-current-thumb" aria-hidden="true">
+                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f0ede7"/><line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/><line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/></svg>
+              </span>
+              <span class="bm-label" id="bm-current-label">Basemap</span>
+            </button>
+            <div id="basemap-panel" class="map-panel basemap-panel-strip" onclick="event.stopPropagation();">
+              <button type="button" class="basemap-collapse-btn" onclick="toggleBasemapPanel(false)" title="Collapse basemaps" aria-label="Collapse basemap options">›</button>
+              <button type="button" class="basemap-option strip-option" id="bm-option-streets" onclick="switchBasemap('streets-vector', this)" title="Streets">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#e8e0d0"/><rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/><rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/><circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/></svg>
+                <span class="bm-label">Streets</span>
+              </button>
+              <button type="button" class="basemap-option strip-option" id="bm-option-topo" onclick="switchBasemap('topo-vector', this)" title="Topo">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#f0ebe0"/><ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/><ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/><ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/></svg>
+                <span class="bm-label">Topo</span>
+              </button>
+              <button type="button" class="basemap-option strip-option active" id="bm-option-gray" onclick="switchBasemap('gray-vector', this)" title="Gray Canvas">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#f0ede7"/><line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/><line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/><line x1="0" y1="20" x2="64" y2="20" stroke="#ccc9c2" stroke-width="1"/><line x1="0" y1="48" x2="64" y2="48" stroke="#ccc9c2" stroke-width="1"/></svg>
+                <span class="bm-label">Gray Canvas</span>
+              </button>
+              <button type="button" class="basemap-option strip-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#2d4a1e"/><rect x="0" y="0" width="32" height="32" fill="#3a5c28" opacity=".8"/><rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/><path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/></svg>
+                <span class="bm-label">Imagery</span>
+              </button>
             </div>
-            <div class="map-panel-body">
-              <label class="layer-check-row" for="liquefaction-toggle" title="Show or hide liquefaction susceptibility areas">
-                <input type="checkbox" id="liquefaction-toggle" onchange="toggleMapLayer('liquefaction', this.checked)" />
-                <span>Liquefaction Susceptibility</span>
-              </label>
-              <label class="layer-check-row" for="riparian-toggle" title="Show or hide minimum riparian buffers">
-                <input type="checkbox" id="riparian-toggle" onchange="toggleMapLayer('riparian', this.checked)" />
-                <span>Riparian Buffer</span>
-              </label>
-              <label class="layer-check-row" for="wetlands-toggle" title="Show or hide wetlands">
-                <input type="checkbox" id="wetlands-toggle" onchange="toggleMapLayer('wetlands', this.checked)" />
-                <span>Wetlands</span>
-              </label>
-              <label class="layer-check-row" for="cara-toggle" title="Show or hide Critical Aquifer Recharge Areas">
-                <input type="checkbox" id="cara-toggle" onchange="toggleMapLayer('cara', this.checked)" />
-                <span>Critical Aquifer Recharge Area (CARA)</span>
-              </label>
-              <label class="layer-check-row" for="flood-toggle" title="Show or hide FEMA flood hazard areas">
-                <input type="checkbox" id="flood-toggle" onchange="toggleMapLayer('flood', this.checked)" />
-                <span>Flood Hazard Areas</span>
-              </label>
-              <label class="layer-check-row" for="contours-toggle" title="Show or hide 10-foot contour lines">
-                <input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" />
-                <span>Contours</span>
-              </label>
+          </div>
+
+          <div id="layer-control" class="map-control">
+            <button class="bm-btn control-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#eef2f6"/><polygon points="32,10 52,21 32,32 12,21" fill="#0b2d4c" opacity=".85"/><polygon points="32,23 52,34 32,45 12,34" fill="#4b7fa8" opacity=".75"/><polygon points="32,36 52,47 32,58 12,47" fill="#7fa7c7" opacity=".75"/></svg>
+              <span class="bm-label">Layers</span>
+            </button>
+            <div id="layers-panel" class="map-panel" onclick="event.stopPropagation();">
+              <div class="map-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers"><span>Layers</span><span aria-hidden="true">›</span></div>
+              <div class="map-panel-body">
+                <label class="layer-check-row" for="liquefaction-toggle"><input type="checkbox" id="liquefaction-toggle" onchange="toggleMapLayer('liquefaction', this.checked)" /><span>Liquefaction Susceptibility</span></label>
+                <label class="layer-check-row" for="riparian-toggle"><input type="checkbox" id="riparian-toggle" onchange="toggleMapLayer('riparian', this.checked)" /><span>Riparian Buffer</span></label>
+                <label class="layer-check-row" for="wetlands-toggle"><input type="checkbox" id="wetlands-toggle" onchange="toggleMapLayer('wetlands', this.checked)" /><span>Wetlands</span></label>
+                <label class="layer-check-row" for="cara-toggle"><input type="checkbox" id="cara-toggle" onchange="toggleMapLayer('cara', this.checked)" /><span>Critical Aquifer Recharge Area (CARA)</span></label>
+                <label class="layer-check-row" for="flood-toggle"><input type="checkbox" id="flood-toggle" onchange="toggleMapLayer('flood', this.checked)" /><span>Flood Hazard Areas</span></label>
+                <label class="layer-check-row" for="contours-toggle"><input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" /><span>Contours</span></label>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div id="loading">
-        <div style="font-size:14px;font-weight:700;color:#0b2d4c;">Initializing map…</div>
-        <div style="font-size:12px;color:#000;">Please wait</div>
-      </div>
-
-      <div id="measure-box">
-        <div class="ms-label" id="ms-label">Selected shape</div>
-        <div class="ms-row">
-          <div class="ms-main" id="ms-main">—</div>
-          <div class="ms-sub"  id="ms-sub"></div>
-        </div>
-      </div>
-
-      <div id="selection-toolbar" aria-label="Selected drawing actions">
-        <button type="button" id="btn-duplicate-tool" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M8 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/>
-            <rect x="8" y="4" width="12" height="12" rx="2"/>
-          </svg>
-        </button>
-        <div id="rotation-tool-wrap" class="rotation-tool-wrap" style="display:none;">
+        <div id="selection-toolbar" aria-label="Selected drawing actions">
+          <button type="button" id="btn-duplicate-tool" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/><rect x="8" y="4" width="12" height="12" rx="2"/></svg>
+          </button>
           <button type="button" id="rotate-ccw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(45)" title="Rotate counterclockwise 45°" aria-label="Rotate selected item counterclockwise 45 degrees">↶</button>
           <button type="button" id="rotate-cw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(-45)" title="Rotate clockwise 45°" aria-label="Rotate selected item clockwise 45 degrees">↷</button>
-        </div>
-        <div id="df-lateral-tool-wrap" class="df-lateral-tool-wrap" style="display:none;">
-          <button type="button" id="df-lateral-menu-btn" class="selection-tool-btn df-lateral-menu-btn" onclick="toggleDrainfieldLateralMenu(event)" title="Change number of drainfield laterals" aria-label="Change number of drainfield laterals" aria-haspopup="listbox" aria-expanded="false">
-            <span id="df-lateral-menu-count" class="df-lateral-count">3</span>
-            <span class="df-lateral-caret" aria-hidden="true">▾</span>
+          <button type="button" id="btn-label-tool" class="selection-tool-btn label-tool" onclick="openLabelEditor()" title="Add or edit label" aria-label="Add or edit label">T</button>
+          <button type="button" id="btn-delete-tool" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
           </button>
-          <div id="df-lateral-menu" class="df-lateral-menu" role="listbox" aria-label="Drainfield lateral count">
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(2)">2</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(3)">3</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(4)">4</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(5)">5</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(6)">6</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(7)">7</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(8)">8</button>
-            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(9)">9</button>
-          </div>
         </div>
-        <button type="button" id="btn-label-tool" class="selection-tool-btn label-tool" onclick="openLabelEditor()" title="Add or edit label" aria-label="Add or edit label" style="display:none;">T</button>
-        <button type="button" id="btn-delete-tool" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <line x1="10" y1="11" x2="10" y2="17"/>
-            <line x1="14" y1="11" x2="14" y2="17"/>
-          </svg>
-        </button>
-        <div id="label-editor-wrap" style="display:none;align-items:center;gap:4px;pointer-events:auto;">
-          <div class="label-input-group">
-            <input id="obj-label-input" type="text" maxlength="20" placeholder="Label…" aria-label="Object label text" />
-            <button type="button" class="label-x-btn" onclick="clearLabelInput()" title="Clear text" aria-label="Clear label text">✕</button>
-          </div>
-          <button type="button" class="selection-tool-btn label-confirm-btn" onclick="confirmObjectLabel()" title="Set label" aria-label="Set label">✓</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- RIGHT INFO PANEL -->
-    <div id="info-panel">
-      <div class="ip-head">Parcel Information</div>
-      <div class="ip-body" id="ip-basic">
-        <div class="ip-empty">Load a parcel to view details.</div>
+        <div id="loading"><div style="font-size:14px;font-weight:700;color:#0b2d4c;">Initializing map…</div><div style="font-size:12px;color:#000;">Please wait</div></div>
       </div>
-      <div class="ip-head" id="ip-ca-head" style="display:none;">Critical Areas</div>
-      <div class="ip-body" id="ip-ca" style="display:none;"></div>
-    </div>
-  </div>
 
-  <div id="statusbar" role="status" aria-live="polite">
-    <div id="statusdot" aria-hidden="true"></div>
-    <div id="statusmsg">Initializing…</div>
-  </div>
+      <aside id="info-panel" aria-label="Parcel information">
+        <div class="ip-head">Parcel Information</div>
+        <div class="ip-body" id="ip-basic"><div class="ip-empty">Load a parcel to view details.</div></div>
+        <div class="ip-head" id="ip-ca-head" style="display:none;">Critical Areas</div>
+        <div class="ip-body" id="ip-ca" style="display:none;"></div>
+      </aside>
+    </div>
   </main>
 </div>
 
-<script src="js/attribution.js"></script>
-<script src="js/map-controls.js"></script>
-<script src="js/print.js"></script>
-<script src="js/app.js"></script>
-<script src="js/selection.js"></script>
+<script src="js/runtime.js"></script>
 </body>
 </html>
