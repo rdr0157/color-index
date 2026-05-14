@@ -1,428 +1,456 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Walla Walla County Community Development – Parcel Information Report</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; }
-    body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1f2e; font-size: 14px; padding-bottom: 48px; }
-    .header { background: #0b2d4c; color: #fff; padding: 6px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: none; }
-    .header-left { display: flex; align-items: center; gap: 14px; }
-    .header-seal { width: 70px; height: 70px; border: 2px solid #bb3829; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; background: rgba(255,255,255,0.08); }
-    .header-agency { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px; text-transform: none; letter-spacing: 0; }
-    .header-title  { font-size: 16px; font-weight: 700; line-height: 1.2; color: #fff; }
-    .header-sub    { font-size: 14px; color: #fff; opacity: .85; margin-top: 3px; }
-    .btn-view { background: #F2EDDC; color: #000; border: 1px solid #869d5c; border-radius: 4px; padding: 9px 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; display: flex; align-items: center; gap: 7px; flex-shrink: 0; transition: background .15s; -webkit-appearance: none; appearance: none; }
-    .btn-view:hover { background: #DEDAC3; }
-    .page { max-width: 900px; margin: 22px auto; padding: 0 22px; }
-    .two-col { display: table; width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 14px; }
-    .two-col-cell { display: table-cell; width: 50%; vertical-align: top; padding-right: 7px; }
-    .two-col-cell + .two-col-cell { padding-right: 0; padding-left: 7px; }
-    .section { background: #fff; border: 1px solid #d1d5de; border-radius: 7px; overflow: hidden; margin-bottom: 14px; }
-    .section-head { background: #0b2d4c; color: #fff; padding: 7px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; }
-    .section-head h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: #fff; margin: 0; }
-    .section-head-link { font-size: 10px; font-weight: 700; color: #0000EE; text-decoration: none; white-space: nowrap; background: #fdfbf3; border: 1px solid #869d5c; border-radius: 4px; padding: 3px 8px; }
-    .section-head-link:hover { text-decoration: underline; }
-    .dlist { width: 100%; margin: 0; padding: 0; }
-    .dlist-row { display: flex; border-bottom: 1px solid #eef0f4; }
-    .dlist-row:last-child { border-bottom: none; }
-    .dlist-row:nth-child(even) { background: #fafbfd; }
-    .dlist dt { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; color: #000; width: 25%; font-weight: 500; flex-shrink: 0; }
-    .dlist dd { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; font-weight: 500; color: #1a1f2e; flex: 1; margin: 0; }
-    .val-blue { color: #0000FF; }
-    .val-link { color: #0000FF; text-decoration: none; font-weight: 500; }
-    .val-link:hover { text-decoration: underline; }
-    .ca-table { width: 100%; border-collapse: collapse; }
-    .ca-table tr { border-bottom: 1px solid #eef0f4; }
-    .ca-table tr:last-child { border-bottom: none; }
-    .ca-table tr:nth-child(even) { background: #fafbfd; }
-    .ca-th { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; color: #000; width: 20%; font-weight: 500; text-align: left; vertical-align: middle; }
-    .ca-td { padding: 6px 14px; font-size: 12.5px; line-height: 1.4; word-break: break-word; width: 30%; vertical-align: middle; border-right: 1px solid #eef0f4; }
-    .ca-td:last-child { border-right: none; }
-    .ca-val  { font-weight: 400; font-size: 12.5px; }
-    .ca-yes  { color: #0000FF; }
-    .ca-no   { color: #357802; font-weight: 400; }
-    .ca-text { color: #0000FF; }
-    .disclaimer { border: 1px solid #d1d5de; background: #fdfbf3; border-radius: 7px; padding: 11px 16px; margin-bottom: 16px; font-size: 11.5px; color: #000; line-height: 1.65; }
-    .disclaimer p { margin-bottom: 5px; }
-    .disclaimer p:last-child { margin-bottom: 0; }
-    .footer { max-width: 900px; margin: 0 auto; padding: 10px 22px; font-size: 11px; color: #000; border-top: 1px solid #d1d5de; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-    .footer a { color: #000; text-decoration: none; }
-    .footer a:hover { text-decoration: underline; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-    @page { size: letter; margin: 0.25in; }
-    @media print {
-      .btn-view  { display: none !important; }
-      .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px 20px; }
-      body { background: #fff; padding: 0; margin: 0; font-size: 10px; }
-      .page { margin: 0; padding: 4px 8px; max-width: 100%; }
-      .two-col { display: table; width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 6px; }
-      .two-col-cell { display: table-cell; width: 50%; vertical-align: top; padding-right: 4px; }
-      .two-col-cell + .two-col-cell { padding-right: 0; padding-left: 4px; }
-      .section { break-inside: avoid; margin-bottom: 6px; border-radius: 3px; }
-      .section-head { padding: 3px 8px; font-size: 8.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .dlist dt, .dlist dd, .ca-th, .ca-td { padding: 2px 8px; font-size: 9.5px; }
-      .ca-val { font-size: 9.5px; }
-      .disclaimer { break-inside: avoid; padding: 5px 10px; font-size: 9px; margin-bottom: 4px; }
-      .ca-yes { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .ca-no  { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site Plan Builder — Walla Walla County Community Development</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+  <script src="config.js"></script>
+  <script src="https://js.arcgis.com/4.30/"></script>
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-
-<header role="banner">
-<div class="header">
-  <div class="header-left">
-    <div class="header-seal">
-      <img src="https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg" alt="Walla Walla County Seal" style="width:64px;height:65px;object-fit:contain;border-radius:50%;">
+<div id="clear-modal" role="dialog" aria-modal="true" aria-labelledby="clear-modal-title" aria-hidden="true" onclick="if(event.target===this) closeClearAllModal();">
+  <div class="clear-modal-panel">
+    <div class="clear-modal-header" id="clear-modal-title">Clear all drawings?</div>
+    <div class="clear-modal-body">
+      This will remove every drawing, label, and measurement from the map. This action cannot be undone.
     </div>
-    <div>
-      <div class="header-agency">Walla Walla County</div>
-      <div class="header-title">Community Development</div>
-      <div class="header-sub">Parcel Information Report &nbsp;·&nbsp; <span id="report-date"></span></div>
+    <div class="clear-modal-actions">
+      <button type="button" class="clear-modal-btn cancel" onclick="closeClearAllModal()">Cancel</button>
+      <button type="button" class="clear-modal-btn danger" onclick="confirmClearAllModal()">Clear Map</button>
     </div>
   </div>
-  <div style="display:flex;gap:8px;">
-    <button id="btn-view" class="btn-view" style="display:none;" onclick="window.open(window.location.href + '&print=1', '_blank');">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      View Report
+</div>
+<div id="app">
+
+  <header role="banner">
+  <div id="header">
+    <h1 class="sr-only">Walla Walla County Community Development — Site Plan Builder</h1>
+    <div id="header-seal" aria-hidden="true">
+      <img src="https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg" alt="Walla Walla County Seal">
+    </div>
+    <div id="titlewrap">
+      <div id="agency"></div>
+      <div id="title"></div>
+    </div>
+    <div id="header-search-wrap" aria-label="Parcel search">
+      <div id="header-search"></div>
+    </div>
+    <button class="hdr-btn light clear-all-btn" onclick="clearAll()" title="Clear all drawn site plan items" aria-label="Clear all drawn site plan items">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+      </svg>
+      Clear Drawings
     </button>
-    <button id="btn-print" class="btn-view" style="display:none;" onclick="window.print();">
+    <button class="hdr-btn gold" onclick="printPlan()" aria-label="Print or save PDF of site plan" title="Print is temporarily disabled in V137 during active development">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print / Save PDF
     </button>
   </div>
-</div>
-</header>
+  </header>
 
-<main>
-<h1 class="sr-only">Walla Walla County Community Development — Parcel Information Report</h1>
-<div class="page">
-  <div class="two-col" style="font-size:0;">
-    <div class="two-col-cell" style="font-size:14px;"><div class="section">
-      <div class="section-head"><h2>Property Information</h2></div>
-      <dl class="dlist">
-        <div class="dlist-row"><dt>Parcel Number</dt><dd class="val-blue" id="f-geo">—</dd></div>
-        <div class="dlist-row"><dt>Site Address</dt><dd id="f-sit">—</dd></div>
-        <div class="dlist-row"><dt>Owner</dt><dd class="val-blue" id="f-owner">—</dd></div>
-        <div class="dlist-row"><dt>Mailing Address</dt><dd id="f-mail">—</dd></div>
-        <div class="dlist-row"><dt>Legal Description</dt><dd id="f-legal">—</dd></div>
-        <div class="dlist-row"><dt>Area (ac)</dt><dd id="f-acres">—</dd></div>
-        <div class="dlist-row"><dt>Fire District</dt><dd id="f-fire">—</dd></div>
-        <div class="dlist-row" style="display:none;"><dt>Well Report</dt><dd id="f-well">—</dd></div>
-        <div class="dlist-row"><dt>Plat Book Page</dt><dd id="f-plat">—</dd></div>
-        <div class="dlist-row"><dt>Assessor's Website</dt><dd id="f-link">—</dd></div>
-      </dl>
-    </div></div><!--
- --><div class="two-col-cell" style="font-size:14px;"><div class="section">
-      <div class="section-head"><h2>Development Regulations</h2></div>
-      <dl class="dlist">
-        <div class="dlist-row"><dt>Zoning</dt><dd class="val-blue" id="f-zoning">—</dd></div>
-        <div class="dlist-row"><dt>Land Use</dt><dd id="f-landuse">—</dd></div>
-        <div class="dlist-row"><dt>Urban Growth Area</dt><dd id="f-uga">—</dd></div>
-        <div class="dlist-row"><dt>Shoreline Designation</dt><dd id="f-shoreline">—</dd></div>
-        <div class="dlist-row"><dt>Designated Mineral Lands</dt><dd id="f-mineral">—</dd></div>
-        <div class="dlist-row"><dt>Seismic Design Class</dt><dd id="f-seismic">—</dd></div>
-        <div class="dlist-row"><dt>Mill Creek Wildfire Protection</dt><dd id="f-millcreek">—</dd></div>
-        <div class="dlist-row"><dt>Front Setback</dt><dd id="f-sfr">—</dd></div>
-        <div class="dlist-row"><dt>Side Setback</dt><dd id="f-ssi">—</dd></div>
-        <div class="dlist-row"><dt>Rear Setback</dt><dd id="f-sre">—</dd></div>
-        <div class="dlist-row"><dt>Setback Note</dt><dd><a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT17ZO_CH17.18DESTENDI_17.18.020TADEDIRE" target="_blank" class="val-link">WWCC 17.18.020 - Density and Dimensions<span class="sr-only"> (opens in new tab)</span></a><div id="f-sbn" style="white-space:pre-wrap;line-height:1.6;margin-top:4px;font-weight:400;color:#1a1f2e;"></div></dd></div>
-      </dl>
-    </div></div>
-  </div>
+  <main role="main" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+  <div id="main">
+    <div id="sidebar">
 
-  <!-- Critical Areas -->
+      <!-- EDITING -->
+      <div class="section-head">Editing</div>
+      <div class="section-body">
+        <div class="edit-mode-row" role="group" aria-label="Object editing mode">
+          <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-reshape" aria-pressed="true" title="Reshape / edit points" onclick="setEditMode('reshape')">Reshape (Edit points)</button>
+          <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-resize" aria-pressed="false" title="Resize object" onclick="setEditMode('resize')">Resize</button>
+        </div>
+        <label class="toggle-row" for="snap-toggle" title="Toggle snapping while drawing and editing">
+          <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
+          <span>Snapping on</span>
+        </label>
+      </div>
 
-  <div class="section">
-    <div class="section-head">
-      <h2>Critical Areas</h2>
-      <a class="section-head-link" href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.08CRARPR" target="_blank">WWCC Chapter 18.08<span class="sr-only"> (opens in new tab)</span></a>
+      <!-- STRUCTURES -->
+      <div class="section-head">Structures</div>
+      <div class="section-body">
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-proposed" onclick="startStructure('proposed')"><span class="tool-icon icon-proposed"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(200,0,0,0.12)" stroke="#c80000" stroke-width="2.2"/></svg></span><span class="tool-label">Proposed structure</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-proposed" />
+          <label for="chk-proposed" class="size-lbl">Fixed size</label>
+          <input id="proposed-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="proposed-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-existing" onclick="startStructure('existing')" style="margin-top:7px;"><span class="tool-icon icon-existing"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="rgba(0,0,0,0.04)" stroke="#444" stroke-width="2" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Existing structure</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-existing" />
+          <label for="chk-existing" class="size-lbl">Fixed size</label>
+          <input id="existing-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="existing-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+      </div>
+
+      <!-- WELL & SEPTIC -->
+      <div class="section-head">Well &amp; Septic</div>
+      <div class="section-body">
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-well" onclick="startWellTool()"><span class="tool-icon icon-well"><svg viewBox="0 0 28 18" aria-hidden="true"><circle cx="14" cy="9" r="7" fill="none" stroke="#666" stroke-width="1.4" stroke-dasharray="2 2"/><circle cx="14" cy="9" r="3" fill="#fff" stroke="#000" stroke-width="1.8"/></svg></span><span class="tool-label">Well + 100&apos; buffer</span></button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-testhole" onclick="showToolPlaceholder('Test holes','btn-testhole')" style="margin-top:7px;" title="Placeholder for future test hole tool"><span class="tool-icon icon-testhole"><svg viewBox="0 0 28 18" aria-hidden="true"><circle cx="14" cy="9" r="5.5" fill="none" stroke="#8b5e34" stroke-width="1.6" stroke-dasharray="2 2"/><circle cx="14" cy="9" r="2" fill="#8b5e34" opacity="0.85"/></svg></span><span class="tool-label">Test holes</span></button>
+
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-septic" onclick="startSepticTool()" style="margin-top:7px;"><span class="tool-icon icon-septic"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="3.5" y="2.5" width="21" height="13" rx="2.5" ry="2.5" fill="#66bb6a" stroke="#2e7d32" stroke-width="1.5"/><circle cx="10" cy="9" r="2" fill="#ffffff" stroke="#2e7d32" stroke-width="1"/><circle cx="18" cy="9" r="2" fill="#ffffff" stroke="#2e7d32" stroke-width="1"/></svg></span><span class="tool-label">Septic tank</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-septic" checked />
+          <label for="chk-septic" class="size-lbl">Fixed size</label>
+          <input id="septic-l" type="number" min="0.1" step="0.1" value="5.5" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="septic-w" type="number" min="1" step="1" value="10" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-dbox" onclick="startDboxTool()" style="margin-top:7px;"><span class="tool-icon icon-dbox"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="6" y="3" width="16" height="12" rx="0.8" fill="#66bb6a" stroke="#2e7d32" stroke-width="1.5"/><rect x="10" y="6" width="8" height="6" rx="0.5" fill="#2e7d32" opacity="0.8"/></svg></span><span class="tool-label">Distribution box (D-box)</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-dbox" checked title="Distribution box (D-box) uses the fixed dimensions entered here" />
+          <label for="chk-dbox" class="size-lbl">Fixed size</label>
+          <input id="dbox-l" type="number" min="0.5" step="0.5" value="3" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="dbox-w" type="number" min="0.5" step="0.5" value="3" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-drainfield" onclick="startDrainfieldTool(false)" style="margin-top:7px;"><span class="tool-icon icon-drainfield"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4"/></svg></span><span class="tool-label">Drainfield</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-drainfield" />
+          <label for="chk-drainfield" class="size-lbl">Fixed size</label>
+          <input id="df-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="df-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+        <div class="size-row drainfield-lateral-row">
+          <span class="lateral-checkbox-spacer" aria-hidden="true"></span>
+          <label for="df-laterals" class="size-lbl lateral-label">Number of Laterals (Pipes)</label>
+          <span class="lateral-placeholder-input" aria-hidden="true"></span>
+          <span class="dim-sep lateral-placeholder-sep" aria-hidden="true">×</span>
+          <input id="df-laterals" type="number" min="2" max="9" step="1" value="3" class="dim-input lateral-input" />
+          <span class="dim-sep lateral-placeholder-ft" aria-hidden="true">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-reserve" onclick="startDrainfieldTool(true)" style="margin-top:7px;"><span class="tool-icon icon-reserve"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="4" x2="21" y2="4" stroke="#006e2d" stroke-width="1.8" stroke-dasharray="4 2"/><line x1="7" y1="4" x2="7" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="14" y1="4" x2="14" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/><line x1="21" y1="4" x2="21" y2="16" stroke="#006e2d" stroke-width="1.4" stroke-dasharray="4 2"/></svg></span><span class="tool-label">Reserve drainfield</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-reserve" />
+          <label for="chk-reserve" class="size-lbl">Fixed size</label>
+          <input id="rv-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="rv-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+        <div class="size-row drainfield-lateral-row">
+          <span class="lateral-checkbox-spacer" aria-hidden="true"></span>
+          <label for="rv-laterals" class="size-lbl lateral-label">Number of Laterals (Pipes)</label>
+          <span class="lateral-placeholder-input" aria-hidden="true"></span>
+          <span class="dim-sep lateral-placeholder-sep" aria-hidden="true">×</span>
+          <input id="rv-laterals" type="number" min="2" max="9" step="1" value="3" class="dim-input lateral-input" />
+          <span class="dim-sep lateral-placeholder-ft" aria-hidden="true">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-septicline" onclick="startSepticLineTool()" style="margin-top:7px;"><span class="tool-icon icon-septicline"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#006e2d" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="tool-label">Septic line</span></button>
+      </div>
+
+
+
+      <!-- ACCESS / DRIVEWAY -->
+      <div class="section-head">Access / Driveway</div>
+      <div class="section-body">
+        <div class="edit-mode-row" role="group" aria-label="Driveway surface material">
+          <button type="button" class="tool-btn edit-mode-btn active" id="access-material-gravel" aria-pressed="true" title="Use gravel driveway/culvert symbology" onclick="setAccessSurface('gravel')">Gravel</button>
+          <button type="button" class="tool-btn edit-mode-btn" id="access-material-asphalt" aria-pressed="false" title="Use asphalt driveway/culvert symbology" onclick="setAccessSurface('asphalt')">Asphalt</button>
+        </div>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-driveway" onclick="showToolPlaceholder('Driveway','btn-driveway')" title="Placeholder for future driveway tool"><span class="tool-icon icon-driveway"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="4" y="6" width="20" height="6" rx="1" fill="#d8d2c4" stroke="#555" stroke-width="1.4"/><line x1="7" y1="9" x2="21" y2="9" stroke="#777" stroke-width="1" stroke-dasharray="3 2"/></svg></span><span class="tool-label">Driveway</span></button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-culvert" onclick="showToolPlaceholder('Culvert','btn-culvert')" style="margin-top:5px;" title="Placeholder for future culvert tool"><span class="tool-icon icon-culvert"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="5" y1="9" x2="23" y2="9" stroke="#333" stroke-width="2.1" stroke-linecap="round"/><circle cx="8" cy="9" r="3" fill="none" stroke="#333" stroke-width="1.4"/><circle cx="20" cy="9" r="3" fill="none" stroke="#333" stroke-width="1.4"/></svg></span><span class="tool-label">Culvert</span></button>
+      </div>
+
+      <!-- UTILITIES -->
+      <div class="section-head">Utilities</div>
+      <div class="section-body">
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-water-meter" onclick="showToolPlaceholder('Water meter','btn-water-meter')" title="Placeholder for future water meter tool"><span class="tool-icon icon-water-meter"><svg viewBox="0 0 28 18" aria-hidden="true"><circle cx="14" cy="9" r="5.5" fill="#e8f3ff" stroke="#006bb6" stroke-width="1.6"/><path d="M10 10c1.5-3 6.5-3 8 0" fill="none" stroke="#006bb6" stroke-width="1.3" stroke-linecap="round"/><line x1="14" y1="9" x2="16" y2="7" stroke="#006bb6" stroke-width="1.2" stroke-linecap="round"/></svg></span><span class="tool-label">Water meter</span></button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-waterline" onclick="showToolPlaceholder('Water supply line','btn-waterline')" style="margin-top:5px;" title="Placeholder for future water supply line tool"><span class="tool-icon icon-waterline"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#006bb6" stroke-width="2.4" stroke-linecap="round"/><circle cx="8" cy="9" r="1.6" fill="#fff" stroke="#006bb6" stroke-width="1"/><circle cx="20" cy="9" r="1.6" fill="#fff" stroke="#006bb6" stroke-width="1"/></svg></span><span class="tool-label">Water supply line</span></button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-firehydrant" onclick="showToolPlaceholder('Fire hydrant','btn-firehydrant')" style="margin-top:5px;" title="Placeholder for future fire hydrant tool"><span class="tool-icon icon-firehydrant"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="11" y="5" width="6" height="9" rx="1" fill="#d71920" stroke="#8b0000" stroke-width="1"/><circle cx="14" cy="4.5" r="2.2" fill="#d71920" stroke="#8b0000" stroke-width="1"/><line x1="8" y1="9" x2="20" y2="9" stroke="#8b0000" stroke-width="2" stroke-linecap="round"/></svg></span><span class="tool-label">Fire hydrant</span></button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-electrical-meter" onclick="showToolPlaceholder('Electrical meter','btn-electrical-meter')" style="margin-top:5px;" title="Placeholder for future electrical meter tool"><span class="tool-icon icon-electrical-meter"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="9" y="3" width="10" height="12" rx="1.5" fill="#f5f5f5" stroke="#444" stroke-width="1.4"/><path d="M15 4.5l-4 5h3l-1 4 4-5h-3z" fill="#f4b400" stroke="#8a6500" stroke-width=".4"/></svg></span><span class="tool-label">Electrical meter</span></button>
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-utility-pole" onclick="showToolPlaceholder('Utility pole','btn-utility-pole')" style="margin-top:5px;" title="Placeholder for future utility pole tool"><span class="tool-icon icon-utility-pole"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="14" y1="3" x2="14" y2="16" stroke="#6b4b2a" stroke-width="2.3" stroke-linecap="round"/><line x1="8" y1="6" x2="20" y2="6" stroke="#6b4b2a" stroke-width="1.8" stroke-linecap="round"/><line x1="9" y1="8" x2="19" y2="8" stroke="#333" stroke-width=".9" stroke-linecap="round"/></svg></span><span class="tool-label">Utility pole</span></button>
+      </div>
+
+      <!-- PARKING -->
+      <div class="section-head">Parking</div>
+      <div class="section-body">
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-parking-standard" onclick="showToolPlaceholder('Standard parking','btn-parking-standard')" title="Placeholder for future standard parking tool"><span class="tool-icon icon-parking-standard"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="7" y="3" width="14" height="12" rx="1" fill="rgba(0,90,180,0.08)" stroke="#004a99" stroke-width="1.4"/><text x="14" y="12.8" text-anchor="middle" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#004a99">P</text></svg></span><span class="tool-label">Standard parking</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-parking-standard" />
+          <label for="chk-parking-standard" class="size-lbl">Fixed size</label>
+          <input id="parking-standard-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="parking-standard-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-parking-ada" onclick="showToolPlaceholder('ADA / disabled parking','btn-parking-ada')" style="margin-top:7px;" title="Placeholder for future ADA/disabled parking tool"><span class="tool-icon icon-parking-ada"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="7" y="3" width="14" height="12" rx="1" fill="rgba(0,90,180,0.10)" stroke="#004a99" stroke-width="1.4"/><circle cx="14" cy="7" r="1.4" fill="#004a99"/><path d="M14 8.5v3h3M14 10.5h-2" fill="none" stroke="#004a99" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tool-label">ADA/disabled parking</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-parking-ada" />
+          <label for="chk-parking-ada" class="size-lbl">Fixed size</label>
+          <input id="parking-ada-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="parking-ada-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-parking-ev" onclick="showToolPlaceholder('EV parking','btn-parking-ev')" style="margin-top:7px;" title="Placeholder for future EV parking tool"><span class="tool-icon icon-parking-ev"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="7" y="3" width="14" height="12" rx="1" fill="rgba(22,120,70,0.10)" stroke="#167846" stroke-width="1.4"/><path d="M13 5h4l-2.5 4H17l-4 5 1.2-4H12z" fill="#167846"/></svg></span><span class="tool-label">EV parking</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-parking-ev" />
+          <label for="chk-parking-ev" class="size-lbl">Fixed size</label>
+          <input id="parking-ev-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="parking-ev-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+      </div>
+
+      <!-- DRAW TOOLS -->
+      <div class="section-head">Draw tools</div>
+      <div class="section-body">
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-setback" onclick="startSetbackTool()"><span class="tool-icon icon-setback"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="7" y1="9" x2="21" y2="9" stroke="#000" stroke-width="1.6" stroke-dasharray="3 2"/><path d="M4 9l5-3v6z" fill="#000"/><path d="M24 9l-5-3v6z" fill="#000"/></svg></span><span class="tool-label">Setback</span></button>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-grading" onclick="startGradingTool()" style="margin-top:5px;"><span class="tool-icon icon-grading"><svg viewBox="0 0 28 18" aria-hidden="true"><defs><pattern id="ui-grade" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(160,100,0,0.75)" stroke-width="2"/></pattern></defs><rect x="5" y="4" width="18" height="10" rx="1" fill="url(#ui-grade)" stroke="#6e4100" stroke-width="1.6"/></svg></span><span class="tool-label">Proposed Grading</span></button>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-easement" onclick="startEasementTool()" style="margin-top:5px;"><span class="tool-icon icon-easement"><svg viewBox="0 0 28 18" aria-hidden="true"><defs><pattern id="ui-ease" patternUnits="userSpaceOnUse" width="5" height="5"><line x1="0" y1="1" x2="5" y2="1" stroke="rgba(0,80,180,0.55)" stroke-width="2"/></pattern></defs><rect x="5" y="4" width="18" height="10" rx="1" fill="url(#ui-ease)" stroke="#003296" stroke-width="1.6"/></svg></span><span class="tool-label">Easement</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-easement" />
+          <label for="chk-easement" class="size-lbl">Fixed size</label>
+          <input id="easement-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="easement-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-line" onclick="startLineTool()" style="margin-top:5px;"><span class="tool-icon icon-line"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="4" y1="9" x2="24" y2="9" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="tool-label">Line</span></button>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-polygon" onclick="startDrawTool('polygon')" style="margin-top:5px;"><span class="tool-icon icon-polygon"><svg viewBox="0 0 28 18" aria-hidden="true"><polygon points="6,13 10,4 21,5 23,12 14,15" fill="rgba(0,0,0,0.03)" stroke="#000" stroke-width="1.6"/></svg></span><span class="tool-label">Polygon</span></button>
+
+        <button class="tool-btn draw-tool-btn icon-btn" id="btn-rectangle" onclick="startDrawTool('rectangle')" style="margin-top:5px;"><span class="tool-icon icon-rectangle"><svg viewBox="0 0 28 18" aria-hidden="true"><rect x="5" y="4" width="18" height="10" rx="1" fill="none" stroke="#000" stroke-width="1.6"/></svg></span><span class="tool-label">Rectangle</span></button>
+        <div class="size-row">
+          <input type="checkbox" id="chk-rect" />
+          <label for="chk-rect" class="size-lbl">Fixed size</label>
+          <input id="rect-l" type="number" min="1" step="1" placeholder="L" class="dim-input" />
+          <span class="dim-sep">×</span>
+          <input id="rect-w" type="number" min="1" step="1" placeholder="W" class="dim-input" />
+          <span class="dim-sep">ft</span>
+        </div>
+
+        <div style="display:flex;gap:5px;margin-top:5px;">
+          <button class="tool-btn draw-tool-btn icon-btn" id="btn-callout" onclick="startCalloutTool()" style="flex:1;margin:0;"><span class="tool-icon icon-callout"><svg viewBox="0 0 28 18" aria-hidden="true"><line x1="6" y1="13" x2="17" y2="6" stroke="#000" stroke-width="1.5"/><circle cx="6" cy="13" r="2.5" fill="#4DBD64" stroke="#000" stroke-width="0.7"/><rect x="16" y="3" width="8" height="6" rx="1" fill="#fff" stroke="#000" stroke-width="1"/></svg></span><span class="tool-label">Callout</span></button>
+          <button class="tool-btn draw-tool-btn icon-btn" id="btn-text"    onclick="startTextTool()"    style="flex:1;margin:0;"><span class="tool-icon icon-text"><svg viewBox="0 0 28 18" aria-hidden="true"><text x="14" y="14" text-anchor="middle" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="#000">T</text></svg></span><span class="tool-label">Text</span></button>
+        </div>
+        <input id="text-input" type="text" placeholder="Text / callout label"
+          style="width:100%;margin-top:5px;padding:7px 10px;border:1px solid #d5dbe3;border-radius:4px;font:inherit;font-size:12px;" />
+      </div>
+
+
     </div>
-    <table class="ca-table" role="presentation">
-      <tr>
-        <th class="ca-th" scope="row">Flood Hazard Risk</th><td class="ca-td"><div class="ca-val" id="f-flood">—</div></td>
-        <th class="ca-th" scope="row">Flood Hazard Zone</th><td class="ca-td"><div class="ca-val" id="f-fz">—</div></td>
-      </tr>
-      <tr>
-        <th class="ca-th" scope="row">CARA Moderate Recharge Vulnerability</th><td class="ca-td"><div class="ca-val" id="f-cmr">—</div></td>
-        <th class="ca-th" scope="row">CARA High Recharge Vulnerability</th><td class="ca-td"><div class="ca-val" id="f-chr">—</div></td>
-      </tr>
-      <tr>
-        <th class="ca-th" scope="row">CARA Wellhead Protection</th><td class="ca-td"><div class="ca-val" id="f-cwp">—</div></td>
-        <th class="ca-th" scope="row">Shrubsteppe Habitat</th><td class="ca-td"><div class="ca-val" id="f-csh">—</div></td>
-      </tr>
-      <tr>
-        <th class="ca-th" scope="row">Ferruginous Hawk Habitat</th><td class="ca-td"><div class="ca-val" id="f-chk">—</div></td>
-        <th class="ca-th" scope="row">Wintering Birds of Prey Habitat</th><td class="ca-td"><div class="ca-val" id="f-cwi">—</div></td>
-      </tr>
-      <tr>
-        <th class="ca-th" scope="row">Neotropical Migrant Songbird Habitat</th><td class="ca-td"><div class="ca-val" id="f-cso">—</div></td>
-        <th class="ca-th" scope="row">Slope / Erosion Hazard</th><td class="ca-td"><div class="ca-val ca-no" id="f-csl">—</div></td>
-      </tr>
-      <tr>
-        <th class="ca-th" scope="row">Liquefaction</th><td class="ca-td"><div class="ca-val" id="f-cli">—</div></td>
-        <th class="ca-th" scope="row">Faults</th><td class="ca-td"><div class="ca-val" id="f-cflt">—</div></td>
-      </tr>
-      <tr>
-        <th class="ca-th" scope="row">Riparian Buffer</th><td class="ca-td"><div class="ca-val" id="f-rip">—</div></td>
-        <th class="ca-th" scope="row">Wetlands</th><td class="ca-td"><div class="ca-val" id="f-cwe">—</div></td>
-      </tr>
-    </table>
+
+    <!-- MAP -->
+    <div id="map-wrap">
+      <div id="viewDiv"></div>
+
+      <!-- Basemap and optional layer controls -->
+      <div id="basemap-toggle">
+        <div id="basemap-control" class="map-control">
+          <button class="bm-btn control-toggle active" id="bm-basemap" type="button" onclick="toggleBasemapPanel(true)" title="Basemap">
+            <span class="bm-thumb-wrap" id="bm-current-thumb" aria-hidden="true">
+              <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                <rect width="64" height="64" fill="#e8e0d0"/>
+                <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
+                <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
+                <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
+                <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
+              </svg>
+            </span>
+            <span class="bm-label" id="bm-current-label">Basemap</span>
+          </button>
+          <div id="basemap-panel" class="map-panel basemap-panel-strip" onclick="event.stopPropagation();">
+            <button type="button" class="basemap-collapse-btn" onclick="toggleBasemapPanel(false)" title="Collapse basemaps" aria-label="Collapse basemap options">›</button>
+            <button type="button" class="basemap-option strip-option" id="bm-option-streets" onclick="switchBasemap('streets-vector', this)" title="Streets">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#e8e0d0"/>
+                <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
+                <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
+                <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
+                <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
+              </svg>
+              <span class="bm-label">Streets</span>
+            </button>
+            <button type="button" class="basemap-option strip-option" id="bm-option-topo" onclick="switchBasemap('topo-vector', this)" title="Topo">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#f0ebe0"/>
+                <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+                <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+                <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
+                <ellipse cx="32" cy="36" rx="4" ry="2" fill="#b8a882"/>
+              </svg>
+              <span class="bm-label">Topo</span>
+            </button>
+            <button type="button" class="basemap-option strip-option active" id="bm-option-gray" onclick="switchBasemap('gray-vector', this)" title="Gray Canvas">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#f0ede7"/>
+                <line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/>
+                <line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/>
+                <line x1="0" y1="20" x2="64" y2="20" stroke="#ccc9c2" stroke-width="1"/>
+                <line x1="0" y1="48" x2="64" y2="48" stroke="#ccc9c2" stroke-width="1"/>
+                <line x1="20" y1="0" x2="20" y2="64" stroke="#ccc9c2" stroke-width="1"/>
+                <line x1="48" y1="0" x2="48" y2="64" stroke="#ccc9c2" stroke-width="1"/>
+              </svg>
+              <span class="bm-label">Gray Canvas</span>
+            </button>
+            <button type="button" class="basemap-option strip-option imagery-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="64" height="64" fill="#2d4a1e"/>
+                <rect x="0"  y="0"  width="32" height="32" fill="#3a5c28" opacity=".8"/>
+                <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
+                <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
+                <rect x="36" y="38" width="12" height="8"  fill="#8ba888" opacity=".6"/>
+                <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
+              </svg>
+              <span class="bm-label">Imagery</span>
+              <span class="imagery-print-note" role="note">Screen reference only</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="layer-control" class="map-control">
+          <button class="bm-btn control-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
+            <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" fill="#eef2f6"/>
+              <polygon points="32,10 52,21 32,32 12,21" fill="#0b2d4c" opacity=".85"/>
+              <polygon points="32,23 52,34 32,45 12,34" fill="#4b7fa8" opacity=".75"/>
+              <polygon points="32,36 52,47 32,58 12,47" fill="#7fa7c7" opacity=".75"/>
+              <path d="M12 21l20 11 20-11M12 34l20 11 20-11M12 47l20 11 20-11" fill="none" stroke="#fff" stroke-width="1" opacity=".7"/>
+            </svg>
+            <span class="bm-label">Layers</span>
+          </button>
+          <div id="layers-panel" class="map-panel" onclick="event.stopPropagation();">
+            <div class="map-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers">
+              <span>Layers</span>
+              <span aria-hidden="true">›</span>
+            </div>
+            <div class="map-panel-body">
+              <label class="layer-check-row" for="liquefaction-toggle" title="Show or hide liquefaction susceptibility areas">
+                <input type="checkbox" id="liquefaction-toggle" onchange="toggleMapLayer('liquefaction', this.checked)" />
+                <span>Liquefaction Susceptibility</span>
+              </label>
+              <label class="layer-check-row" for="riparian-toggle" title="Show or hide minimum riparian buffers">
+                <input type="checkbox" id="riparian-toggle" onchange="toggleMapLayer('riparian', this.checked)" />
+                <span>Riparian Buffer</span>
+              </label>
+              <label class="layer-check-row" for="wetlands-toggle" title="Show or hide wetlands">
+                <input type="checkbox" id="wetlands-toggle" onchange="toggleMapLayer('wetlands', this.checked)" />
+                <span>Wetlands</span>
+              </label>
+              <label class="layer-check-row" for="cara-toggle" title="Show or hide Critical Aquifer Recharge Areas">
+                <input type="checkbox" id="cara-toggle" onchange="toggleMapLayer('cara', this.checked)" />
+                <span>Critical Aquifer Recharge Area (CARA)</span>
+              </label>
+              <label class="layer-check-row" for="flood-toggle" title="Show or hide FEMA flood hazard areas">
+                <input type="checkbox" id="flood-toggle" onchange="toggleMapLayer('flood', this.checked)" />
+                <span>Flood Hazard Areas</span>
+              </label>
+              <label class="layer-check-row" for="contours-toggle" title="Show or hide 10-foot contour lines">
+                <input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" />
+                <span>Contours</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="loading">
+        <div style="font-size:14px;font-weight:700;color:#0b2d4c;">Initializing map…</div>
+        <div style="font-size:12px;color:#000;">Please wait</div>
+      </div>
+
+      <div id="measure-box">
+        <div class="ms-label" id="ms-label">Selected shape</div>
+        <div class="ms-row">
+          <div class="ms-main" id="ms-main">—</div>
+          <div class="ms-sub"  id="ms-sub"></div>
+        </div>
+      </div>
+
+      <div id="selection-toolbar" aria-label="Selected drawing actions">
+        <button type="button" id="btn-duplicate-tool" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/>
+            <rect x="8" y="4" width="12" height="12" rx="2"/>
+          </svg>
+        </button>
+        <div id="rotation-tool-wrap" class="rotation-tool-wrap" style="display:none;">
+          <button type="button" id="rotate-ccw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(45)" title="Rotate counterclockwise 45°" aria-label="Rotate selected item counterclockwise 45 degrees">↶</button>
+          <button type="button" id="rotate-cw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(-45)" title="Rotate clockwise 45°" aria-label="Rotate selected item clockwise 45 degrees">↷</button>
+        </div>
+        <div id="df-lateral-tool-wrap" class="df-lateral-tool-wrap" style="display:none;">
+          <button type="button" id="df-lateral-menu-btn" class="selection-tool-btn df-lateral-menu-btn" onclick="toggleDrainfieldLateralMenu(event)" title="Change number of drainfield laterals" aria-label="Change number of drainfield laterals" aria-haspopup="listbox" aria-expanded="false">
+            <span id="df-lateral-menu-count" class="df-lateral-count">3</span>
+            <span class="df-lateral-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="df-lateral-menu" class="df-lateral-menu" role="listbox" aria-label="Drainfield lateral count">
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(2)">2</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(3)">3</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(4)">4</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(5)">5</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(6)">6</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(7)">7</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(8)">8</button>
+            <button type="button" class="df-lateral-option" role="option" onclick="setSelectedDrainfieldLaterals(9)">9</button>
+          </div>
+        </div>
+        <button type="button" id="btn-label-tool" class="selection-tool-btn label-tool" onclick="openLabelEditor()" title="Add or edit label" aria-label="Add or edit label" style="display:none;">T</button>
+        <button type="button" id="btn-delete-tool" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>
+        <div id="label-editor-wrap" style="display:none;align-items:center;gap:4px;pointer-events:auto;">
+          <div class="label-input-group">
+            <input id="obj-label-input" type="text" maxlength="20" placeholder="Label…" aria-label="Object label text" />
+            <button type="button" class="label-x-btn" onclick="clearLabelInput()" title="Clear text" aria-label="Clear label text">✕</button>
+          </div>
+          <button type="button" class="selection-tool-btn label-confirm-btn" onclick="confirmObjectLabel()" title="Set label" aria-label="Set label">✓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT INFO PANEL -->
+    <div id="info-panel">
+      <div class="ip-head">Parcel Information</div>
+      <div class="ip-body" id="ip-basic">
+        <div class="ip-empty">Load a parcel to view details.</div>
+      </div>
+      <div class="ip-head" id="ip-ca-head" style="display:none;">Critical Areas</div>
+      <div class="ip-body" id="ip-ca" style="display:none;"></div>
+    </div>
   </div>
 
-  <section class="disclaimer" aria-labelledby="disclaimer-heading">
-    <h2 id="disclaimer-heading" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;color:#000;font-weight:700;">Disclaimer</h2>
-    <p>This report is generated from GIS data maintained by Walla Walla County Community Development Department and is provided for informational purposes only. The presence of a mapped critical area does not constitute a formal determination. Additional review or information may be required prior to development.</p>
-    <p>Parcels as shown may not reflect legal property boundaries. For information regarding public surveys or plat maps please contact the <a href="https://www.wwcowa.gov/departments/assessor/index.php" target="_blank" style="color:#0000FF;">Walla Walla County Assessor's Office<span class="sr-only"> (opens in new tab)</span></a>.</p>
-    <p><strong style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#000;">Other useful links:</strong></p>
-    <p><a href="https://www.wwcowa.gov/government/community_development/new_app_forms.php" target="_blank" style="color:#0000FF;">Building Applications &amp; Forms<span class="sr-only"> (opens in new tab)</span></a>
-    &nbsp;&nbsp;·&nbsp;&nbsp;
-    <a href="https://cms7files.revize.com/wallawallacounty/document_center/commdev/Applications/Guide%20-%20Complete%20Application.pdf" target="_blank" style="color:#0000FF;">Complete Application Guide<span class="sr-only"> (opens in new tab)</span></a></p>
-  </section>
-</div>
-</main>
-
-<footer role="contentinfo">
-<div class="footer">
-  <div>
-    <div>Walla Walla County Community Development Department</div>
-    <div>310 W. Poplar Street, Suite 200 &nbsp;·&nbsp; Walla Walla, WA 99362</div>
-    <div>509-524-2610 &nbsp;·&nbsp; <a href="mailto:commdev@wwcowa.gov">commdev@wwcowa.gov</a></div>
+  <div id="statusbar" role="status" aria-live="polite">
+    <div id="statusdot" aria-hidden="true"></div>
+    <div id="statusmsg">Initializing…</div>
   </div>
-  <div style="text-align:right;white-space:nowrap;" id="footer-date"></div>
+  </main>
 </div>
-</footer>
-
-<script>
-  var p = new URLSearchParams(window.location.search);
-
-  function get(key) {
-    try {
-      var v = p.get(key);
-      if (!v || v === 'null' || v === 'undefined') return null;
-      var decoded = decodeURIComponent(v.replace(/\+/g, ' ')).trim();
-      return decoded === '' ? null : decoded;
-    } catch(e) {
-      var raw = p.get(key);
-      return (raw && raw !== 'null' && raw !== 'undefined') ? raw.trim() : null;
-    }
-  }
-
-  function set(id, val) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = val || '—';
-  }
-
-  var checklists = {
-    'f-chr': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
-    'f-cmr': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
-    'f-cwp': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Critical%20Aquifer%20Recharge%20Areas.html',
-    'f-chk': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
-    'f-cso': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
-    'f-cwi': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
-    'f-csh': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
-    'f-csl': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Geologically%20Hazardous%20Areas.html',
-    'f-cli': 'https://www.wwcowa.gov/document_center/commdev/Applications/Preliminary%20Liquefaction%20Assessment.html',
-    'f-cwe': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Wetlands.html',
-    'f-rip': 'https://www.wwcowa.gov/document_center/commdev/Applications/Checklist%20-%20Habitat%20Conservation%20Areas.html',
-    'f-cflt': 'https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.08CRARPR_18.08.560PESTPEHA'
-  };
-
-  function setCA(id, val) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    var v = val || 'NO';
-    if (v.toLowerCase() === 'no') {
-      el.textContent = v;
-      el.className = 'ca-val ca-no';
-    } else {
-      el.className = 'ca-val ca-yes';
-      var url = checklists[id];
-      if (url) {
-        el.innerHTML = '<span style="color:#B72121;">' + v + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="' + url + '" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
-      } else {
-        el.innerHTML = '<span style="color:#B72121;">' + v + '</span>';
-      }
-    }
-  }
-
-  function setCAText(id, val) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    var v = val || 'NO';
-    if (v.toUpperCase() === 'NO') {
-      el.textContent = v;
-      el.className = 'ca-val ca-no';
-    } else {
-      el.className = 'ca-val ca-yes';
-      el.innerHTML = '<span style="color:#B72121;">' + v + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.12FLPR" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See WWCC Chapter 18.12 Flood Damage Prevention &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
-    }
-  }
-
-  // ── Dates ──
-  var now = new Date();
-  var dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
-  document.getElementById('report-date').textContent = 'Generated ' + dateStr;
-  document.getElementById('footer-date').textContent = 'Generated: ' + dateStr;
-
-  // ── Header ──
-  var sit = get('sit');
-  var own = get('own');
-  var geo = get('geo');
-
-  if (geo) {
-    var yyyy = now.getFullYear();
-    var mm = String(now.getMonth() + 1).padStart(2, '0');
-    var dd = String(now.getDate()).padStart(2, '0');
-    document.title = 'WWCCDD Parcel Information Report APN ' + geo + ' ' + yyyy + '.' + mm + '.' + dd;
-  }
-
-  // ── Property Information ──
-  set('f-geo',   geo);
-  set('f-sit',   sit);
-  set('f-owner', own);
-  set('f-fire',  get('fir'));
-
-  var mailEl = document.getElementById('f-mail');
-  var ad1 = get('ad1'), cty = get('cty'), pst = get('pst'), zip = get('zip');
-  var line2 = '';
-  if (cty) line2 += cty;
-  if (pst) line2 += (line2 ? ', ' : '') + pst;
-  if (zip) line2 += (line2 ? ' ' : '') + zip;
-  if (mailEl) {
-    if (ad1 && line2)    mailEl.innerHTML = ad1 + '<br>' + line2;
-    else if (ad1)        mailEl.textContent = ad1;
-    else if (line2)      mailEl.textContent = line2;
-    else                 mailEl.textContent = '—';
-  }
-
-  set('f-legal', get('leg'));
-
-  var acr = get('acr');
-  document.getElementById('f-acres').textContent = (acr && !isNaN(parseFloat(acr))) ? parseFloat(acr).toFixed(2) + ' ac' : '—';
-
-  // Well Report — hidden until ready
-  var wellEl = document.getElementById('f-well');
-  var bwl = get('bwl'), bwr = get('bwr'), bwt = get('bwt'), bwb = get('bwb');
-  var bsl = get('bsl'), bsr = get('bsr'), bst = get('bst'), bsb = get('bsb');
-  if (wellEl && bwl && bwr && bwt && bwb && bsl && bsr && bst && bsb) {
-    function stripCommas(v) { return v.replace(/,/g, ''); }
-    var wellUrl = 'https://appswr.ecology.wa.gov/wellconstruction/map/WCLSWebMap/SearchResultsWithPaging.aspx?left=' + stripCommas(bwl) + '&right=' + stripCommas(bwr) + '&top=' + stripCommas(bwt) + '&bottom=' + stripCommas(bwb) + '&selLeft=' + stripCommas(bsl) + '&selRight=' + stripCommas(bsr) + '&selTop=' + stripCommas(bsb) + '&selBottom=' + stripCommas(bst) + '&search_scope=1&result_num=25&sort_order=OwnerName&page_index=0';
-    wellEl.innerHTML = '<a class="val-link" href="' + wellUrl + '" target="_blank">View Well Logs<span class="sr-only"> (opens in new tab)</span></a>';
-  } else {
-    if (wellEl) wellEl.textContent = '—';
-  }
-
-  var platEl = document.getElementById('f-plat');
-  var pbp = get('pbp'), pbl = get('pbl');
-  if (platEl) {
-    if (pbp && pbl) {
-      var platUrl = 'https://www.co.walla-walla.wa.us/document_center/GIS/Taxbooks/' + pbl;
-      platEl.innerHTML = '<a class="val-link" href="' + platUrl + '" target="_blank">' + pbp + '<span class="sr-only"> (opens in new tab)</span></a>';
-    } else if (pbp) {
-      platEl.textContent = pbp;
-    } else {
-      platEl.textContent = '—';
-    }
-  }
-
-  var pid = get('lnk');
-  var linkEl = document.getElementById('f-link');
-  if (linkEl && pid) {
-    var fullUrl = 'https://propertysearch.co.walla-walla.wa.us/PropertyAccess/Property.aspx?cid=0&year=2025&prop_id=' + pid;
-    linkEl.innerHTML = '<a class="val-link" href="' + fullUrl + '" target="_blank">View Property Record<span class="sr-only"> (opens in new tab)</span></a>';
-  } else {
-    if (linkEl) linkEl.textContent = '—';
-  }
-
-  // ── Development Regulations ──
-  var zon = get('zon'), zab = get('zab');
-  set('f-zoning', (zon && zab) ? zon + '  (' + zab + ')' : (zon || null));
-
-  var lu = get('lu'), lab = get('lab');
-  set('f-landuse', (lu && lab) ? lu + '  (' + lab + ')' : (lu || null));
-
-  set('f-uga', get('uga'));
-
-  var sho = get('sho'), sha = get('sha');
-  set('f-shoreline', (sho && sha) ? sho + '  (' + sha + ')' : (sho || null));
-
-  set('f-mineral',  get('mrl'));
-  set('f-seismic',  get('smc'));
-  set('f-millcreek', get('mc'));
-  set('f-sfr', get('sfr'));
-  set('f-ssi', get('ssi'));
-  set('f-sre', get('sre'));
-
-  var sbn = get('sbn');
-  if (sbn) {
-    var formatted = sbn.replace(/\s*(\(\d+\))/g, function(match, p1, offset) {
-      return offset === 0 ? p1 : '\n' + p1;
-    });
-    document.getElementById('f-sbn').textContent = formatted;
-  }
-
-  // ── Critical Areas ──
-  setCAText('f-flood', get('cfr'));
-  setCAText('f-fz',    get('cfz'));
-  setCA('f-cmr', get('cmr'));
-  setCA('f-chr', get('chr'));
-  setCA('f-cwp', get('cwp'));
-  setCA('f-csh', get('csh'));
-  setCA('f-chk', get('chk'));
-  setCA('f-cwi', get('cwi'));
-  setCA('f-cso', get('cso'));
-  // Slope / Erosion Hazard — shows — until layer is updated
-  // setCA('f-csl', get('csl'));
-  setCA('f-cli', get('cli'));
-  setCA('f-cwe', get('cwe'));
-
-  // Faults — custom link text
-  var cfltEl = document.getElementById('f-cflt');
-  var cfltVal = get('cflt') || 'NO';
-  if (cfltEl) {
-    if (cfltVal.toLowerCase() === 'no') {
-      cfltEl.textContent = 'NO';
-      cfltEl.className = 'ca-val ca-no';
-    } else {
-      cfltEl.className = 'ca-val ca-yes';
-      cfltEl.innerHTML = '<span style="color:#B72121;">' + cfltVal + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.08CRARPR_18.08.560PESTPEHA" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See WWCC 18.08.550(D) Seismic Hazard Areas Standards &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
-    }
-  }
-
-  // Riparian Buffer
-  var ripEl = document.getElementById('f-rip');
-  var ripName = get('rnn'), ripBuf = get('rbn');
-  if (ripEl) {
-    var nameIsNo = !ripName || ripName.toUpperCase() === 'NO';
-    if (nameIsNo) {
-      ripEl.textContent = 'NO';
-      ripEl.className = 'ca-val ca-no';
-    } else {
-      var ripDisplay = ripName;
-      if (ripBuf && ripBuf.toUpperCase() !== 'NO') ripDisplay += ' — ' + ripBuf;
-      ripEl.className = 'ca-val ca-yes';
-      var ripUrl = checklists['f-rip'];
-      ripEl.innerHTML = '<span style="color:#B72121;">' + ripDisplay + '</span> <span style="color:#1a1f2e;">&ndash;</span> <a href="' + ripUrl + '" target="_blank" style="color:#0000FF;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">See Checklist &#x2197;<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"> (opens in new tab)</span></a>';
-    }
-  }
-
-  // ── Show correct button ──
-  try {
-    if (p.get('print') === '1') {
-      document.getElementById('btn-print').style.display = 'flex';
-    } else {
-      document.getElementById('btn-view').style.display = 'flex';
-    }
-  } catch(e) {
-    var vb = document.getElementById('btn-view');
-    if (vb) vb.style.display = 'flex';
-  }
-</script>
-
+<script src="js/app.js"></script>
 </body>
 </html>
