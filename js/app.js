@@ -1,4 +1,7 @@
-// Site Plan Builder V149 - modular runtime bridge; core app logic remains here.
+// Site Plan Builder v143 — app.js (split from V142).
+// Pairs with: config.js, css/styles.css, js/selection.js
+// Load order in index.html: config.js → app.js → selection.js
+
 (function () {
   const params   = new URLSearchParams(window.location.search);
   const geoParam  = (params.get('geo')  || '').trim();
@@ -28,12 +31,6 @@
   ) {
     const cfg = window.SitePlanConfig;
     if (!cfg || !cfg.layers || !cfg.layers.parcels) { setStatus('Config failed.', false); return; }
-
-    const SitePlan = window.SitePlan || null;
-    if (SitePlan) {
-      SitePlan.version = 'V149';
-      SitePlan.config = cfg;
-    }
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
@@ -3866,84 +3863,6 @@
       if (btnId) activateBtn(btnId);
     }
 
-
-    // ── Runtime bridge for future modules ─────────────────────
-    // V149 exposes stable references so later files can use shared app state
-    // without moving fragile functions before the app is ready.
-    if (window.SitePlan && typeof window.SitePlan.registerAppContext === 'function') {
-      window.SitePlan.registerAppContext({
-        view,
-        map,
-        sketch,
-        config: cfg,
-        layers: {
-          parcelLayer,
-          highlightLayer,
-          drawLayer,
-          wellLayer,
-          labelLayer,
-          measureLayer,
-          previewLayer,
-          contourLayer,
-          liquefactionLayer,
-          caraLayer,
-          wetlandsLayer,
-          riparianWaterBodyLayer,
-          riparianWatercourseLayer,
-          floodLayer
-        },
-        maps: {
-          lineLabelMap,
-          polyEdgeLabelMap,
-          objectLabelMap,
-          dboxInnerMap,
-          drainfieldChildDboxMap
-        },
-        state: {
-          get selectedParcelGeometry() { return selectedParcelGeometry; },
-          get currentParcelAttrs() { return currentParcelAttrs; },
-          get selectedToolbarGraphic() { return selectedToolbarGraphic; },
-          set selectedToolbarGraphic(value) { selectedToolbarGraphic = value; },
-          get selectedEditMode() { return selectedEditMode; }
-        },
-        helpers: {
-          setStatus,
-          fmt,
-          deactivateAll,
-          activateBtn,
-          cancelAndReset,
-          clearActivePlacementHandle,
-          setActivePlacementHandle,
-          refreshSnapSources,
-          hideSelectionToolbar,
-          hideMeasure,
-          clearMeasureMode,
-          clearTemporaryMeasurements,
-          clearLiveMeasurePreview,
-          clearCalloutPreview,
-          clearSetbackPreview,
-          clearSepticLinePreview,
-          clearDboxSnapPreview,
-          hideAllCalloutHandles,
-          hideAllSetbackHandles,
-          hideAllSepticLineHandles,
-          getCurrentUpdateGraphic,
-          getSelectedToolbarGraphic: function () { return selectedToolbarGraphic; },
-          sourceLineForHitTarget,
-          isSelectableDrawGraphic,
-          removeLineHitTarget,
-          removeLineLabel,
-          removePolygonEdgeLabels,
-          removeObjectLabel,
-          removeSepticLids,
-          lineHitTargetFor,
-          scheduleSepticLidDeleteCleanup
-        }
-      });
-    }
-
-    // Placeholder/access UI helpers moved to js/ui-tools.js in V149.
-
     // ── STRUCTURE TOOL ────────────────────────────────────────
     window.startStructure = function (type) {
       cancelAndReset('btn-'+type);
@@ -6459,115 +6378,57 @@
       setStatus(enabled?'Snapping enabled.':'Snapping disabled.');
     };
 
-    function deleteGraphicDirectly(graphic) {
-      let g = graphic;
-      if (!g) return false;
-      if (g.__lineHitTarget) g = sourceLineForHitTarget(g) || g;
-      if (!isSelectableDrawGraphic(g)) return false;
-      const deletedSepticIds = (g.__isSepticTank || g.__septicId) && g.__septicId ? [g.__septicId] : [];
 
-      removeLineHitTarget(g);
-      removeLineLabel(g);
-      removePolygonEdgeLabels(g);
-      removeObjectLabel(g);
-      removeSepticLids(g);
+    // ── Expose state for sibling modules (selection.js, etc.) ──
+    // Other files (loaded after app.js) read state from window.SitePlan at call
+    // time rather than receiving a snapshot at install time, so they always see
+    // the current values of selectedToolbarGraphic, sketch state, etc.
+    window.SitePlan = {
+      // layer references
+      drawLayer, wellLayer, labelLayer, measureLayer, previewLayer,
 
-      if (g.__wellId) {
-        const wid = g.__wellId;
-        drawLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>drawLayer.remove(x));
-        wellLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>wellLayer.remove(x));
-        labelLayer.graphics.filter(x=>x.__wellId===wid).toArray().forEach(x=>labelLayer.remove(x));
-      } else if (g.__isDrainfield && g.__dfId) {
-        const did = g.__dfId;
-        labelLayer.graphics.filter(x=>x.__dfId===did).toArray().forEach(x=>labelLayer.remove(x));
-        drawLayer.remove(g);
-      } else if (g.__septicLineId) {
-        const sid = g.__septicLineId;
-        hideAllSepticLineHandles();
-        drawLayer.graphics.filter(x=>x.__septicLineId===sid).toArray().forEach(x=>drawLayer.remove(x));
-        const hit = lineHitTargetFor(g.__septicLineRole === 'leader' ? g : drawLayer.graphics.find(x=>x.__septicLineId===sid&&x.__septicLineRole==='leader'));
-        if (hit) drawLayer.remove(hit);
-      } else if (g.__calloutId) {
-        const cid = g.__calloutId;
-        hideAllCalloutHandles();
-        drawLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>drawLayer.remove(x));
-        labelLayer.graphics.filter(x=>x.__calloutId===cid).toArray().forEach(x=>labelLayer.remove(x));
-      } else {
-        drawLayer.remove(g);
-      }
+      // sketch widget and its state
+      sketch,
+      get selectedToolbarGraphic() { return selectedToolbarGraphic; },
 
-      scheduleSepticLidDeleteCleanup(deletedSepticIds);
+      // graphic relationship maps used by clear-all cleanup
+      lineLabelMap, polyEdgeLabelMap, objectLabelMap,
+      dboxInnerMap, drainfieldChildDboxMap,
+
+      // helpers used by selection/cleanup
+      getCurrentUpdateGraphic,
+      sourceLineForHitTarget,
+      isSelectableDrawGraphic,
+      removeLineHitTarget,
+      removeLineLabel,
+      removePolygonEdgeLabels,
+      removeObjectLabel,
+      removeSepticLids,
+      hideAllSepticLineHandles,
+      hideAllCalloutHandles,
+      hideSelectionToolbar,
+      hideMeasure,
+      lineHitTargetFor,
+      scheduleSepticLidDeleteCleanup,
+      clearCalloutPreview,
+      clearLiveMeasurePreview,
+      clearMeasureMode,
+      setStatus
+    };
+
+
+
+    // ── Print placeholder ──────────────────────────────────────
+    window.setPrintExtent = function () {
+      // Print extent controls are intentionally inactive in V137.
+    };
+
+    window.printPlan = function () {
       hideSelectionToolbar();
-      hideMeasure();
-      setStatus('Deleted.');
-      return true;
-    }
-
-    window.deleteSelected = function () {
-      const current = getCurrentUpdateGraphic();
-      if (current && current.__isSepticTank) {
-        try { sketch.cancel(); } catch (err) {}
-        deleteGraphicDirectly(current);
-        return;
-      }
-      if (sketch.updateGraphics&&sketch.updateGraphics.length) sketch.delete();
-      else if (!deleteGraphicDirectly(selectedToolbarGraphic)) setStatus('Click an item to select it first.');
+      const message = 'Print / Save PDF is temporarily disabled while the Site Plan Builder is under active development.';
+      setStatus(message, false);
+      alert(message + '\n\nDrawing, editing, parcel search, map layers, and attribution can still be tested. Print output will be restored after the drawing/tool system stabilizes.');
     };
-
-    function performClearAll() {
-      clearCalloutPreview(); clearLiveMeasurePreview(); hideSelectionToolbar(); hideAllCalloutHandles(); hideAllSepticLineHandles(); sketch.cancel();
-      drawLayer.removeAll(); wellLayer.removeAll(); labelLayer.removeAll(); measureLayer.removeAll(); previewLayer.removeAll();
-      clearMeasureMode();
-      lineLabelMap.clear();
-      polyEdgeLabelMap.clear();
-      objectLabelMap.clear();
-      dboxInnerMap.clear();
-      drainfieldChildDboxMap.clear();
-      document.getElementById('measure-box').style.display='none';
-      setStatus('All items cleared.');
-    }
-
-    window.openClearAllModal = function () {
-      const modal = document.getElementById('clear-modal');
-      if (!modal) { performClearAll(); return; }
-      modal.classList.add('visible');
-      modal.setAttribute('aria-hidden', 'false');
-      setTimeout(() => {
-        const cancelBtn = modal.querySelector('.clear-modal-btn.cancel');
-        if (cancelBtn) cancelBtn.focus();
-      }, 0);
-    };
-
-    window.closeClearAllModal = function () {
-      const modal = document.getElementById('clear-modal');
-      if (!modal) return;
-      modal.classList.remove('visible');
-      modal.setAttribute('aria-hidden', 'true');
-      setStatus('Clear all cancelled.');
-    };
-
-    window.confirmClearAllModal = function () {
-      const modal = document.getElementById('clear-modal');
-      if (modal) {
-        modal.classList.remove('visible');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-      performClearAll();
-    };
-
-    window.clearAll = function (skipConfirm) {
-      if (skipConfirm) { performClearAll(); return; }
-      window.openClearAllModal();
-    };
-
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key !== 'Escape') return;
-      const modal = document.getElementById('clear-modal');
-      if (modal && modal.classList.contains('visible')) window.closeClearAllModal();
-    });
-
-
-    // Print placeholder moved to js/print.js in V149.
 
   // ── Parcel loading helpers ────────────────────────────────
   function firstUsableValue(values) {
