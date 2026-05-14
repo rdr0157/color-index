@@ -390,183 +390,18 @@
     view.ui.add(scaleBar, { position: 'bottom-left', index: 0 });
 
     // V137: Hybrid credits/attribution control.
-    // Native Esri attribution is used as a hidden reader so basemap credits can
-    // remain extent/basemap-aware where the API provides them. The visible strip
-    // combines that text with County/local operational-layer credits.
-    const basemapCreditFallbackLabels = {
-      'streets-vector': 'Esri Streets basemap',
-      'topo-vector': 'Esri Topographic basemap',
-      'gray-vector': 'Esri Gray Canvas basemap',
-      'satellite': 'Esri Imagery basemap'
-    };
-
-    const referenceLayerCreditLabels = {
-      contours: 'Washington State DNR (Contours)',
-      liquefaction: null,
-      riparian: null,
-      wetlands: 'US FWS National Wetlands Inventory (NWI)',
-      cara: null,
-      flood: 'FEMA Flood Hazard Areas'
-    };
-
-    const mapWrap = document.getElementById('map-wrap');
-    let nativeBasemapCredits = '';
-
-    const siteAttributionControl = document.createElement('div');
-    siteAttributionControl.className = 'esri-component esri-attribution site-attribution site-attribution-map-anchored';
-    siteAttributionControl.setAttribute('role', 'button');
-    siteAttributionControl.setAttribute('tabindex', '0');
-    siteAttributionControl.setAttribute('aria-expanded', 'false');
-    siteAttributionControl.title = 'Click to expand or collapse data credits';
-    siteAttributionControl.innerHTML = '<span class="esri-attribution__sources" id="site-attribution-sources"></span>';
-    const siteAttributionSources = siteAttributionControl.querySelector('#site-attribution-sources');
-
-    function normalizeAttributionText(text) {
-      return String(text || '')
-        .replace(/\s+/g, ' ')
-        .replace(/^Powered by Esri\s*\|?\s*/i, '')
-        .replace(/^Powered by Esri\s*/i, '')
-        .trim();
-    }
-
-    function getVisibleNativeAttributionText(nativeAttributionReader) {
-      if (!nativeAttributionReader) return '';
-      const sourceEl = nativeAttributionReader.querySelector('.esri-attribution__sources') ||
-        nativeAttributionReader.querySelector('.esri-attribution');
-      return normalizeAttributionText(sourceEl ? sourceEl.textContent : nativeAttributionReader.textContent);
-    }
-
-    function activeReferenceLayerCreditLabels() {
-      return Object.keys(referenceLayerGroups)
-        .filter(function (key) {
-          const group = referenceLayerGroups[key] || [];
-          return group.some(function (layer) { return !!layer.visible; });
+    // Installed from js/attribution.js so credits can be maintained separately from core drawing logic.
+    const sitePlanAttribution = window.SitePlanAttribution && window.SitePlanAttribution.init
+      ? window.SitePlanAttribution.init({
+          map,
+          view,
+          Attribution,
+          referenceLayerGroups,
+          mapWrap: document.getElementById('map-wrap'),
+          getActiveBasemapId: function () { return activeBasemapId; }
         })
-        .map(function (key) {
-          return Object.prototype.hasOwnProperty.call(referenceLayerCreditLabels, key)
-            ? referenceLayerCreditLabels[key]
-            : null;
-        })
-        .filter(function (label) { return !!label; });
-    }
-
-    function appendAttributionSeparator(target) {
-      target.appendChild(document.createTextNode(' | '));
-    }
-
-    function appendAttributionText(target, text) {
-      target.appendChild(document.createTextNode(String(text || '')));
-    }
-
-    function updateSiteAttribution() {
-      const basemapCredit = nativeBasemapCredits ||
-        basemapCreditFallbackLabels[activeBasemapId] ||
-        activeBasemapId ||
-        'Esri basemap';
-
-      siteAttributionSources.replaceChildren();
-
-      const esriLink = document.createElement('a');
-      esriLink.href = 'https://www.esri.com/en-us/home';
-      esriLink.target = '_blank';
-      esriLink.rel = 'noopener noreferrer';
-      esriLink.className = 'site-attribution-link';
-      esriLink.textContent = 'Powered by Esri';
-      esriLink.title = 'Open Esri website';
-      siteAttributionSources.appendChild(esriLink);
-
-      [basemapCredit, 'Walla Walla County'].forEach(function (part) {
-        if (!part) return;
-        appendAttributionSeparator(siteAttributionSources);
-        appendAttributionText(siteAttributionSources, part);
-      });
-
-      activeReferenceLayerCreditLabels().forEach(function (label) {
-        appendAttributionSeparator(siteAttributionSources);
-        appendAttributionText(siteAttributionSources, label);
-      });
-    }
-
-    function toggleSiteAttribution(open) {
-      const nextOpen = typeof open === 'boolean'
-        ? open
-        : !siteAttributionControl.classList.contains('esri-attribution--open');
-      siteAttributionControl.classList.toggle('esri-attribution--open', nextOpen);
-      siteAttributionSources.classList.toggle('esri-attribution__sources--open', nextOpen);
-      siteAttributionControl.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-    }
-
-    siteAttributionControl.addEventListener('click', function (event) {
-      if (event.target && event.target.closest && event.target.closest('.site-attribution-link')) {
-        event.stopPropagation();
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      toggleSiteAttribution();
-    });
-    siteAttributionControl.addEventListener('keydown', function (event) {
-      if (event.target && event.target.closest && event.target.closest('.site-attribution-link')) {
-        return;
-      }
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        toggleSiteAttribution();
-      }
-    });
-
-    if (mapWrap) {
-      mapWrap.appendChild(siteAttributionControl);
-    }
-
-    const nativeAttributionReader = document.createElement('div');
-    nativeAttributionReader.id = 'native-attribution-reader';
-    nativeAttributionReader.setAttribute('aria-hidden', 'true');
-    if (mapWrap) {
-      mapWrap.appendChild(nativeAttributionReader);
-    }
-
-    function refreshNativeBasemapCredits() {
-      const nextText = getVisibleNativeAttributionText(nativeAttributionReader);
-      if (nextText && nextText !== nativeBasemapCredits) {
-        nativeBasemapCredits = nextText;
-        updateSiteAttribution();
-      } else if (!nextText) {
-        updateSiteAttribution();
-      }
-    }
-
-    try {
-      const nativeAttributionWidget = new Attribution({
-        view: view,
-        container: nativeAttributionReader
-      });
-      // Keep a reference so the widget is not garbage collected.
-      window.__sitePlanNativeAttributionWidget = nativeAttributionWidget;
-      const attributionObserver = new MutationObserver(function () {
-        refreshNativeBasemapCredits();
-      });
-      attributionObserver.observe(nativeAttributionReader, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-      window.__sitePlanAttributionObserver = attributionObserver;
-      view.watch('stationary', function (stationary) {
-        if (stationary) setTimeout(refreshNativeBasemapCredits, 80);
-      });
-      map.watch('basemap', function () {
-        nativeBasemapCredits = '';
-        setTimeout(refreshNativeBasemapCredits, 250);
-        setTimeout(refreshNativeBasemapCredits, 900);
-      });
-      setTimeout(refreshNativeBasemapCredits, 250);
-      setTimeout(refreshNativeBasemapCredits, 1200);
-    } catch (err) {
-      console.warn('Native attribution reader unavailable; using fallback credits.', err);
-      updateSiteAttribution();
-    }
-    updateSiteAttribution();
+      : { update: function () {} };
+    const updateSiteAttribution = sitePlanAttribution.update;
 
     /* ── Parcel Search ─────────────────────────────────────────
        Searches the same parcel layer used by the Experience Builder geo_id launch.
@@ -603,113 +438,19 @@
 
     // Parcel Search is rendered in the application header rather than inside the map UI.
 
-    function basemapThumbSvg(id) {
-      if (id === 'satellite') {
-        return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="64" height="64" fill="#2d4a1e"/>
-          <rect x="0" y="0" width="32" height="32" fill="#3a5c28" opacity=".8"/>
-          <rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/>
-          <rect x="14" y="20" width="18" height="10" fill="#8ba888" opacity=".6"/>
-          <rect x="36" y="38" width="12" height="8" fill="#8ba888" opacity=".6"/>
-          <path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/>
-        </svg>`;
-      }
-      if (id === 'topo-vector') {
-        return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="64" height="64" fill="#f0ebe0"/>
-          <ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-          <ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-          <ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/>
-          <ellipse cx="32" cy="36" rx="4" ry="2" fill="#b8a882"/>
-        </svg>`;
-      }
-      if (id === 'gray-vector') {
-        return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="64" height="64" fill="#f0ede7"/>
-          <line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/>
-          <line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/>
-          <line x1="0" y1="20" x2="64" y2="20" stroke="#ccc9c2" stroke-width="1"/>
-          <line x1="0" y1="48" x2="64" y2="48" stroke="#ccc9c2" stroke-width="1"/>
-          <line x1="20" y1="0" x2="20" y2="64" stroke="#ccc9c2" stroke-width="1"/>
-          <line x1="48" y1="0" x2="48" y2="64" stroke="#ccc9c2" stroke-width="1"/>
-        </svg>`;
-      }
-      return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect width="64" height="64" fill="#e8e0d0"/>
-        <rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/>
-        <rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/>
-        <rect x="0" y="28" width="64" height="4" fill="#c9a96e" opacity=".6"/>
-        <circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/>
-      </svg>`;
-    }
+    // Basemap buttons and optional reference-layer toggles are installed from js/map-controls.js.
+    const sitePlanMapControls = window.SitePlanMapControls && window.SitePlanMapControls.init
+      ? window.SitePlanMapControls.init({
+          map,
+          referenceLayerGroups,
+          referenceLayerLabels,
+          setStatus,
+          updateSiteAttribution,
+          getActiveBasemapId: function () { return activeBasemapId; },
+          setActiveBasemapId: function (id) { activeBasemapId = id; }
+        })
+      : null;
 
-    function updateBasemapUI() {
-      const optionMap = {
-        'streets-vector': 'bm-option-streets',
-        'topo-vector': 'bm-option-topo',
-        'gray-vector': 'bm-option-gray',
-        'satellite': 'bm-option-imagery'
-      };
-      document.querySelectorAll('.basemap-option').forEach(btn => btn.classList.remove('active'));
-      const activeOption = document.getElementById(optionMap[activeBasemapId] || 'bm-option-streets');
-      if (activeOption) activeOption.classList.add('active');
-
-      const mainToggle = document.getElementById('bm-basemap');
-      if (mainToggle) mainToggle.classList.remove('active');
-
-      const currentLabel = document.getElementById('bm-current-label');
-      if (currentLabel) currentLabel.textContent = 'Basemap';
-
-      const currentThumb = document.getElementById('bm-current-thumb');
-      if (currentThumb) currentThumb.innerHTML = basemapThumbSvg(activeBasemapId);
-    }
-
-    window.switchBasemap = function (id, btn) {
-      try {
-        activeBasemapId = id;
-        map.basemap = id;
-        updateBasemapUI();
-        updateSiteAttribution();
-        const label = btn && btn.title ? btn.title :
-          (id === 'satellite' ? 'Imagery' : id === 'topo-vector' ? 'Topo' : id === 'gray-vector' ? 'Gray Canvas' : 'Streets');
-        setStatus('Basemap: ' + label, true);
-      } catch (err) {
-        console.error(err);
-        setStatus('Unable to switch basemap.', false);
-      }
-    };
-
-    window.toggleBasemapPanel = function (force) {
-      const control = document.getElementById('basemap-control');
-      if (!control) return;
-      const open = typeof force === 'boolean' ? force : !control.classList.contains('expanded');
-      control.classList.toggle('expanded', open);
-      if (open) {
-        const layerControl = document.getElementById('layer-control');
-        if (layerControl) layerControl.classList.remove('expanded');
-      }
-    };
-
-    window.toggleLayerPanel = function (force) {
-      const control = document.getElementById('layer-control');
-      if (!control) return;
-      const open = typeof force === 'boolean' ? force : !control.classList.contains('expanded');
-      control.classList.toggle('expanded', open);
-      if (open) {
-        const basemapControl = document.getElementById('basemap-control');
-        if (basemapControl) basemapControl.classList.remove('expanded');
-      }
-    };
-
-    window.toggleMapLayer = function (layerName, visible) {
-      const group = referenceLayerGroups[layerName];
-      if (!group) return;
-      const isVisible = !!visible;
-      group.forEach(layer => { layer.visible = isVisible; });
-      updateSiteAttribution();
-      const label = referenceLayerLabels[layerName] || 'Layer';
-      setStatus(label + (isVisible ? ' layer on.' : ' layer off.'), true);
-    };
 
     const sketch = new Sketch({
       view, layer:drawLayer, updateOnGraphicClick:true, creationMode:'update',
@@ -6418,17 +6159,14 @@
 
 
 
-    // ── Print placeholder ──────────────────────────────────────
-    window.setPrintExtent = function () {
-      // Print extent controls are intentionally inactive in V137.
-    };
+    // Print placeholder is installed from js/print.js.
+    if (window.SitePlanPrint && window.SitePlanPrint.init) {
+      window.SitePlanPrint.init({
+        hideSelectionToolbar,
+        setStatus
+      });
+    }
 
-    window.printPlan = function () {
-      hideSelectionToolbar();
-      const message = 'Print / Save PDF is temporarily disabled while the Site Plan Builder is under active development.';
-      setStatus(message, false);
-      alert(message + '\n\nDrawing, editing, parcel search, map layers, and attribution can still be tested. Print output will be restored after the drawing/tool system stabilizes.');
-    };
 
   // ── Parcel loading helpers ────────────────────────────────
   function firstUsableValue(values) {
