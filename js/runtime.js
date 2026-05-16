@@ -688,6 +688,7 @@
         // measurements because it may no longer have equal opposite sides.
         // A whole-object move while Reshape is selected should not trigger this.
         if (g.geometry && g.geometry.type === 'polygon') {
+          if (shouldDisableFixedSizeLabelsFromUpdate(event, g)) disableFixedSizeLabels(g);
           if (shouldMarkRectangleAllSidesFromUpdate(event, g)) markRectangleAllSideLabels(g);
           refreshSideLabelsForGraphic(g);
         }
@@ -1011,14 +1012,24 @@
       return out;
     }
 
-    function buildSideLabelGraphics(geometry, labelOnlyTwoRectangleSides) {
+    function buildSideLabelGraphics(geometry, labelOnlyTwoRectangleSides, fixedSizeLabelValues) {
       const segments = polygonSegmentMidpoints(geometry);
       if (!segments.length) return [];
       // Standard rectangle: label the first two adjacent sides only (one per dimension).
       // Reshaped rectangles and polygons: label all segments.
       const toLabel = labelOnlyTwoRectangleSides ? segments.slice(0, 2) : segments;
-      return toLabel.map(seg => {
-        const symbol = Object.assign({}, sideLabelSymbol, { text: formatDistance(seg.lengthFt) });
+      return toLabel.map((seg, index) => {
+        let labelText = formatDistance(seg.lengthFt);
+        // Fixed-size rectangles can display the applicant-entered dimensions so
+        // small projection/rounding differences (for example 39.9 vs 40.0 ft)
+        // do not make the fixed-size tool feel inaccurate. This display override
+        // is cleared as soon as the rectangle is resized or reshaped.
+        if (fixedSizeLabelValues && index === 0 && Number.isFinite(fixedSizeLabelValues.lengthFt)) {
+          labelText = formatDistance(fixedSizeLabelValues.lengthFt);
+        } else if (fixedSizeLabelValues && index === 1 && Number.isFinite(fixedSizeLabelValues.widthFt)) {
+          labelText = formatDistance(fixedSizeLabelValues.widthFt);
+        }
+        const symbol = Object.assign({}, sideLabelSymbol, { text: labelText });
         const label = new Graphic({ geometry: seg.mid, symbol });
         label.__nonSelectable = true;
         label.__isSideLabel = true;
@@ -1042,9 +1053,31 @@
       return isRectangleGraphic(graphic) && !rectangleUsesAllSideLabels(graphic);
     }
 
+    function fixedSizeLabelValuesForGraphic(graphic) {
+      if (!isRectangleGraphic(graphic) || rectangleUsesAllSideLabels(graphic)) return null;
+      const attrs = graphic.attributes || {};
+      const fixedSize = graphic.__fixedSize || attrs.fixedSize;
+      const useFixedLabels = graphic.__useFixedSizeLabels || attrs.useFixedSizeLabels;
+      const lengthFt = Number.parseFloat(graphic.__fixedLengthFt != null ? graphic.__fixedLengthFt : attrs.fixedLengthFt);
+      const widthFt = Number.parseFloat(graphic.__fixedWidthFt != null ? graphic.__fixedWidthFt : attrs.fixedWidthFt);
+      if (!fixedSize || !useFixedLabels) return null;
+      if (!Number.isFinite(lengthFt) || !Number.isFinite(widthFt)) return null;
+      return { lengthFt, widthFt };
+    }
+
+    function disableFixedSizeLabels(graphic) {
+      if (!graphic) return false;
+      const attrs = graphic.attributes || {};
+      if (!graphic.__useFixedSizeLabels && !attrs.useFixedSizeLabels) return false;
+      graphic.__useFixedSizeLabels = false;
+      graphic.attributes = Object.assign({}, attrs, { useFixedSizeLabels: false });
+      return true;
+    }
+
     function markRectangleAllSideLabels(graphic) {
       if (!isRectangleGraphic(graphic)) return false;
       if (rectangleUsesAllSideLabels(graphic)) return false;
+      disableFixedSizeLabels(graphic);
       graphic.__rectangleAllSideLabels = true;
       graphic.attributes = Object.assign({}, graphic.attributes || {}, {
         rectangleMeasurementMode: 'allSides'
@@ -1057,6 +1090,7 @@
     // actually reshaping one or more vertices. A pure move changes x/y values,
     // but the vertex layout relative to the first vertex remains the same.
     const rectangleUpdateStartShapes = new WeakMap();
+    const rectangleUpdateStartDimensions = new WeakMap();
 
     function geometryOuterRingPoints(geometry) {
       if (!geometry || geometry.type !== 'polygon' || !geometry.rings || !geometry.rings.length) return [];
@@ -1098,15 +1132,24 @@
       return true;
     }
 
+    function rectangleDimensionSignature(geometry) {
+      const segments = polygonSegmentMidpoints(geometry);
+      if (segments.length < 2) return null;
+      return [segments[0].lengthFt, segments[1].lengthFt];
+    }
+
     function rememberRectangleUpdateStart(graphic) {
       if (!isRectangleGraphic(graphic) || !graphic.geometry) return;
       const sig = rectangleShapeSignature(graphic.geometry);
       if (sig) rectangleUpdateStartShapes.set(graphic, sig);
+      const dimSig = rectangleDimensionSignature(graphic.geometry);
+      if (dimSig) rectangleUpdateStartDimensions.set(graphic, dimSig);
     }
 
     function clearRectangleUpdateStart(graphic) {
       if (!graphic) return;
       try { rectangleUpdateStartShapes.delete(graphic); } catch (err) {}
+      try { rectangleUpdateStartDimensions.delete(graphic); } catch (err) {}
     }
 
     function rectangleShapeChangedSinceUpdateStart(graphic) {
@@ -1115,6 +1158,34 @@
       const currentSig = rectangleShapeSignature(graphic.geometry);
       if (!startSig || !currentSig) return false;
       return !shapeSignaturesMatch(startSig, currentSig);
+    }
+
+    function rectangleDimensionsChangedSinceUpdateStart(graphic) {
+      if (!isRectangleGraphic(graphic) || !graphic.geometry) return false;
+      const startSig = rectangleUpdateStartDimensions.get(graphic);
+      const currentSig = rectangleDimensionSignature(graphic.geometry);
+      if (!startSig || !currentSig || startSig.length !== currentSig.length) return false;
+      const maxDim = Math.max(Math.abs(startSig[0]), Math.abs(startSig[1]), Math.abs(currentSig[0]), Math.abs(currentSig[1]), 1);
+      const toleranceFt = Math.max(0.05, maxDim * 0.002);
+      return Math.abs(startSig[0] - currentSig[0]) > toleranceFt ||
+             Math.abs(startSig[1] - currentSig[1]) > toleranceFt;
+    }
+
+    function shouldDisableFixedSizeLabelsFromUpdate(event, graphic) {
+      if (!event || !fixedSizeLabelValuesForGraphic(graphic)) return false;
+      const info = event.toolEventInfo || {};
+      const type = info.type ? String(info.type).toLowerCase() : '';
+
+      // Moving and rotating a fixed-size rectangle should keep the applicant's
+      // entered L × W labels. Resizing/scaling or reshaping means the geometry
+      // no longer represents the original fixed dimensions, so switch back to
+      // measured values.
+      if (type && (/vertex|reshape|scale|resize/.test(type))) return true;
+      if (type && (/move|rotate/.test(type))) return false;
+
+      if (selectedEditMode === 'reshape') return rectangleShapeChangedSinceUpdateStart(graphic);
+      if (selectedEditMode === 'resize') return rectangleDimensionsChangedSinceUpdateStart(graphic);
+      return false;
     }
 
     function shouldMarkRectangleAllSidesFromUpdate(event, graphic) {
@@ -1142,7 +1213,11 @@
       const id = assignGraphicId(graphic) && graphic.__sitePlanId;
       if (!id) return;
       removeSideLabelsForGraphic(graphic);
-      const labels = buildSideLabelGraphics(graphic.geometry, rectangleUsesTwoSideLabels(graphic));
+      const labels = buildSideLabelGraphics(
+        graphic.geometry,
+        rectangleUsesTwoSideLabels(graphic),
+        fixedSizeLabelValuesForGraphic(graphic)
+      );
       if (!labels.length) return;
       labels.forEach(l => { l.__sideLabelOf = id; labelLayer.add(l); });
       sideLabelMap.set(id, labels);

@@ -178,13 +178,15 @@ if (!window.SitePlanRuntimeReady) {
           sitePlanTool: 'rectangle',
           fixedSize: true,
           fixedLengthFt: dims.lengthFt,
-          fixedWidthFt: dims.widthFt
+          fixedWidthFt: dims.widthFt,
+          useFixedSizeLabels: true
         }
       });
       graphic.__toolType = 'rectangle';
       graphic.__fixedSize = true;
       graphic.__fixedLengthFt = dims.lengthFt;
       graphic.__fixedWidthFt = dims.widthFt;
+      graphic.__useFixedSizeLabels = true;
 
       cancelFixedRectanglePlacement(false);
       clearActiveDrawButton();
