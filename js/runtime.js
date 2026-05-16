@@ -679,19 +679,22 @@
     sketch.on('update', event => {
       const g = event.graphics && event.graphics[0];
       if (g && isSelectableGraphic(g)) {
+        if (event.state === 'start') rememberRectangleUpdateStart(g);
         selectedGraphic = g;
         if (g.__labelText || g.__labelRawText) createOrUpdateObjectLabel(g, rawObjectLabelText(g));
         // Live side-label refresh while the user is dragging vertices or
         // moving the shape, plus the final state. If a rectangle is edited in
         // Reshape/Edit Points mode, permanently switch that object to all-side
         // measurements because it may no longer have equal opposite sides.
+        // A whole-object move while Reshape is selected should not trigger this.
         if (g.geometry && g.geometry.type === 'polygon') {
-          if (shouldMarkRectangleAllSidesFromUpdate(event)) markRectangleAllSideLabels(g);
+          if (shouldMarkRectangleAllSidesFromUpdate(event, g)) markRectangleAllSideLabels(g);
           refreshSideLabelsForGraphic(g);
         }
         updateSelectedShapeBox();
         showSelectionToolbar(g);
         fireGraphicUpdated(g, event);
+        if (event.state === 'complete' || event.state === 'cancel') clearRectangleUpdateStart(g);
       }
       if (event.state === 'complete' || event.state === 'cancel') {
         if (selectedGraphic) showSelectionToolbar(selectedGraphic);
@@ -1049,16 +1052,89 @@
       return true;
     }
 
-    function shouldMarkRectangleAllSidesFromUpdate(event) {
-      if (!event || selectedEditMode !== 'reshape') return false;
+    // Track the polygon's vertex layout at the start of a Sketch update so we
+    // can tell the difference between dragging/moving the entire rectangle and
+    // actually reshaping one or more vertices. A pure move changes x/y values,
+    // but the vertex layout relative to the first vertex remains the same.
+    const rectangleUpdateStartShapes = new WeakMap();
+
+    function geometryOuterRingPoints(geometry) {
+      if (!geometry || geometry.type !== 'polygon' || !geometry.rings || !geometry.rings.length) return [];
+      const ring = geometry.rings[0] || [];
+      if (ring.length > 2) {
+        const first = ring[0];
+        const last = ring[ring.length - 1];
+        if (first && last && first[0] === last[0] && first[1] === last[1]) {
+          return ring.slice(0, -1);
+        }
+      }
+      return ring.slice();
+    }
+
+    function rectangleShapeSignature(geometry) {
+      const pts = geometryOuterRingPoints(geometry);
+      if (pts.length < 3) return null;
+      const origin = pts[0];
+      return pts.map(pt => [pt[0] - origin[0], pt[1] - origin[1]]);
+    }
+
+    function shapeSignaturesMatch(a, b) {
+      if (!a || !b || a.length !== b.length) return false;
+      let maxAbs = 0;
+      a.forEach(pt => {
+        maxAbs = Math.max(maxAbs, Math.abs(pt[0]), Math.abs(pt[1]));
+      });
+      b.forEach(pt => {
+        maxAbs = Math.max(maxAbs, Math.abs(pt[0]), Math.abs(pt[1]));
+      });
+      // Tolerance is in map units. Use a small absolute floor plus a tiny
+      // relative tolerance so ordinary floating-point jitter does not mark a
+      // rectangle as reshaped, while actual vertex edits still do.
+      const tolerance = Math.max(0.001, maxAbs * 1e-8);
+      for (let i = 0; i < a.length; i++) {
+        if (Math.abs(a[i][0] - b[i][0]) > tolerance) return false;
+        if (Math.abs(a[i][1] - b[i][1]) > tolerance) return false;
+      }
+      return true;
+    }
+
+    function rememberRectangleUpdateStart(graphic) {
+      if (!isRectangleGraphic(graphic) || !graphic.geometry) return;
+      const sig = rectangleShapeSignature(graphic.geometry);
+      if (sig) rectangleUpdateStartShapes.set(graphic, sig);
+    }
+
+    function clearRectangleUpdateStart(graphic) {
+      if (!graphic) return;
+      try { rectangleUpdateStartShapes.delete(graphic); } catch (err) {}
+    }
+
+    function rectangleShapeChangedSinceUpdateStart(graphic) {
+      if (!isRectangleGraphic(graphic) || !graphic.geometry) return false;
+      const startSig = rectangleUpdateStartShapes.get(graphic);
+      const currentSig = rectangleShapeSignature(graphic.geometry);
+      if (!startSig || !currentSig) return false;
+      return !shapeSignaturesMatch(startSig, currentSig);
+    }
+
+    function shouldMarkRectangleAllSidesFromUpdate(event, graphic) {
+      if (!event || !isRectangleGraphic(graphic) || selectedEditMode !== 'reshape') return false;
+      if (rectangleUsesAllSideLabels(graphic)) return false;
       const info = event.toolEventInfo || {};
       const type = info.type ? String(info.type).toLowerCase() : '';
-      // Prefer the explicit Sketch reshape/vertex events when available.
+
+      // Whole-object moves can happen while Reshape/Edit Points is active. Keep
+      // those as normal rectangles with two labels.
+      if (type && /move/.test(type) && !/vertex|reshape/.test(type)) return false;
+
+      // Explicit vertex/reshape events should switch the object to all-side
+      // labels. This is the clean path when Sketch provides detailed event info.
       if (type && (/reshape|vertex/.test(type))) return true;
-      // Fallback for ArcGIS versions/events that do not expose a detailed
-      // toolEventInfo type: if the graphic is actively changing while the
-      // Reshape/Edit Points button is selected, treat the rectangle as reshaped.
-      return event.state === 'active';
+
+      // Fallback for less-specific Sketch events: only switch when the geometry's
+      // vertex layout changes. A pure move keeps the same relative layout, while
+      // dragging a vertex changes it.
+      return rectangleShapeChangedSinceUpdateStart(graphic);
     }
 
     function refreshSideLabelsForGraphic(graphic) {
