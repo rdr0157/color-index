@@ -520,7 +520,11 @@
         if (selectedGraphic.__labelText) createOrUpdateObjectLabel(selectedGraphic, selectedGraphic.__labelText);
         if (selectedGraphic.geometry && selectedGraphic.geometry.type === 'polygon') refreshSideLabelsForGraphic(selectedGraphic);
         updateSelectedShapeBox();
-        positionSelectionToolbar();
+        // Restart the Sketch update session so Esri's transform/rotate handles
+        // stay synchronized with the newly rotated geometry. Without this, the
+        // orange transform box can remain aligned to the pre-rotation geometry.
+        startSketchUpdate(selectedGraphic);
+        requestAnimationFrame(positionSelectionToolbar);
       }
     };
 
@@ -563,12 +567,21 @@
       enterLabelEditMode();
     };
 
-    // Wire confirm/cancel buttons and Enter/Escape inside the input.
+    // Wire confirm/clear buttons and Enter/Escape inside the input.
     (function wireLabelEditFormControls() {
-      const cancelBtn = document.getElementById('label-edit-cancel');
+      const clearBtn = document.getElementById('label-edit-clear');
       const confirmBtn = document.getElementById('label-edit-confirm');
       const input = document.getElementById('label-edit-input');
-      if (cancelBtn) cancelBtn.addEventListener('click', exitLabelEditMode);
+      if (clearBtn) {
+        clearBtn.addEventListener('click', ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (input) {
+            input.value = '';
+            input.focus();
+          }
+        });
+      }
       if (confirmBtn) confirmBtn.addEventListener('click', applyLabelFromInput);
       if (input) {
         input.addEventListener('keydown', ev => {
