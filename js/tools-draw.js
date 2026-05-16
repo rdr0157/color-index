@@ -75,6 +75,23 @@ if (!window.SitePlanRuntimeReady) {
     // just applied to the newly selected tool.
     let ignoreNextSketchCancel = false;
 
+    function announceToolActivated(toolType) {
+      try {
+        window.dispatchEvent(new CustomEvent('siteplan:tool-activated', {
+          detail: { source: 'tools-draw', tool: toolType || null }
+        }));
+      } catch (err) {}
+    }
+
+    window.addEventListener('siteplan:tool-activated', event => {
+      const detail = event && event.detail ? event.detail : {};
+      if (detail.source === 'tools-draw') return;
+      cancelFixedRectanglePlacement(false);
+      clearActiveDrawButton();
+      pendingDrawTool = null;
+      window.__sitePlanPendingToolType = null;
+    });
+
     // ── Fixed-size rectangle placement ───────────────────────
     // When enabled, Rectangle becomes a click-to-place tool that creates a
     // rectangle using the entered L × W dimensions in feet. The inputs remain
@@ -209,6 +226,7 @@ if (!window.SitePlanRuntimeReady) {
     }
 
     function startFixedRectanglePlacement() {
+      announceToolActivated('rectangle');
       if (!markFixedRectangleValidity()) {
         cancelFixedRectanglePlacement(false);
         setActiveDrawButton('rectangle');
@@ -294,6 +312,7 @@ if (!window.SitePlanRuntimeReady) {
     }
 
     function beginDrawTool(toolType, geometryType, symbol) {
+      announceToolActivated(toolType);
       // If the user previously tried to start a fixed-size rectangle without
       // valid dimensions, clear that temporary validation warning when they
       // move on to another normal draw tool.
