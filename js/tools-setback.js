@@ -15,7 +15,7 @@ if (!window.SitePlanRuntimeReady) {
     const setbackLineSymbol = {
       type: 'simple-line',
       color: [0, 0, 0, 1],
-      width: 1.5,
+      width: 2,
       style: 'short-dash',
       marker: {
         style: 'arrow',
@@ -296,9 +296,9 @@ if (!window.SitePlanRuntimeReady) {
       btn.type = 'button';
       btn.id = SETBACK_BUTTON_ID;
       btn.className = 'tool-btn draw-tool-btn icon-btn';
-      btn.title = 'Draw a setback measurement. Endpoint vertices can be adjusted in Reshape mode.';
+      btn.title = 'Draw a setback. Endpoint vertices can be adjusted in Reshape mode.';
       btn.innerHTML = '<span class="tool-icon icon-setback">' + setbackIcon + '</span>' +
-                      '<span class="tool-label">Setback measurement</span>';
+                      '<span class="tool-label">Setback</span>';
       btn.addEventListener('click', startSetbackTool);
       return btn;
     }
