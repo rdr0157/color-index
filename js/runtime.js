@@ -421,7 +421,7 @@
       let label = labelForGraphic(graphic);
       const symbol = {
         type: 'text', text, color: [0,0,0,1], haloColor: [255,255,255,0.95], haloSize: 1.5,
-        font: { family: 'Calibri, Segoe UI, Arial, sans-serif', size: 12, weight: 'bold' }
+        font: { family: 'Calibri, Segoe UI, Arial, sans-serif', size: 10, weight: 'bold' }
       };
       if (!label) {
         label = new Graphic({ geometry: anchor.clone ? anchor.clone() : anchor, symbol });
@@ -880,7 +880,7 @@
       color: [0, 0, 0, 1],
       haloColor: [255, 255, 255, 0.95],
       haloSize: 1.5,
-      font: { family: 'Calibri, Segoe UI, Arial, sans-serif', size: 11, weight: 'bold' }
+      font: { family: 'Calibri, Segoe UI, Arial, sans-serif', size: 9, weight: 'bold' }
     };
 
     function polygonSegmentMidpoints(geometry) {
