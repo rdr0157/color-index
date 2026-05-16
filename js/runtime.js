@@ -378,13 +378,32 @@
       box.setAttribute('aria-hidden', 'false');
     }
 
+    function preferredEditModeForGraphic(graphic, requestedMode) {
+      const mode = requestedMode === 'resize' ? 'resize' : 'reshape';
+      const type = graphic && graphic.geometry && graphic.geometry.type;
+      const supportsReshape = !type || type === 'polygon' || type === 'polyline';
+      const attrs = graphic && graphic.attributes ? graphic.attributes : {};
+      const preferred = graphic && (graphic.__preferredEditMode || attrs.preferredEditMode);
+      const allowResize = !(graphic && (graphic.__allowResize === false || attrs.allowResize === false));
+
+      // Generic per-tool override: some graphics, such as two-point setback
+      // measurements, should always expose vertex/endpoint handles instead of
+      // transform/resize handles. Tool files can opt in with:
+      //   graphic.__preferredEditMode = 'reshape';
+      //   graphic.__allowResize = false;
+      if (supportsReshape && preferred === 'reshape') return 'reshape';
+      if (supportsReshape && mode === 'resize' && !allowResize) return 'reshape';
+      return mode;
+    }
+
     function sketchUpdateOptionsForGraphic(graphic) {
       const type = graphic && graphic.geometry && graphic.geometry.type;
       // If no graphic is available yet, still honor the visible edit-mode
       // button for Sketch's automatic create/update and graphic-click handoff.
-      // Current editable tools are polygon-based; point tools can still be
-      // forced into transform mode through explicit selectGraphic/startSketchUpdate.
-      const useReshape = selectedEditMode === 'reshape' && (!type || type === 'polygon' || type === 'polyline');
+      // Current editable tools are polygon/polyline-based; point tools can still
+      // be forced into transform mode through explicit selectGraphic/startSketchUpdate.
+      const effectiveMode = preferredEditModeForGraphic(graphic, selectedEditMode);
+      const useReshape = effectiveMode === 'reshape' && (!type || type === 'polygon' || type === 'polyline');
       return useReshape
         ? { tool: 'reshape', toggleToolOnClick: false }
         : { tool: 'transform', enableRotation: true, enableScaling: true, preserveAspectRatio: false, toggleToolOnClick: false };
@@ -412,6 +431,11 @@
     function selectGraphic(graphic) {
       if (!isSelectableGraphic(graphic)) return false;
       selectedGraphic = assignGraphicId(graphic);
+      const effectiveMode = preferredEditModeForGraphic(selectedGraphic, selectedEditMode);
+      if (effectiveMode !== selectedEditMode) {
+        selectedEditMode = effectiveMode;
+        updateEditModeButtons();
+      }
       startSketchUpdate(selectedGraphic);
       showSelectionToolbar(selectedGraphic);
       return true;
@@ -514,6 +538,7 @@
 
     window.setEditMode = function (mode) {
       selectedEditMode = mode === 'resize' ? 'resize' : 'reshape';
+      if (selectedGraphic) selectedEditMode = preferredEditModeForGraphic(selectedGraphic, selectedEditMode);
       updateEditModeButtons();
       syncSketchDefaultUpdateOptions(selectedGraphic);
       if (selectedGraphic) startSketchUpdate(selectedGraphic);
