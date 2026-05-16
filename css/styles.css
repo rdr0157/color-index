@@ -329,24 +329,24 @@
     #selection-toolbar.editing-label #label-edit-form { display:flex; }
     #selection-toolbar.editing-label #label-edit-form .selection-tool-btn { display:flex; }
     .label-input-wrap {
-      position:relative; display:flex; align-items:center; pointer-events:auto;
+      position:relative; display:flex; align-items:center; height:28px; pointer-events:auto;
     }
     #label-edit-input {
-      pointer-events:auto; width:190px; height:34px; box-sizing:border-box;
-      border:1px solid #cbd5e1; border-radius:5px; padding:0 30px 0 8px;
-      font:inherit; font-size:13px; color:#000; background:#fff;
+      pointer-events:auto; width:190px; height:28px; box-sizing:border-box;
+      border:1px solid #cbd5e1; border-radius:5px; padding:0 26px 0 8px;
+      font:inherit; font-size:13px; line-height:28px; color:#000; background:#fff;
     }
     #label-edit-input:focus { outline:2px solid #0b2d4c; border-color:#0b2d4c; }
     .label-edit-clear {
       position:absolute; right:5px; top:50%; transform:translateY(-50%);
-      width:22px; height:22px; padding:0; border:0; background:transparent;
-      color:#9ca3af; cursor:pointer; font-size:22px; font-weight:400; line-height:1;
+      width:18px; height:18px; padding:0; border:0; background:transparent;
+      color:#9ca3af; cursor:pointer; font-size:16px; font-weight:400; line-height:18px;
       display:flex; align-items:center; justify-content:center; pointer-events:auto;
     }
     .label-edit-clear:hover { color:#374151; }
     .selection-tool-btn.label-edit-confirm {
       background:#22c55e; border-color:#16a34a; color:#fff;
-      width:38px; height:34px; font-size:20px; font-weight:700; line-height:1;
+      width:28px; height:28px; font-size:18px; font-weight:700; line-height:1;
     }
     .selection-tool-btn.label-edit-confirm:hover { background:#16a34a; border-color:#15803d; }
 
