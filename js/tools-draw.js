@@ -62,34 +62,58 @@ if (!window.SitePlanRuntimeReady) {
     }
 
     // ── Tool entry points ────────────────────────────────────
-    window.startPolygonTool = function () {
-      pendingDrawTool = 'polygon';
-      window.__sitePlanPendingToolType = 'polygon';
-      setActiveDrawButton('polygon');
+    // When the user clicks a different draw tool while Sketch is already
+    // active, Sketch emits a cancel event for the old tool. Without this
+    // guard, that old cancel event can clear the active highlight that was
+    // just applied to the newly selected tool.
+    let ignoreNextSketchCancel = false;
+
+    function beginDrawTool(toolType, geometryType, symbol) {
+      pendingDrawTool = toolType;
+      window.__sitePlanPendingToolType = toolType;
+
       RT.clearSelection();
-      RT.sketch.viewModel.polygonSymbol = polygonSymbol;
-      try { RT.sketch.create('polygon'); }
-      catch (err) {
-        clearActiveDrawButton();
-        console.error('[tools-draw] Polygon create failed:', err);
+
+      if (RT.sketch && RT.sketch.state === 'active') {
+        ignoreNextSketchCancel = true;
+        try { RT.sketch.cancel(); }
+        catch (err) { ignoreNextSketchCancel = false; }
       }
+
+      setActiveDrawButton(toolType);
+      RT.sketch.viewModel.polygonSymbol = symbol;
+
+      try {
+        RT.sketch.create(geometryType);
+      } catch (err) {
+        clearActiveDrawButton();
+        pendingDrawTool = null;
+        window.__sitePlanPendingToolType = null;
+        console.error('[tools-draw] ' + toolType + ' create failed:', err);
+      }
+    }
+
+    window.startPolygonTool = function () {
+      beginDrawTool('polygon', 'polygon', polygonSymbol);
     };
 
     window.startRectangleTool = function () {
-      pendingDrawTool = 'rectangle';
-      window.__sitePlanPendingToolType = 'rectangle';
-      setActiveDrawButton('rectangle');
-      RT.clearSelection();
-      RT.sketch.viewModel.polygonSymbol = rectangleSymbol;
-      try { RT.sketch.create('rectangle'); }
-      catch (err) {
-        clearActiveDrawButton();
-        console.error('[tools-draw] Rectangle create failed:', err);
-      }
+      beginDrawTool('rectangle', 'rectangle', rectangleSymbol);
     };
 
     RT.sketch.on('create', event => {
-      if (event.state === 'complete' || event.state === 'cancel') {
+      if (event.state === 'cancel') {
+        if (ignoreNextSketchCancel) {
+          ignoreNextSketchCancel = false;
+          return;
+        }
+        clearActiveDrawButton();
+        pendingDrawTool = null;
+        window.__sitePlanPendingToolType = null;
+        return;
+      }
+
+      if (event.state === 'complete') {
         clearActiveDrawButton();
       }
     });
