@@ -325,8 +325,9 @@
     #label-edit-form {
       display:none; align-items:center; gap:4px; pointer-events:auto;
     }
-    #selection-toolbar.editing-label .selection-tool-btn { display:none; }
+    #selection-toolbar.editing-label > .selection-tool-btn { display:none; }
     #selection-toolbar.editing-label #label-edit-form { display:flex; }
+    #selection-toolbar.editing-label #label-edit-form .selection-tool-btn { display:flex; }
     #label-edit-input {
       pointer-events:auto; width:140px; height:26px; box-sizing:border-box;
       border:1px solid #cbd5e1; border-radius:4px; padding:0 6px;
