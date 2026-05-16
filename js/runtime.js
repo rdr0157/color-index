@@ -378,14 +378,33 @@
       box.setAttribute('aria-hidden', 'false');
     }
 
+    function sketchUpdateOptionsForGraphic(graphic) {
+      const type = graphic && graphic.geometry && graphic.geometry.type;
+      // If no graphic is available yet, still honor the visible edit-mode
+      // button for Sketch's automatic create/update and graphic-click handoff.
+      // Current editable tools are polygon-based; point tools can still be
+      // forced into transform mode through explicit selectGraphic/startSketchUpdate.
+      const useReshape = selectedEditMode === 'reshape' && (!type || type === 'polygon' || type === 'polyline');
+      return useReshape
+        ? { tool: 'reshape', toggleToolOnClick: false }
+        : { tool: 'transform', enableRotation: true, enableScaling: true, preserveAspectRatio: false, toggleToolOnClick: false };
+    }
+
+    function syncSketchDefaultUpdateOptions(graphic) {
+      // Sketch can automatically enter update mode immediately after creation
+      // or when updateOnGraphicClick handles a graphic click. Keep its default
+      // update tool synchronized with the visible Reshape/Resize button state
+      // so the UI and actual edit handles do not diverge.
+      try {
+        sketch.defaultUpdateOptions = sketchUpdateOptionsForGraphic(graphic || selectedGraphic);
+      } catch (err) {}
+    }
+
     function startSketchUpdate(graphic) {
       if (!graphic || !graphic.geometry) return;
       assignGraphicId(graphic);
-      const type = graphic.geometry.type;
-      const useReshape = selectedEditMode === 'reshape' && (type === 'polygon' || type === 'polyline');
-      const options = useReshape
-        ? { tool: 'reshape', toggleToolOnClick: false }
-        : { tool: 'transform', enableRotation: true, enableScaling: true, preserveAspectRatio: false, toggleToolOnClick: false };
+      const options = sketchUpdateOptionsForGraphic(graphic);
+      syncSketchDefaultUpdateOptions(graphic);
       try { sketch.update([graphic], options); }
       catch (err) { console.warn('Unable to start edit session for selected graphic.', err); }
     }
@@ -496,6 +515,7 @@
     window.setEditMode = function (mode) {
       selectedEditMode = mode === 'resize' ? 'resize' : 'reshape';
       updateEditModeButtons();
+      syncSketchDefaultUpdateOptions(selectedGraphic);
       if (selectedGraphic) startSketchUpdate(selectedGraphic);
     };
 
@@ -714,9 +734,19 @@
       if (g.geometry && g.geometry.type === 'polygon') {
         refreshSideLabelsForGraphic(g);
       }
+      // Force the finalized drawing into the currently selected edit mode.
+      // Without this, Sketch's default create/update handoff can leave new
+      // rectangles/polygons in transform/resize mode even while the Reshape
+      // button is active.
+      const selectAfterCreate = () => {
+        if (isSelectableGraphic(g)) selectGraphic(g);
+      };
+      if (window.requestAnimationFrame) window.requestAnimationFrame(selectAfterCreate);
+      else setTimeout(selectAfterCreate, 0);
     });
 
     updateEditModeButtons();
+    syncSketchDefaultUpdateOptions(selectedGraphic);
 
     // ── Core measurement infrastructure ──────────────────────────────────
     let activeMeasureMode = null;
