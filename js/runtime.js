@@ -256,15 +256,77 @@
 
     function toolbarElement() { return document.getElementById('selection-toolbar'); }
 
+    function getGraphicTopScreenY(graphic) {
+      // Sample several vertices of the graphic and return the minimum screen-Y
+      // (i.e. the topmost screen position). This gives a reliable anchor for
+      // positioning the floating toolbar above the rotate handle regardless of
+      // map rotation. For points, just return the screen Y.
+      if (!graphic || !graphic.geometry) return null;
+      const geom = graphic.geometry;
+      const candidates = [];
+      if (geom.type === 'point') {
+        candidates.push(geom);
+      } else if (geom.type === 'polygon' && geom.rings && geom.rings.length) {
+        const ring = geom.rings[0];
+        const sr = geom.spatialReference;
+        // Sample up to 16 vertices to keep this fast on detailed polygons.
+        const step = Math.max(1, Math.floor(ring.length / 16));
+        for (let i = 0; i < ring.length; i += step) {
+          candidates.push(pointFromXY(ring[i][0], ring[i][1], sr));
+        }
+      } else if (geom.type === 'polyline' && geom.paths && geom.paths.length) {
+        geom.paths.forEach(path => {
+          path.forEach(pt => candidates.push(pointFromXY(pt[0], pt[1], geom.spatialReference)));
+        });
+      } else if (geom.extent) {
+        const e = geom.extent;
+        candidates.push(pointFromXY(e.xmin, e.ymax, e.spatialReference));
+        candidates.push(pointFromXY(e.xmax, e.ymax, e.spatialReference));
+        candidates.push(pointFromXY(e.xmin, e.ymin, e.spatialReference));
+        candidates.push(pointFromXY(e.xmax, e.ymin, e.spatialReference));
+      }
+      let minY = Infinity, anchorX = 0;
+      candidates.forEach(pt => {
+        const s = view.toScreen(pt);
+        if (s && Number.isFinite(s.y) && s.y < minY) { minY = s.y; anchorX = s.x; }
+      });
+      if (!Number.isFinite(minY)) return null;
+      return { x: anchorX, y: minY };
+    }
+
+    function getGraphicCenterScreen(graphic) {
+      const anchor = getGraphicAnchorPoint(graphic);
+      if (!anchor) return null;
+      const s = view.toScreen(anchor);
+      return (s && Number.isFinite(s.x)) ? s : null;
+    }
+
     function positionSelectionToolbar() {
       const toolbar = toolbarElement();
       if (!toolbar || !selectedGraphic) return;
-      const anchor = getGraphicAnchorPoint(selectedGraphic);
-      if (!anchor) return;
-      const screen = view.toScreen(anchor);
-      if (!screen) return;
-      toolbar.style.left = Math.round(screen.x) + 'px';
-      toolbar.style.top = Math.round(screen.y - 46) + 'px';
+      const top = getGraphicTopScreenY(selectedGraphic);
+      const center = getGraphicCenterScreen(selectedGraphic);
+      if (!top || !center) return;
+      // Target Y: above the topmost vertex by enough pixels to clear the
+      // sketch rotate handle (~30px above the shape) plus the toolbar height
+      // and a small margin.
+      const ROTATE_HANDLE_CLEARANCE = 56;
+      const viewport = view.container ? view.container.getBoundingClientRect() : { width: 0, height: 0 };
+      let targetX = center.x;
+      let targetY = top.y - ROTATE_HANDLE_CLEARANCE;
+      // Clamp within the visible map area so the toolbar never disappears
+      // off-screen. We can only estimate the toolbar size after layout, so
+      // measure it on the fly.
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const halfW = (toolbarRect.width || 160) / 2;
+      const fullH = toolbarRect.height || 36;
+      const PAD = 6;
+      if (targetX - halfW < PAD) targetX = halfW + PAD;
+      if (targetX + halfW > viewport.width - PAD) targetX = viewport.width - halfW - PAD;
+      if (targetY < PAD) targetY = PAD + fullH; // flip below when above is off-screen
+      if (targetY > viewport.height - PAD) targetY = viewport.height - PAD;
+      toolbar.style.left = Math.round(targetX) + 'px';
+      toolbar.style.top = Math.round(targetY) + 'px';
       toolbar.style.transform = 'translate(-50%, -100%)';
     }
 
@@ -272,14 +334,48 @@
       selectedGraphic = graphic || selectedGraphic;
       const toolbar = toolbarElement();
       if (!toolbar || !selectedGraphic) return;
+      // Exiting label-edit mode when selection changes
+      toolbar.classList.remove('editing-label');
       toolbar.classList.add('visible');
+      updateSelectedShapeBox();
       requestAnimationFrame(positionSelectionToolbar);
     }
 
     function hideSelectionToolbar() {
       const toolbar = toolbarElement();
-      if (toolbar) toolbar.classList.remove('visible');
+      if (toolbar) {
+        toolbar.classList.remove('visible');
+        toolbar.classList.remove('editing-label');
+      }
       selectedGraphic = null;
+      updateSelectedShapeBox();
+    }
+
+    // ── Selected-shape measurement box (above the scale bar) ───────────────
+    function selectedShapeBoxEl() { return document.getElementById('selected-shape-box'); }
+
+    function updateSelectedShapeBox() {
+      const box = selectedShapeBoxEl();
+      if (!box) return;
+      const g = selectedGraphic;
+      const show = !!(g && g.geometry && g.geometry.type === 'polygon');
+      if (!show) {
+        box.classList.remove('visible');
+        box.setAttribute('aria-hidden', 'true');
+        return;
+      }
+      const sqFt = geometryAreaSqFt(g.geometry);
+      const valueEl = document.getElementById('ssb-value');
+      if (valueEl) {
+        if (!Number.isFinite(sqFt) || sqFt <= 0) {
+          valueEl.textContent = '—';
+        } else {
+          valueEl.textContent = numberWithCommas(sqFt, 0) + ' sq ft / ' +
+                                numberWithCommas(sqFt / 43560, 2) + ' ac';
+        }
+      }
+      box.classList.add('visible');
+      box.setAttribute('aria-hidden', 'false');
     }
 
     function startSketchUpdate(graphic) {
@@ -415,29 +511,74 @@
       selectGraphic(copy);
       refreshSnapSources();
       fireGraphicCreated(copy);
+      if (copy.geometry && copy.geometry.type === 'polygon') refreshSideLabelsForGraphic(copy);
     };
 
     window.rotateSelectedBy = function (deltaDegrees) {
       if (!selectedGraphic) return;
       if (rotateGraphicGeometry(selectedGraphic, Number(deltaDegrees || 0))) {
         if (selectedGraphic.__labelText) createOrUpdateObjectLabel(selectedGraphic, selectedGraphic.__labelText);
+        if (selectedGraphic.geometry && selectedGraphic.geometry.type === 'polygon') refreshSideLabelsForGraphic(selectedGraphic);
+        updateSelectedShapeBox();
         positionSelectionToolbar();
       }
     };
 
-    window.openLabelEditor = function () {
-      if (!selectedGraphic) return;
-      const current = selectedGraphic.__labelText || '';
-      const next = window.prompt('Label selected item:', current);
-      if (next == null) return;
-      const cleaned = String(next).trim();
-      if (!cleaned) {
+    // ── Inline label editor (replaces toolbar buttons when T is clicked) ──
+    // Adds .editing-label to #selection-toolbar; CSS hides the buttons and
+    // shows #label-edit-form in the same toolbar position.
+    function enterLabelEditMode() {
+      const toolbar = toolbarElement();
+      const input = document.getElementById('label-edit-input');
+      if (!toolbar || !selectedGraphic) return;
+      toolbar.classList.add('editing-label');
+      if (input) {
+        input.value = selectedGraphic.__labelText || '';
+        // Reposition because the form may have a different width than the buttons
+        requestAnimationFrame(() => { positionSelectionToolbar(); input.focus(); input.select(); });
+      }
+    }
+
+    function exitLabelEditMode() {
+      const toolbar = toolbarElement();
+      if (toolbar) toolbar.classList.remove('editing-label');
+      requestAnimationFrame(positionSelectionToolbar);
+    }
+
+    function applyLabelFromInput() {
+      if (!selectedGraphic) { exitLabelEditMode(); return; }
+      const input = document.getElementById('label-edit-input');
+      const value = input ? String(input.value || '').trim() : '';
+      if (!value) {
         removeLabelForGraphic(selectedGraphic);
         delete selectedGraphic.__labelText;
       } else {
-        createOrUpdateObjectLabel(selectedGraphic, cleaned);
+        createOrUpdateObjectLabel(selectedGraphic, value);
       }
+      exitLabelEditMode();
+    }
+
+    window.openLabelEditor = function () {
+      if (!selectedGraphic) return;
+      enterLabelEditMode();
     };
+
+    // Wire confirm/cancel buttons and Enter/Escape inside the input.
+    (function wireLabelEditFormControls() {
+      const cancelBtn = document.getElementById('label-edit-cancel');
+      const confirmBtn = document.getElementById('label-edit-confirm');
+      const input = document.getElementById('label-edit-input');
+      if (cancelBtn) cancelBtn.addEventListener('click', exitLabelEditMode);
+      if (confirmBtn) confirmBtn.addEventListener('click', applyLabelFromInput);
+      if (input) {
+        input.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); applyLabelFromInput(); }
+          else if (ev.key === 'Escape') { ev.preventDefault(); exitLabelEditMode(); }
+          // Block all keystrokes from reaching the map/sketch keyboard handlers
+          ev.stopPropagation();
+        });
+      }
+    })();
 
     window.deleteSelected = function () {
       if (!selectedGraphic) return;
@@ -445,29 +586,58 @@
       try { if (sketch && sketch.state !== 'idle') sketch.cancel(); } catch (err) {}
       fireGraphicDeleted(g);
       removeLabelForGraphic(g);
+      removeSideLabelsForGraphic(g);
       drawLayer.remove(g);
       hideSelectionToolbar();
     };
 
     view.on('click', event => {
+      // Don't interfere with in-progress sketch interactions (drawing or
+      // dragging an edit handle). Sketch handles those clicks itself.
+      if (sketch && sketch.state === 'active') return;
+      if (measureSketch && measureSketch.state === 'active') return;
       view.hitTest(event).then(response => {
-        const hit = response.results.find(result => result.graphic && result.graphic.layer === drawLayer);
-        if (hit && hit.graphic) selectGraphic(hit.graphic);
+        const results = response.results || [];
+        const selectHit = results.find(r =>
+          r.graphic && r.graphic.layer === drawLayer && isSelectableGraphic(r.graphic)
+        );
+        if (selectHit) {
+          if (selectHit.graphic !== selectedGraphic) selectGraphic(selectHit.graphic);
+          return;
+        }
+        // No selectable graphic hit. Check whether the click landed on a
+        // "protected" overlay element (a label, a measurement label, a live
+        // preview graphic, or a non-selectable graphic in drawLayer such as a
+        // tool's child overlay). Only deselect for clicks on truly empty map
+        // space (or on reference layers like parcels/flood zones).
+        const hitProtected = results.some(r =>
+          r.graphic && (
+            r.graphic.layer === labelLayer ||
+            r.graphic.layer === measureLayer ||
+            r.graphic.layer === previewLayer ||
+            (r.graphic.layer === drawLayer && r.graphic.__nonSelectable)
+          )
+        );
+        if (selectedGraphic && !hitProtected) clearSelection();
       }).catch(() => {});
     });
 
     view.watch('stationary', () => positionSelectionToolbar());
     view.watch('extent', () => positionSelectionToolbar());
+    view.watch('rotation', () => positionSelectionToolbar());
 
     sketch.on('update', event => {
       const g = event.graphics && event.graphics[0];
       if (g && isSelectableGraphic(g)) {
         selectedGraphic = g;
         if (g.__labelText) createOrUpdateObjectLabel(g, g.__labelText);
+        // Live side-label refresh while the user is dragging vertices or
+        // moving the shape, plus the final state.
+        if (g.geometry && g.geometry.type === 'polygon') {
+          refreshSideLabelsForGraphic(g);
+        }
+        updateSelectedShapeBox();
         showSelectionToolbar(g);
-        // Fire on every state — tool subscribers may want live sync during
-        // a drag (label re-centering, child-graphic follow) as well as the
-        // final state when the operation finishes.
         fireGraphicUpdated(g, event);
       }
       if (event.state === 'complete' || event.state === 'cancel') {
@@ -477,16 +647,43 @@
 
     // Tool files call sketch.create('polygon' | 'rectangle' | 'polyline') after
     // setting sketch.viewModel.polygonSymbol (or polylineSymbol) to their own
-    // symbol. On completion, the runtime gives the new graphic an ID, refreshes
-    // snap sources, and fires onGraphicCreated so subscribers can apply any
-    // tool-specific flags or follow-up logic.
+    // symbol. The runtime assigns an ID, refreshes snap sources, and fires
+    // onGraphicCreated on completion. During 'active' state we also render
+    // a live side-label preview on previewLayer so the user sees each segment's
+    // length while drawing.
     sketch.on('create', event => {
+      if (event.state === 'start') {
+        clearLiveSideLabels();
+        // The pending tool type is set by the tool file via window.__sitePlanPendingToolType
+        // (assigned just before calling sketch.create). Captured here so the
+        // live preview can apply rectangle-only-two-sides logic.
+        livePreviewToolType = window.__sitePlanPendingToolType || null;
+        return;
+      }
+      if (event.state === 'active') {
+        if (event.graphic && event.graphic.geometry) {
+          refreshLiveSideLabels(event.graphic.geometry, livePreviewToolType);
+        }
+        return;
+      }
+      if (event.state === 'cancel') {
+        clearLiveSideLabels();
+        return;
+      }
       if (event.state !== 'complete') return;
+      clearLiveSideLabels();
       const g = event.graphic;
       if (!g) return;
       assignGraphicId(g);
       refreshSnapSources();
       fireGraphicCreated(g);
+      // Build permanent side labels on labelLayer for the finalized graphic.
+      // (Tool files may also tag g.__toolType via onGraphicCreated subscribers
+      // — that happens before this point because onGraphicCreated subscribers
+      // fire inside fireGraphicCreated above.)
+      if (g.geometry && g.geometry.type === 'polygon') {
+        refreshSideLabelsForGraphic(g);
+      }
     });
 
     updateEditModeButtons();
@@ -669,6 +866,116 @@
         layer.graphics.filter(g => g.__measureId === measureId && g.__measureRole === 'label').toArray().forEach(g => layer.remove(g));
       });
     }
+
+    // ── Per-segment side labels for polygons/rectangles ─────────────────────
+    // Each drawn polygon or rectangle gets distance labels along its sides.
+    // For graphics tagged with __toolType === 'rectangle', only two adjacent
+    // sides are labeled (length × width) since opposite sides are equal.
+    // sideLabelMap key: graphic.__sitePlanId → Graphic[]   (on labelLayer)
+    // Live previews during sketch.create live on previewLayer instead.
+    const sideLabelMap = new Map();
+    const sideLabelSymbol = {
+      type: 'text',
+      text: '',
+      color: [0, 0, 0, 1],
+      haloColor: [255, 255, 255, 0.95],
+      haloSize: 1.5,
+      font: { family: 'Calibri, Segoe UI, Arial, sans-serif', size: 11, weight: 'bold' }
+    };
+
+    function polygonSegmentMidpoints(geometry) {
+      // Returns an array of { mid: point, lengthFt: number } per side.
+      // Uses the outer ring only and skips the closing edge that duplicates the
+      // first vertex. The result is in the geometry's spatial reference.
+      if (!geometry || geometry.type !== 'polygon' || !geometry.rings || !geometry.rings.length) return [];
+      const ring = geometry.rings[0];
+      const sr = geometry.spatialReference;
+      const out = [];
+      const ringClosed = ring.length > 2 &&
+        ring[0][0] === ring[ring.length - 1][0] &&
+        ring[0][1] === ring[ring.length - 1][1];
+      const lastIdx = ringClosed ? ring.length - 1 : ring.length;
+      for (let i = 1; i < lastIdx; i++) {
+        const a = ring[i - 1], b = ring[i];
+        const mid = pointFromXY((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, sr);
+        // Geodesic length of this segment
+        const segGeom = { type: 'polyline', paths: [[a, b]], spatialReference: sr };
+        let lengthFt = 0;
+        try { lengthFt = Math.abs(geometryEngine.geodesicLength(segGeom, 'feet') || 0); } catch (err) {}
+        if (!Number.isFinite(lengthFt) || lengthFt <= 0) {
+          try { lengthFt = Math.abs(geometryEngine.planarLength(segGeom, 'feet') || 0); } catch (err) {}
+        }
+        out.push({ mid, lengthFt });
+      }
+      // For a closed ring with an unclosed input (last vertex != first), also
+      // include the closing edge so live drawing shows the closing segment.
+      if (!ringClosed && ring.length >= 2) {
+        const a = ring[ring.length - 1], b = ring[0];
+        const mid = pointFromXY((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, sr);
+        const segGeom = { type: 'polyline', paths: [[a, b]], spatialReference: sr };
+        let lengthFt = 0;
+        try { lengthFt = Math.abs(geometryEngine.geodesicLength(segGeom, 'feet') || 0); } catch (err) {}
+        // Only push if the segment has meaningful length; avoids a "0 ft" label
+        // on an in-progress polygon whose ring isn't yet closed visually.
+        if (lengthFt > 0.5) out.push({ mid, lengthFt, __closing: true });
+      }
+      return out;
+    }
+
+    function buildSideLabelGraphics(geometry, isRectangle) {
+      const segments = polygonSegmentMidpoints(geometry);
+      if (!segments.length) return [];
+      // Rectangle: label the first two adjacent sides only (one per dimension).
+      const toLabel = isRectangle ? segments.slice(0, 2) : segments;
+      return toLabel.map(seg => {
+        const symbol = Object.assign({}, sideLabelSymbol, { text: formatDistance(seg.lengthFt) });
+        const label = new Graphic({ geometry: seg.mid, symbol });
+        label.__nonSelectable = true;
+        label.__isSideLabel = true;
+        return label;
+      });
+    }
+
+    function isRectangleGraphic(graphic) {
+      return !!(graphic && graphic.__toolType === 'rectangle');
+    }
+
+    function refreshSideLabelsForGraphic(graphic) {
+      if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
+      const id = assignGraphicId(graphic) && graphic.__sitePlanId;
+      if (!id) return;
+      removeSideLabelsForGraphic(graphic);
+      const labels = buildSideLabelGraphics(graphic.geometry, isRectangleGraphic(graphic));
+      if (!labels.length) return;
+      labels.forEach(l => { l.__sideLabelOf = id; labelLayer.add(l); });
+      sideLabelMap.set(id, labels);
+    }
+
+    function removeSideLabelsForGraphic(graphic) {
+      const id = graphic && graphic.__sitePlanId;
+      if (!id) return;
+      const existing = sideLabelMap.get(id);
+      if (existing) {
+        existing.forEach(l => labelLayer.remove(l));
+        sideLabelMap.delete(id);
+      }
+    }
+
+    // Live (in-progress) side labels during sketch.create. Live labels live on
+    // previewLayer and are wiped on each refresh and on create-complete/cancel.
+    let livePreviewToolType = null;
+    function refreshLiveSideLabels(geometry, toolType) {
+      previewLayer.removeAll();
+      if (!geometry || geometry.type !== 'polygon') return;
+      const isRect = toolType === 'rectangle';
+      const labels = buildSideLabelGraphics(geometry, isRect);
+      labels.forEach(l => { l.__isLivePreview = true; previewLayer.add(l); });
+    }
+    function clearLiveSideLabels() {
+      previewLayer.removeAll();
+      livePreviewToolType = null;
+    }
+
 
     function measurementTextForGeometry(geometry) {
       if (!geometry) return '';
@@ -1230,6 +1537,7 @@
       labelLayer.removeAll();
       measureLayer.removeAll();
       previewLayer.removeAll();
+      sideLabelMap.clear();
       activeMeasureMode = null;
       hideSelectionToolbar();
       updateMeasureButtons();

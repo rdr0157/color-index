@@ -36,8 +36,18 @@ if (!window.SitePlanRuntimeReady) {
       outline: { type: 'simple-line', color: [55, 55, 55, 1], width: 1.5 }
     };
 
+    // Tag the next created graphic with __toolType. The runtime reads
+    // window.__sitePlanPendingToolType on sketch 'start' to apply rectangle-
+    // vs-polygon side-label rules during the live drawing preview. After the
+    // graphic is created we also apply __toolType to it via onGraphicCreated
+    // (and into graphic.attributes) so future export / print / legend code can
+    // distinguish polygon vs rectangle without geometric guesswork.
+    let pendingDrawTool = null;
+
     // ── Tool entry points ────────────────────────────────────
     window.startPolygonTool = function () {
+      pendingDrawTool = 'polygon';
+      window.__sitePlanPendingToolType = 'polygon';
       RT.clearSelection();
       RT.sketch.viewModel.polygonSymbol = polygonSymbol;
       try { RT.sketch.create('polygon'); }
@@ -45,11 +55,26 @@ if (!window.SitePlanRuntimeReady) {
     };
 
     window.startRectangleTool = function () {
+      pendingDrawTool = 'rectangle';
+      window.__sitePlanPendingToolType = 'rectangle';
       RT.clearSelection();
       RT.sketch.viewModel.polygonSymbol = rectangleSymbol;
       try { RT.sketch.create('rectangle'); }
       catch (err) { console.error('[tools-draw] Rectangle create failed:', err); }
     };
+
+    // Apply the tag and clear the pending state on every new graphic created
+    // while a draw tool is active. Other tool files later in the load order
+    // will follow this same pattern with their own pendingDrawTool variable.
+    RT.onGraphicCreated(g => {
+      if (!pendingDrawTool) return;
+      g.__toolType = pendingDrawTool;
+      g.attributes = Object.assign({}, g.attributes || {}, {
+        sitePlanTool: pendingDrawTool
+      });
+      pendingDrawTool = null;
+      window.__sitePlanPendingToolType = null;
+    });
 
     // ── Sidebar buttons ──────────────────────────────────────
     function buildToolButton(opts) {
