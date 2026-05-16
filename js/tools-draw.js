@@ -1,6 +1,6 @@
-// tools-draw.js — generic shape tools (polygon, rectangle)
+// tools-draw.js — generic draw tools (polygon, rectangle, proposed grading, easement)
 // Loaded after runtime.js. Adds buttons to the "Draw Tools" sidebar section
-// and defines the global startPolygonTool / startRectangleTool entry points.
+// and defines the global draw-tool entry points.
 //
 // Pattern this file establishes for future tool files:
 //   1. Wait for window.SitePlanRuntimeReady to resolve before running tool
@@ -36,6 +36,20 @@ if (!window.SitePlanRuntimeReady) {
       outline: { type: 'simple-line', color: [55, 55, 55, 1], width: 1.5 }
     };
 
+    const gradingSymbol = {
+      type: 'simple-fill',
+      style: 'forward-diagonal',
+      color: [160, 100, 0, 0.65],
+      outline: { type: 'simple-line', color: [110, 65, 0, 1], width: 1.5 }
+    };
+
+    const easementSymbol = {
+      type: 'simple-fill',
+      style: 'horizontal',
+      color: [0, 80, 180, 0.45],
+      outline: { type: 'simple-line', color: [0, 50, 140, 1], width: 1.5 }
+    };
+
     // Tag the next created graphic with __toolType. The runtime reads
     // window.__sitePlanPendingToolType on sketch 'start' to apply rectangle-
     // vs-polygon side-label rules during the live drawing preview. After the
@@ -43,6 +57,7 @@ if (!window.SitePlanRuntimeReady) {
     // (and into graphic.attributes) so future export / print / legend code can
     // distinguish polygon vs rectangle without geometric guesswork.
     let pendingDrawTool = null;
+    let pendingSitePlanTool = null;
 
     // ── Active button state ──────────────────────────────────
     let activeDrawTool = null;
@@ -52,8 +67,13 @@ if (!window.SitePlanRuntimeReady) {
       document.querySelectorAll('.draw-tool-btn.icon-btn').forEach(btn => {
         btn.classList.remove('active');
       });
-      const id = toolType === 'rectangle' ? 'btn-rectangle' :
-                 toolType === 'polygon' ? 'btn-polygon' : null;
+      const ids = {
+        polygon: 'btn-polygon',
+        rectangle: 'btn-rectangle',
+        grading: 'btn-proposed-grading',
+        easement: 'btn-easement'
+      };
+      const id = ids[toolType] || null;
       if (id) {
         const btn = document.getElementById(id);
         if (btn) btn.classList.add('active');
@@ -66,6 +86,11 @@ if (!window.SitePlanRuntimeReady) {
 
     function isRectangleToolActive() {
       return activeDrawTool === 'rectangle';
+    }
+
+
+    function isEasementToolActive() {
+      return activeDrawTool === 'easement';
     }
 
     // ── Tool entry points ────────────────────────────────────
@@ -87,8 +112,11 @@ if (!window.SitePlanRuntimeReady) {
       const detail = event && event.detail ? event.detail : {};
       if (detail.source === 'tools-draw') return;
       cancelFixedRectanglePlacement(false);
+      cancelFixedEasementPlacement(false);
       clearActiveDrawButton();
+      clearAllDrawValidation();
       pendingDrawTool = null;
+      pendingSitePlanTool = null;
       window.__sitePlanPendingToolType = null;
     });
 
@@ -227,6 +255,7 @@ if (!window.SitePlanRuntimeReady) {
 
     function startFixedRectanglePlacement() {
       announceToolActivated('rectangle');
+      cancelFixedEasementPlacement(false);
       if (!markFixedRectangleValidity()) {
         cancelFixedRectanglePlacement(false);
         setActiveDrawButton('rectangle');
@@ -236,6 +265,7 @@ if (!window.SitePlanRuntimeReady) {
 
       clearFixedRectangleValidation();
       pendingDrawTool = null;
+      pendingSitePlanTool = null;
       window.__sitePlanPendingToolType = null;
       RT.clearSelection();
 
@@ -292,9 +322,11 @@ if (!window.SitePlanRuntimeReady) {
       lastRectangleSettingsSignature = signature;
 
       cancelFixedRectanglePlacement(false);
+      cancelFixedEasementPlacement(false);
       cancelActiveSketchForRectangleRestart();
 
       pendingDrawTool = null;
+      pendingSitePlanTool = null;
       window.__sitePlanPendingToolType = null;
       setActiveDrawButton('rectangle');
 
@@ -308,17 +340,215 @@ if (!window.SitePlanRuntimeReady) {
         return;
       }
 
-      beginDrawTool('rectangle', 'rectangle', rectangleSymbol);
+      beginDrawTool('rectangle', 'rectangle', rectangleSymbol, 'rectangle', 'rectangle');
     }
 
-    function beginDrawTool(toolType, geometryType, symbol) {
+    // ── Fixed-size easement placement ───────────────────────
+    // Manual easements draw like polygons. When Fixed size is checked,
+    // Easement becomes a click-to-place rectangular polygon with the same
+    // measurement behavior as fixed-size Rectangle: entered L × W labels are
+    // preserved through move/rotate and disabled after resize/reshape.
+    let fixedEasementClickHandle = null;
+    let fixedEasementEscHandler = null;
+    let lastEasementSettingsSignature = null;
+
+    function fixedEasementEls() {
+      return {
+        checkbox: document.getElementById('chk-easement'),
+        length: document.getElementById('easement-l'),
+        width: document.getElementById('easement-w')
+      };
+    }
+
+    function isFixedEasementMode() {
+      const els = fixedEasementEls();
+      return !!(els.checkbox && els.checkbox.checked);
+    }
+
+    function fixedEasementDimensions() {
+      const els = fixedEasementEls();
+      const lengthFt = els.length ? Number.parseFloat(els.length.value) : NaN;
+      const widthFt = els.width ? Number.parseFloat(els.width.value) : NaN;
+      return {
+        lengthFt,
+        widthFt,
+        valid: Number.isFinite(lengthFt) && lengthFt >= 1 &&
+               Number.isFinite(widthFt) && widthFt >= 1
+      };
+    }
+
+    function markFixedEasementValidity() {
+      const els = fixedEasementEls();
+      const dims = fixedEasementDimensions();
+      const lengthValid = Number.isFinite(dims.lengthFt) && dims.lengthFt >= 1;
+      const widthValid = Number.isFinite(dims.widthFt) && dims.widthFt >= 1;
+      if (els.length) els.length.classList.toggle('invalid', !lengthValid);
+      if (els.width) els.width.classList.toggle('invalid', !widthValid);
+      return dims.valid;
+    }
+
+    function clearFixedEasementValidation() {
+      const els = fixedEasementEls();
+      if (els.length) els.length.classList.remove('invalid');
+      if (els.width) els.width.classList.remove('invalid');
+    }
+
+    function clearAllDrawValidation() {
+      clearFixedRectangleValidation();
+      clearFixedEasementValidation();
+    }
+
+    function focusFirstInvalidFixedEasementInput() {
+      const els = fixedEasementEls();
+      const dims = fixedEasementDimensions();
+      const lengthValid = Number.isFinite(dims.lengthFt) && dims.lengthFt >= 1;
+      if (!lengthValid && els.length) { els.length.focus(); return; }
+      if (els.width) els.width.focus();
+    }
+
+    function cancelFixedEasementPlacement(clearButtonState) {
+      if (fixedEasementClickHandle) {
+        try { fixedEasementClickHandle.remove(); } catch (err) {}
+        fixedEasementClickHandle = null;
+      }
+      if (fixedEasementEscHandler) {
+        document.removeEventListener('keydown', fixedEasementEscHandler, true);
+        fixedEasementEscHandler = null;
+      }
+      if (clearButtonState) clearActiveDrawButton();
+    }
+
+    function placeFixedEasementAt(mapPoint) {
+      const dims = fixedEasementDimensions();
+      if (!dims.valid) {
+        markFixedEasementValidity();
+        focusFirstInvalidFixedEasementInput();
+        return;
+      }
+      const geometry = makeRectangleGeometryFromCenter(mapPoint, dims.lengthFt, dims.widthFt);
+      if (!geometry) return;
+
+      const graphic = new RT.Graphic({
+        geometry,
+        symbol: easementSymbol,
+        attributes: {
+          sitePlanTool: 'easement',
+          sitePlanCategory: 'draw',
+          fixedSize: true,
+          fixedLengthFt: dims.lengthFt,
+          fixedWidthFt: dims.widthFt,
+          useFixedSizeLabels: true
+        }
+      });
+      graphic.__toolType = 'rectangle';
+      graphic.__fixedSize = true;
+      graphic.__fixedLengthFt = dims.lengthFt;
+      graphic.__fixedWidthFt = dims.widthFt;
+      graphic.__useFixedSizeLabels = true;
+
+      cancelFixedEasementPlacement(false);
+      clearActiveDrawButton();
+      RT.registerDrawableGraphic(graphic);
+      if (typeof RT.refreshSideLabelsForGraphic === 'function') RT.refreshSideLabelsForGraphic(graphic);
+
+      const reselect = () => {
+        try { RT.selectGraphic(graphic); }
+        catch (err) { console.warn('[tools-draw] Unable to select fixed easement.', err); }
+      };
+      if (window.requestAnimationFrame) window.requestAnimationFrame(reselect);
+      else setTimeout(reselect, 0);
+    }
+
+    function startFixedEasementPlacement() {
+      announceToolActivated('easement');
+      if (!markFixedEasementValidity()) {
+        cancelFixedEasementPlacement(false);
+        cancelFixedRectanglePlacement(false);
+        setActiveDrawButton('easement');
+        focusFirstInvalidFixedEasementInput();
+        return;
+      }
+
+      clearFixedEasementValidation();
+      cancelFixedRectanglePlacement(false);
+      pendingDrawTool = null;
+      pendingSitePlanTool = null;
+      window.__sitePlanPendingToolType = null;
+      RT.clearSelection();
+
+      if (RT.sketch && RT.sketch.state === 'active') {
+        ignoreNextSketchCancel = true;
+        try { RT.sketch.cancel(); }
+        catch (err) { ignoreNextSketchCancel = false; }
+      }
+
+      cancelFixedEasementPlacement(false);
+      setActiveDrawButton('easement');
+
+      fixedEasementClickHandle = RT.view.on('click', event => {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        placeFixedEasementAt(event.mapPoint);
+      });
+
+      fixedEasementEscHandler = function (event) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          cancelFixedEasementPlacement(true);
+        }
+      };
+      document.addEventListener('keydown', fixedEasementEscHandler, true);
+    }
+
+    function fixedEasementSettingsSignature() {
+      const dims = fixedEasementDimensions();
+      return [
+        isFixedEasementMode() ? 'fixed' : 'manual',
+        Number.isFinite(dims.lengthFt) ? dims.lengthFt : '',
+        Number.isFinite(dims.widthFt) ? dims.widthFt : '',
+        dims.valid ? 'valid' : 'invalid'
+      ].join('|');
+    }
+
+    function restartEasementToolIfActive(options) {
+      if (!isEasementToolActive()) return;
+
+      const opts = options || {};
+      const signature = fixedEasementSettingsSignature();
+      if (!opts.force && signature === lastEasementSettingsSignature) return;
+      lastEasementSettingsSignature = signature;
+
+      cancelFixedEasementPlacement(false);
+      cancelActiveSketchForRectangleRestart();
+
+      pendingDrawTool = null;
+      pendingSitePlanTool = null;
+      window.__sitePlanPendingToolType = null;
+      setActiveDrawButton('easement');
+
+      if (isFixedEasementMode()) {
+        const valid = markFixedEasementValidity();
+        if (!valid) {
+          if (opts.focusInvalid) focusFirstInvalidFixedEasementInput();
+          return;
+        }
+        startFixedEasementPlacement();
+        return;
+      }
+
+      beginDrawTool('polygon', 'polygon', easementSymbol, 'easement', 'easement');
+    }
+
+    function beginDrawTool(toolType, geometryType, symbol, sitePlanTool, activeKey) {
       announceToolActivated(toolType);
       // If the user previously tried to start a fixed-size rectangle without
       // valid dimensions, clear that temporary validation warning when they
       // move on to another normal draw tool.
-      clearFixedRectangleValidation();
+      clearAllDrawValidation();
       cancelFixedRectanglePlacement(false);
+      cancelFixedEasementPlacement(false);
       pendingDrawTool = toolType;
+      pendingSitePlanTool = sitePlanTool || toolType;
       window.__sitePlanPendingToolType = toolType;
 
       RT.clearSelection();
@@ -329,7 +559,7 @@ if (!window.SitePlanRuntimeReady) {
         catch (err) { ignoreNextSketchCancel = false; }
       }
 
-      setActiveDrawButton(toolType);
+      setActiveDrawButton(activeKey || toolType);
       RT.sketch.viewModel.polygonSymbol = symbol;
 
       try {
@@ -337,13 +567,14 @@ if (!window.SitePlanRuntimeReady) {
       } catch (err) {
         clearActiveDrawButton();
         pendingDrawTool = null;
+        pendingSitePlanTool = null;
         window.__sitePlanPendingToolType = null;
         console.error('[tools-draw] ' + toolType + ' create failed:', err);
       }
     }
 
     window.startPolygonTool = function () {
-      beginDrawTool('polygon', 'polygon', polygonSymbol);
+      beginDrawTool('polygon', 'polygon', polygonSymbol, 'polygon', 'polygon');
     };
 
     window.startRectangleTool = function () {
@@ -352,7 +583,20 @@ if (!window.SitePlanRuntimeReady) {
         startFixedRectanglePlacement();
         return;
       }
-      beginDrawTool('rectangle', 'rectangle', rectangleSymbol);
+      beginDrawTool('rectangle', 'rectangle', rectangleSymbol, 'rectangle', 'rectangle');
+    };
+
+    window.startProposedGradingTool = function () {
+      beginDrawTool('polygon', 'polygon', gradingSymbol, 'proposedGrading', 'grading');
+    };
+
+    window.startEasementTool = function () {
+      lastEasementSettingsSignature = fixedEasementSettingsSignature();
+      if (isFixedEasementMode()) {
+        startFixedEasementPlacement();
+        return;
+      }
+      beginDrawTool('polygon', 'polygon', easementSymbol, 'easement', 'easement');
     };
 
     RT.sketch.on('create', event => {
@@ -363,6 +607,7 @@ if (!window.SitePlanRuntimeReady) {
         }
         clearActiveDrawButton();
         pendingDrawTool = null;
+        pendingSitePlanTool = null;
         window.__sitePlanPendingToolType = null;
         return;
       }
@@ -540,9 +785,11 @@ if (!window.SitePlanRuntimeReady) {
 
     RT.onGraphicCreated(g => {
       if (!pendingDrawTool) return;
+      const sitePlanTool = pendingSitePlanTool || pendingDrawTool;
       g.__toolType = pendingDrawTool;
       g.attributes = Object.assign({}, g.attributes || {}, {
-        sitePlanTool: pendingDrawTool
+        sitePlanTool,
+        sitePlanCategory: 'draw'
       });
 
       if (pendingDrawTool === 'rectangle') {
@@ -550,6 +797,7 @@ if (!window.SitePlanRuntimeReady) {
       }
 
       pendingDrawTool = null;
+      pendingSitePlanTool = null;
       window.__sitePlanPendingToolType = null;
     });
 
@@ -608,6 +856,47 @@ if (!window.SitePlanRuntimeReady) {
       '<span class="dim-sep">ft</span>';
     section.appendChild(fixedSizeRow);
 
+    section.appendChild(buildToolButton({
+      id: 'btn-proposed-grading',
+      label: 'Proposed Grading',
+      title: 'Draw a proposed grading area',
+      iconClass: 'icon-grading',
+      icon:
+        '<svg viewBox="0 0 28 18" aria-hidden="true">' +
+          '<defs><pattern id="grading-hatch" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">' +
+            '<line x1="0" y1="0" x2="0" y2="4" stroke="rgb(110,65,0)" stroke-width="1"></line>' +
+          '</pattern></defs>' +
+          '<rect x="5" y="4" width="18" height="10" rx="1" fill="url(#grading-hatch)" stroke="rgb(110,65,0)" stroke-width="1.5"></rect>' +
+        '</svg>',
+      onClick: window.startProposedGradingTool
+    }));
+
+    section.appendChild(buildToolButton({
+      id: 'btn-easement',
+      label: 'Easement',
+      title: 'Draw an easement area',
+      iconClass: 'icon-easement',
+      icon:
+        '<svg viewBox="0 0 28 18" aria-hidden="true">' +
+          '<defs><pattern id="easement-hatch" patternUnits="userSpaceOnUse" width="4" height="4">' +
+            '<line x1="0" y1="1" x2="4" y2="1" stroke="rgb(0,50,140)" stroke-width="1"></line>' +
+          '</pattern></defs>' +
+          '<rect x="5" y="4" width="18" height="10" rx="1" fill="url(#easement-hatch)" stroke="rgb(0,50,140)" stroke-width="1.5"></rect>' +
+        '</svg>',
+      onClick: window.startEasementTool
+    }));
+
+    const easementFixedSizeRow = document.createElement('div');
+    easementFixedSizeRow.className = 'size-row';
+    easementFixedSizeRow.innerHTML =
+      '<input type="checkbox" id="chk-easement">' +
+      '<label for="chk-easement" class="size-lbl">Fixed size</label>' +
+      '<input id="easement-l" type="number" min="1" step="1" placeholder="L" class="dim-input" aria-label="Easement length in feet">' +
+      '<span class="dim-sep">×</span>' +
+      '<input id="easement-w" type="number" min="1" step="1" placeholder="W" class="dim-input" aria-label="Easement width in feet">' +
+      '<span class="dim-sep">ft</span>';
+    section.appendChild(easementFixedSizeRow);
+
     const fixedEls = fixedRectangleEls();
     [fixedEls.length, fixedEls.width].forEach(input => {
       if (!input) return;
@@ -632,6 +921,34 @@ if (!window.SitePlanRuntimeReady) {
           restartRectangleToolIfActive({ force: true, focusInvalid: fixedEls.checkbox.checked });
         } else if (!fixedEls.checkbox.checked) {
           cancelFixedRectanglePlacement(true);
+        }
+      });
+    }
+
+    const easementFixedEls = fixedEasementEls();
+    [easementFixedEls.length, easementFixedEls.width].forEach(input => {
+      if (!input) return;
+      input.addEventListener('input', () => {
+        if (isFixedEasementMode()) markFixedEasementValidity();
+        else clearFixedEasementValidation();
+      });
+      input.addEventListener('change', () => {
+        restartEasementToolIfActive({ force: false });
+      });
+      input.addEventListener('blur', () => {
+        restartEasementToolIfActive({ force: false });
+      });
+      input.addEventListener('keydown', event => event.stopPropagation());
+    });
+    if (easementFixedEls.checkbox) {
+      easementFixedEls.checkbox.addEventListener('change', () => {
+        if (!easementFixedEls.checkbox.checked) {
+          clearFixedEasementValidation();
+        }
+        if (isEasementToolActive()) {
+          restartEasementToolIfActive({ force: true, focusInvalid: easementFixedEls.checkbox.checked });
+        } else if (!easementFixedEls.checkbox.checked) {
+          cancelFixedEasementPlacement(true);
         }
       });
     }
