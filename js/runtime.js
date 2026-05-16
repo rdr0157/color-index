@@ -682,8 +682,11 @@
         selectedGraphic = g;
         if (g.__labelText || g.__labelRawText) createOrUpdateObjectLabel(g, rawObjectLabelText(g));
         // Live side-label refresh while the user is dragging vertices or
-        // moving the shape, plus the final state.
+        // moving the shape, plus the final state. If a rectangle is edited in
+        // Reshape/Edit Points mode, permanently switch that object to all-side
+        // measurements because it may no longer have equal opposite sides.
         if (g.geometry && g.geometry.type === 'polygon') {
+          if (shouldMarkRectangleAllSidesFromUpdate(event)) markRectangleAllSideLabels(g);
           refreshSideLabelsForGraphic(g);
         }
         updateSelectedShapeBox();
@@ -929,8 +932,10 @@
 
     // ── Per-segment side labels for polygons/rectangles ─────────────────────
     // Each drawn polygon or rectangle gets distance labels along its sides.
-    // For graphics tagged with __toolType === 'rectangle', only two adjacent
-    // sides are labeled (length × width) since opposite sides are equal.
+    // Standard rectangles start with only two adjacent side labels (length × width)
+    // since opposite sides are equal. If a rectangle is reshaped/edit-points
+    // edited, it is permanently switched to all-side labels so the dimensions
+    // remain accurate for irregular quadrilateral/polygon shapes.
     // sideLabelMap key: graphic.__sitePlanId → Graphic[]   (on labelLayer)
     // Live previews during sketch.create live on previewLayer instead.
     const sideLabelMap = new Map();
@@ -1003,11 +1008,12 @@
       return out;
     }
 
-    function buildSideLabelGraphics(geometry, isRectangle) {
+    function buildSideLabelGraphics(geometry, labelOnlyTwoRectangleSides) {
       const segments = polygonSegmentMidpoints(geometry);
       if (!segments.length) return [];
-      // Rectangle: label the first two adjacent sides only (one per dimension).
-      const toLabel = isRectangle ? segments.slice(0, 2) : segments;
+      // Standard rectangle: label the first two adjacent sides only (one per dimension).
+      // Reshaped rectangles and polygons: label all segments.
+      const toLabel = labelOnlyTwoRectangleSides ? segments.slice(0, 2) : segments;
       return toLabel.map(seg => {
         const symbol = Object.assign({}, sideLabelSymbol, { text: formatDistance(seg.lengthFt) });
         const label = new Graphic({ geometry: seg.mid, symbol });
@@ -1021,12 +1027,46 @@
       return !!(graphic && graphic.__toolType === 'rectangle');
     }
 
+    function rectangleUsesAllSideLabels(graphic) {
+      return !!(
+        graphic &&
+        (graphic.__rectangleAllSideLabels ||
+          (graphic.attributes && graphic.attributes.rectangleMeasurementMode === 'allSides'))
+      );
+    }
+
+    function rectangleUsesTwoSideLabels(graphic) {
+      return isRectangleGraphic(graphic) && !rectangleUsesAllSideLabels(graphic);
+    }
+
+    function markRectangleAllSideLabels(graphic) {
+      if (!isRectangleGraphic(graphic)) return false;
+      if (rectangleUsesAllSideLabels(graphic)) return false;
+      graphic.__rectangleAllSideLabels = true;
+      graphic.attributes = Object.assign({}, graphic.attributes || {}, {
+        rectangleMeasurementMode: 'allSides'
+      });
+      return true;
+    }
+
+    function shouldMarkRectangleAllSidesFromUpdate(event) {
+      if (!event || selectedEditMode !== 'reshape') return false;
+      const info = event.toolEventInfo || {};
+      const type = info.type ? String(info.type).toLowerCase() : '';
+      // Prefer the explicit Sketch reshape/vertex events when available.
+      if (type && (/reshape|vertex/.test(type))) return true;
+      // Fallback for ArcGIS versions/events that do not expose a detailed
+      // toolEventInfo type: if the graphic is actively changing while the
+      // Reshape/Edit Points button is selected, treat the rectangle as reshaped.
+      return event.state === 'active';
+    }
+
     function refreshSideLabelsForGraphic(graphic) {
       if (!graphic || !graphic.geometry || graphic.geometry.type !== 'polygon') return;
       const id = assignGraphicId(graphic) && graphic.__sitePlanId;
       if (!id) return;
       removeSideLabelsForGraphic(graphic);
-      const labels = buildSideLabelGraphics(graphic.geometry, isRectangleGraphic(graphic));
+      const labels = buildSideLabelGraphics(graphic.geometry, rectangleUsesTwoSideLabels(graphic));
       if (!labels.length) return;
       labels.forEach(l => { l.__sideLabelOf = id; labelLayer.add(l); });
       sideLabelMap.set(id, labels);
@@ -1048,8 +1088,8 @@
     function refreshLiveSideLabels(geometry, toolType) {
       previewLayer.removeAll();
       if (!geometry || geometry.type !== 'polygon') return;
-      const isRect = toolType === 'rectangle';
-      const labels = buildSideLabelGraphics(geometry, isRect);
+      const labelOnlyTwoRectangleSides = toolType === 'rectangle';
+      const labels = buildSideLabelGraphics(geometry, labelOnlyTwoRectangleSides);
       labels.forEach(l => { l.__isLivePreview = true; previewLayer.add(l); });
     }
     function clearLiveSideLabels() {
