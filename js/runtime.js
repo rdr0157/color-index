@@ -413,14 +413,29 @@
       if (label) labelLayer.remove(label);
     }
 
+    function formatObjectLabelText(text) {
+      const raw = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+      if (!raw) return '';
+      // Keep the editor as a compact single-line input, but render two-line
+      // labels by converting only the first space to a line break.
+      return raw.replace(' ', '\n');
+    }
+
+    function rawObjectLabelText(graphic) {
+      if (!graphic) return '';
+      return String(graphic.__labelRawText || graphic.__labelText || '').replace(/\n/g, ' ').trim().slice(0, 20);
+    }
+
     function createOrUpdateObjectLabel(graphic, text) {
-      if (!graphic || !text) return null;
+      const raw = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+      if (!graphic || !raw) return null;
       assignGraphicId(graphic);
       const anchor = getGraphicAnchorPoint(graphic);
       if (!anchor) return null;
       let label = labelForGraphic(graphic);
+      const renderedText = formatObjectLabelText(raw);
       const symbol = {
-        type: 'text', text, color: [0,0,0,1], haloColor: [255,255,255,0.95], haloSize: 1.5,
+        type: 'text', text: renderedText, color: [0,0,0,1], haloColor: [255,255,255,0.95], haloSize: 1.5,
         font: { family: 'Calibri, Segoe UI, Arial, sans-serif', size: 10, weight: 'bold' }
       };
       if (!label) {
@@ -432,7 +447,8 @@
         label.geometry = anchor.clone ? anchor.clone() : anchor;
         label.symbol = symbol;
       }
-      graphic.__labelText = text;
+      graphic.__labelRawText = raw;
+      graphic.__labelText = renderedText;
       return label;
     }
 
@@ -507,7 +523,7 @@
       Object.keys(source).forEach(key => { if (key.startsWith('__') && key !== '__sitePlanId') copy[key] = source[key]; });
       assignGraphicId(copy);
       drawLayer.add(copy);
-      if (source.__labelText) createOrUpdateObjectLabel(copy, source.__labelText);
+      if (source.__labelText || source.__labelRawText) createOrUpdateObjectLabel(copy, rawObjectLabelText(source));
       selectGraphic(copy);
       refreshSnapSources();
       fireGraphicCreated(copy);
@@ -517,7 +533,7 @@
     window.rotateSelectedBy = function (deltaDegrees) {
       if (!selectedGraphic) return;
       if (rotateGraphicGeometry(selectedGraphic, Number(deltaDegrees || 0))) {
-        if (selectedGraphic.__labelText) createOrUpdateObjectLabel(selectedGraphic, selectedGraphic.__labelText);
+        if (selectedGraphic.__labelText || selectedGraphic.__labelRawText) createOrUpdateObjectLabel(selectedGraphic, rawObjectLabelText(selectedGraphic));
         if (selectedGraphic.geometry && selectedGraphic.geometry.type === 'polygon') refreshSideLabelsForGraphic(selectedGraphic);
         updateSelectedShapeBox();
         // Restart the Sketch update session so Esri's transform/rotate handles
@@ -537,7 +553,7 @@
       if (!toolbar || !selectedGraphic) return;
       toolbar.classList.add('editing-label');
       if (input) {
-        input.value = selectedGraphic.__labelText || '';
+        input.value = rawObjectLabelText(selectedGraphic);
         // Reposition because the form may have a different width than the buttons
         requestAnimationFrame(() => { positionSelectionToolbar(); input.focus(); input.select(); });
       }
@@ -556,6 +572,7 @@
       if (!value) {
         removeLabelForGraphic(selectedGraphic);
         delete selectedGraphic.__labelText;
+        delete selectedGraphic.__labelRawText;
       } else {
         createOrUpdateObjectLabel(selectedGraphic, value);
       }
@@ -643,7 +660,7 @@
       const g = event.graphics && event.graphics[0];
       if (g && isSelectableGraphic(g)) {
         selectedGraphic = g;
-        if (g.__labelText) createOrUpdateObjectLabel(g, g.__labelText);
+        if (g.__labelText || g.__labelRawText) createOrUpdateObjectLabel(g, rawObjectLabelText(g));
         // Live side-label refresh while the user is dragging vertices or
         // moving the shape, plus the final state.
         if (g.geometry && g.geometry.type === 'polygon') {

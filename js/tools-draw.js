@@ -83,8 +83,9 @@ if (!window.SitePlanRuntimeReady) {
       btn.id = opts.id;
       btn.className = 'tool-btn draw-tool-btn icon-btn';
       btn.title = opts.title || opts.label;
-      btn.innerHTML = '<span class="tool-icon">' + opts.icon + '</span>' +
+      btn.innerHTML = '<span class="tool-icon ' + (opts.iconClass || '') + '">' + opts.icon + '</span>' +
                       '<span class="tool-label">' + opts.label + '</span>';
+      if (opts.marginTop) btn.style.marginTop = opts.marginTop;
       btn.addEventListener('click', opts.onClick);
       return btn;
     }
@@ -99,10 +100,12 @@ if (!window.SitePlanRuntimeReady) {
       id: 'btn-polygon',
       label: 'Polygon',
       title: 'Draw a free-form polygon (click points, double-click to finish)',
+      iconClass: 'icon-polygon',
+      marginTop: '5px',
       icon:
         '<svg viewBox="0 0 28 18" aria-hidden="true">' +
-          '<polygon points="3,15 8,4 18,4 23,9 18,15" ' +
-          'fill="rgba(120,160,220,0.30)" stroke="#2850a0" stroke-width="1.5"/>' +
+          '<polygon points="6,13 10,4 21,5 23,12 14,15" ' +
+          'fill="rgba(0,0,0,0.03)" stroke="#000" stroke-width="1.6"></polygon>' +
         '</svg>',
       onClick: window.startPolygonTool
     }));
@@ -111,10 +114,11 @@ if (!window.SitePlanRuntimeReady) {
       id: 'btn-rectangle',
       label: 'Rectangle',
       title: 'Draw a rectangle (click and drag)',
+      iconClass: 'icon-rectangle',
+      marginTop: '5px',
       icon:
         '<svg viewBox="0 0 28 18" aria-hidden="true">' +
-          '<rect x="4" y="4" width="20" height="10" ' +
-          'fill="rgba(225,225,225,0.30)" stroke="#373737" stroke-width="1.5"/>' +
+          '<rect x="5" y="4" width="18" height="10" rx="1" fill="none" stroke="#000" stroke-width="1.6"></rect>' +
         '</svg>',
       onClick: window.startRectangleTool
     }));
