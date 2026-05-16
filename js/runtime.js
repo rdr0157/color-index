@@ -885,40 +885,61 @@
 
     function polygonSegmentMidpoints(geometry) {
       // Returns an array of { mid: point, lengthFt: number } per side.
-      // Uses the outer ring only and skips the closing edge that duplicates the
-      // first vertex. The result is in the geometry's spatial reference.
+      // Uses the outer ring only. ArcGIS polygon rings are commonly stored as
+      // A → B → C → D → A; remove the duplicate closing vertex and explicitly
+      // add the last → first segment so completed four-sided polygons receive
+      // all four labels.
       if (!geometry || geometry.type !== 'polygon' || !geometry.rings || !geometry.rings.length) return [];
+
       const ring = geometry.rings[0];
       const sr = geometry.spatialReference;
-      const out = [];
+      if (!ring || ring.length < 2) return [];
+
       const ringClosed = ring.length > 2 &&
         ring[0][0] === ring[ring.length - 1][0] &&
         ring[0][1] === ring[ring.length - 1][1];
-      const lastIdx = ringClosed ? ring.length - 1 : ring.length;
-      for (let i = 1; i < lastIdx; i++) {
-        const a = ring[i - 1], b = ring[i];
+
+      const pts = ringClosed ? ring.slice(0, -1) : ring.slice();
+      const out = [];
+
+      function addSegment(a, b, isClosing) {
+        if (!a || !b) return;
+
         const mid = pointFromXY((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, sr);
-        // Geodesic length of this segment
-        const segGeom = { type: 'polyline', paths: [[a, b]], spatialReference: sr };
+        const segGeom = {
+          type: 'polyline',
+          paths: [[a, b]],
+          spatialReference: sr
+        };
+
         let lengthFt = 0;
-        try { lengthFt = Math.abs(geometryEngine.geodesicLength(segGeom, 'feet') || 0); } catch (err) {}
+        try {
+          lengthFt = Math.abs(geometryEngine.geodesicLength(segGeom, 'feet') || 0);
+        } catch (err) {}
+
         if (!Number.isFinite(lengthFt) || lengthFt <= 0) {
-          try { lengthFt = Math.abs(geometryEngine.planarLength(segGeom, 'feet') || 0); } catch (err) {}
+          try {
+            lengthFt = Math.abs(geometryEngine.planarLength(segGeom, 'feet') || 0);
+          } catch (err) {}
         }
-        out.push({ mid, lengthFt });
+
+        // Avoid cluttering the map with zero-length or accidental duplicate labels.
+        if (lengthFt > 0.5) {
+          out.push({ mid, lengthFt, __closing: !!isClosing });
+        }
       }
-      // For a closed ring with an unclosed input (last vertex != first), also
-      // include the closing edge so live drawing shows the closing segment.
-      if (!ringClosed && ring.length >= 2) {
-        const a = ring[ring.length - 1], b = ring[0];
-        const mid = pointFromXY((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, sr);
-        const segGeom = { type: 'polyline', paths: [[a, b]], spatialReference: sr };
-        let lengthFt = 0;
-        try { lengthFt = Math.abs(geometryEngine.geodesicLength(segGeom, 'feet') || 0); } catch (err) {}
-        // Only push if the segment has meaningful length; avoids a "0 ft" label
-        // on an in-progress polygon whose ring isn't yet closed visually.
-        if (lengthFt > 0.5) out.push({ mid, lengthFt, __closing: true });
+
+      for (let i = 0; i < pts.length - 1; i++) {
+        addSegment(pts[i], pts[i + 1], false);
       }
+
+      // Completed polygon rings are closed by duplicating the first point at the
+      // end. Live/in-progress polygon geometries may not be closed yet. In both
+      // cases, add the last → first segment when there are enough vertices.
+      if (pts.length >= 3) {
+        addSegment(pts[pts.length - 1], pts[0], true);
+      }
+
       return out;
     }
 
