@@ -236,6 +236,10 @@ if (!window.SitePlanRuntimeReady) {
     }
 
     function beginDrawTool(toolType, geometryType, symbol) {
+      // If the user previously tried to start a fixed-size rectangle without
+      // valid dimensions, clear that temporary validation warning when they
+      // move on to another normal draw tool.
+      clearFixedRectangleValidation();
       cancelFixedRectanglePlacement(false);
       pendingDrawTool = toolType;
       window.__sitePlanPendingToolType = toolType;
