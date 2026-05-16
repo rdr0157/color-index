@@ -44,24 +44,55 @@ if (!window.SitePlanRuntimeReady) {
     // distinguish polygon vs rectangle without geometric guesswork.
     let pendingDrawTool = null;
 
+    // ── Active button state ──────────────────────────────────
+    function setActiveDrawButton(toolType) {
+      document.querySelectorAll('.draw-tool-btn.icon-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      const id = toolType === 'rectangle' ? 'btn-rectangle' :
+                 toolType === 'polygon' ? 'btn-polygon' : null;
+      if (id) {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.add('active');
+      }
+    }
+
+    function clearActiveDrawButton() {
+      setActiveDrawButton(null);
+    }
+
     // ── Tool entry points ────────────────────────────────────
     window.startPolygonTool = function () {
       pendingDrawTool = 'polygon';
       window.__sitePlanPendingToolType = 'polygon';
+      setActiveDrawButton('polygon');
       RT.clearSelection();
       RT.sketch.viewModel.polygonSymbol = polygonSymbol;
       try { RT.sketch.create('polygon'); }
-      catch (err) { console.error('[tools-draw] Polygon create failed:', err); }
+      catch (err) {
+        clearActiveDrawButton();
+        console.error('[tools-draw] Polygon create failed:', err);
+      }
     };
 
     window.startRectangleTool = function () {
       pendingDrawTool = 'rectangle';
       window.__sitePlanPendingToolType = 'rectangle';
+      setActiveDrawButton('rectangle');
       RT.clearSelection();
       RT.sketch.viewModel.polygonSymbol = rectangleSymbol;
       try { RT.sketch.create('rectangle'); }
-      catch (err) { console.error('[tools-draw] Rectangle create failed:', err); }
+      catch (err) {
+        clearActiveDrawButton();
+        console.error('[tools-draw] Rectangle create failed:', err);
+      }
     };
+
+    RT.sketch.on('create', event => {
+      if (event.state === 'complete' || event.state === 'cancel') {
+        clearActiveDrawButton();
+      }
+    });
 
     // Apply the tag and clear the pending state on every new graphic created
     // while a draw tool is active. Other tool files later in the load order
