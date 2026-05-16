@@ -1693,6 +1693,8 @@
       clearSelection,
       selectGraphic,
       refreshSnapSources,
+      refreshSideLabelsForGraphic,
+      removeSideLabelsForGraphic,
       onGraphicCreated(callback) {
         if (typeof callback === 'function') graphicCreatedCallbacks.push(callback);
       },

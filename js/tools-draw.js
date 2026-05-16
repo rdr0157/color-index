@@ -68,7 +68,175 @@ if (!window.SitePlanRuntimeReady) {
     // just applied to the newly selected tool.
     let ignoreNextSketchCancel = false;
 
+    // ── Fixed-size rectangle placement ───────────────────────
+    // When enabled, Rectangle becomes a click-to-place tool that creates a
+    // rectangle using the entered L × W dimensions in feet. The inputs remain
+    // editable even when the checkbox is not checked; validation only blocks
+    // drawing when Fixed size is checked and dimensions are missing/invalid.
+    let fixedRectangleClickHandle = null;
+    let fixedRectangleEscHandler = null;
+
+    function fixedRectangleEls() {
+      return {
+        checkbox: document.getElementById('chk-rectangle-fixed'),
+        length: document.getElementById('rectangle-l'),
+        width: document.getElementById('rectangle-w')
+      };
+    }
+
+    function isFixedRectangleMode() {
+      const els = fixedRectangleEls();
+      return !!(els.checkbox && els.checkbox.checked);
+    }
+
+    function fixedRectangleDimensions() {
+      const els = fixedRectangleEls();
+      const lengthFt = els.length ? Number.parseFloat(els.length.value) : NaN;
+      const widthFt = els.width ? Number.parseFloat(els.width.value) : NaN;
+      return {
+        lengthFt,
+        widthFt,
+        valid: Number.isFinite(lengthFt) && lengthFt >= 1 &&
+               Number.isFinite(widthFt) && widthFt >= 1
+      };
+    }
+
+    function markFixedRectangleValidity() {
+      const els = fixedRectangleEls();
+      const dims = fixedRectangleDimensions();
+      const lengthValid = Number.isFinite(dims.lengthFt) && dims.lengthFt >= 1;
+      const widthValid = Number.isFinite(dims.widthFt) && dims.widthFt >= 1;
+      if (els.length) els.length.classList.toggle('invalid', !lengthValid);
+      if (els.width) els.width.classList.toggle('invalid', !widthValid);
+      return dims.valid;
+    }
+
+    function clearFixedRectangleValidation() {
+      const els = fixedRectangleEls();
+      if (els.length) els.length.classList.remove('invalid');
+      if (els.width) els.width.classList.remove('invalid');
+    }
+
+    function focusFirstInvalidFixedRectangleInput() {
+      const els = fixedRectangleEls();
+      const dims = fixedRectangleDimensions();
+      const lengthValid = Number.isFinite(dims.lengthFt) && dims.lengthFt >= 1;
+      if (!lengthValid && els.length) { els.length.focus(); return; }
+      if (els.width) els.width.focus();
+    }
+
+    function cancelFixedRectanglePlacement(clearButtonState) {
+      if (fixedRectangleClickHandle) {
+        try { fixedRectangleClickHandle.remove(); } catch (err) {}
+        fixedRectangleClickHandle = null;
+      }
+      if (fixedRectangleEscHandler) {
+        document.removeEventListener('keydown', fixedRectangleEscHandler, true);
+        fixedRectangleEscHandler = null;
+      }
+      if (clearButtonState) clearActiveDrawButton();
+    }
+
+    function makeRectangleGeometryFromCenter(center, lengthFt, widthFt) {
+      if (!center) return null;
+      const sr = center.spatialReference || (RT.view && RT.view.spatialReference);
+      const lengthUnits = feetToLocalMapUnits(lengthFt, center, sr);
+      const widthUnits = feetToLocalMapUnits(widthFt, center, sr);
+      let halfX, halfY;
+      if (typeof lengthUnits === 'object') halfX = lengthUnits.dx / 2;
+      else halfX = lengthUnits / 2;
+      if (typeof widthUnits === 'object') halfY = widthUnits.dy / 2;
+      else halfY = widthUnits / 2;
+
+      return {
+        type: 'polygon',
+        rings: [[
+          [center.x - halfX, center.y - halfY],
+          [center.x + halfX, center.y - halfY],
+          [center.x + halfX, center.y + halfY],
+          [center.x - halfX, center.y + halfY],
+          [center.x - halfX, center.y - halfY]
+        ]],
+        spatialReference: sr && sr.toJSON ? sr.toJSON() : sr
+      };
+    }
+
+    function placeFixedRectangleAt(mapPoint) {
+      const dims = fixedRectangleDimensions();
+      if (!dims.valid) {
+        markFixedRectangleValidity();
+        focusFirstInvalidFixedRectangleInput();
+        return;
+      }
+      const geometry = makeRectangleGeometryFromCenter(mapPoint, dims.lengthFt, dims.widthFt);
+      if (!geometry) return;
+
+      const graphic = new RT.Graphic({
+        geometry,
+        symbol: rectangleSymbol,
+        attributes: {
+          sitePlanTool: 'rectangle',
+          fixedSize: true,
+          fixedLengthFt: dims.lengthFt,
+          fixedWidthFt: dims.widthFt
+        }
+      });
+      graphic.__toolType = 'rectangle';
+      graphic.__fixedSize = true;
+      graphic.__fixedLengthFt = dims.lengthFt;
+      graphic.__fixedWidthFt = dims.widthFt;
+
+      cancelFixedRectanglePlacement(false);
+      clearActiveDrawButton();
+      RT.registerDrawableGraphic(graphic);
+      if (typeof RT.refreshSideLabelsForGraphic === 'function') RT.refreshSideLabelsForGraphic(graphic);
+
+      const reselect = () => {
+        try { RT.selectGraphic(graphic); }
+        catch (err) { console.warn('[tools-draw] Unable to select fixed rectangle.', err); }
+      };
+      if (window.requestAnimationFrame) window.requestAnimationFrame(reselect);
+      else setTimeout(reselect, 0);
+    }
+
+    function startFixedRectanglePlacement() {
+      if (!markFixedRectangleValidity()) {
+        cancelFixedRectanglePlacement(true);
+        focusFirstInvalidFixedRectangleInput();
+        return;
+      }
+
+      clearFixedRectangleValidation();
+      pendingDrawTool = null;
+      window.__sitePlanPendingToolType = null;
+      RT.clearSelection();
+
+      if (RT.sketch && RT.sketch.state === 'active') {
+        ignoreNextSketchCancel = true;
+        try { RT.sketch.cancel(); }
+        catch (err) { ignoreNextSketchCancel = false; }
+      }
+
+      cancelFixedRectanglePlacement(false);
+      setActiveDrawButton('rectangle');
+
+      fixedRectangleClickHandle = RT.view.on('click', event => {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        placeFixedRectangleAt(event.mapPoint);
+      });
+
+      fixedRectangleEscHandler = function (event) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          cancelFixedRectanglePlacement(true);
+        }
+      };
+      document.addEventListener('keydown', fixedRectangleEscHandler, true);
+    }
+
     function beginDrawTool(toolType, geometryType, symbol) {
+      cancelFixedRectanglePlacement(false);
       pendingDrawTool = toolType;
       window.__sitePlanPendingToolType = toolType;
 
@@ -98,6 +266,10 @@ if (!window.SitePlanRuntimeReady) {
     };
 
     window.startRectangleTool = function () {
+      if (isFixedRectangleMode()) {
+        startFixedRectanglePlacement();
+        return;
+      }
       beginDrawTool('rectangle', 'rectangle', rectangleSymbol);
     };
 
@@ -342,6 +514,35 @@ if (!window.SitePlanRuntimeReady) {
         '</svg>',
       onClick: window.startRectangleTool
     }));
+
+    const fixedSizeRow = document.createElement('div');
+    fixedSizeRow.className = 'size-row';
+    fixedSizeRow.innerHTML =
+      '<input type="checkbox" id="chk-rectangle-fixed">' +
+      '<label for="chk-rectangle-fixed" class="size-lbl">Fixed size</label>' +
+      '<input id="rectangle-l" type="number" min="1" step="1" placeholder="L" class="dim-input" aria-label="Rectangle length in feet">' +
+      '<span class="dim-sep">×</span>' +
+      '<input id="rectangle-w" type="number" min="1" step="1" placeholder="W" class="dim-input" aria-label="Rectangle width in feet">' +
+      '<span class="dim-sep">ft</span>';
+    section.appendChild(fixedSizeRow);
+
+    const fixedEls = fixedRectangleEls();
+    [fixedEls.length, fixedEls.width].forEach(input => {
+      if (!input) return;
+      input.addEventListener('input', () => {
+        if (isFixedRectangleMode()) markFixedRectangleValidity();
+        else clearFixedRectangleValidation();
+      });
+      input.addEventListener('keydown', event => event.stopPropagation());
+    });
+    if (fixedEls.checkbox) {
+      fixedEls.checkbox.addEventListener('change', () => {
+        if (!fixedEls.checkbox.checked) {
+          clearFixedRectangleValidation();
+          cancelFixedRectanglePlacement(true);
+        }
+      });
+    }
 
   }).catch(err => {
     console.error('[tools-draw] Failed to initialize after runtime ready:', err);
