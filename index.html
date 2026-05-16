@@ -1,73 +1,191 @@
-var SitePlanConfig = {
-  map: {
-    center: [-118.26, 46.14],
-    extent: { xmin: -118.64, ymin: 45.82, xmax: -117.88, ymax: 46.47 },
-    basemap: "gray-vector"
-  },
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site Plan Builder — Walla Walla County Community Development</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+  <script src="config.js"></script>
+  <script src="https://js.arcgis.com/4.30/"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="clear-modal" role="dialog" aria-modal="true" aria-labelledby="clear-modal-title" aria-hidden="true" onclick="if(event.target===this) closeClearAllModal();">
+  <div class="clear-modal-panel">
+    <div class="clear-modal-header" id="clear-modal-title">Clear all drawings?</div>
+    <div class="clear-modal-body">
+      This will remove every drawing from the map. This action cannot be undone.
+    </div>
+    <div class="clear-modal-actions">
+      <button type="button" class="clear-modal-btn cancel" onclick="closeClearAllModal()">Cancel</button>
+      <button type="button" class="clear-modal-btn danger" onclick="confirmClearAllModal()">Clear Map</button>
+    </div>
+  </div>
+</div>
+<div id="app">
+  <header role="banner">
+    <div id="header">
+      <h1 class="sr-only">Walla Walla County Community Development — Site Plan Builder</h1>
+      <div id="header-seal" aria-hidden="true">
+        <img id="seal-img" src="https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg" alt="Walla Walla County Seal">
+      </div>
+      <div id="titlewrap">
+        <div id="agency"></div>
+        <div id="title"></div>
+      </div>
+      <div id="header-search-wrap" aria-label="Parcel search">
+        <div id="header-search"></div>
+      </div>
+      <button class="hdr-btn light clear-all-btn" onclick="clearAll()" title="Clear all drawn site plan items" aria-label="Clear all drawn site plan items">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        Clear Drawings
+      </button>
+      <button class="hdr-btn gold" onclick="printPlan()" aria-label="Print or save PDF of site plan" title="Print is temporarily disabled during rebuild">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / Save PDF
+      </button>
+    </div>
+  </header>
 
-  layers: {
-    parcels: {
-      url: "https://services8.arcgis.com/COL6rRPkF9w28VGX/arcgis/rest/services/Parcel_Information_Report/FeatureServer",
-      outFields: ["*"],
+  <main role="main">
+    <div id="main">
+      <aside id="sidebar" aria-label="Site plan tools">
+        <div class="tool-section">
+          <div class="section-head">Editing</div>
+          <div id="tools-editing" class="section-body tool-section-body editing-core-body">
+            <div class="edit-mode-row" role="group" aria-label="Object editing mode">
+              <button type="button" class="tool-btn edit-mode-btn active" id="edit-mode-reshape" aria-pressed="true" title="Reshape / edit points" onclick="setEditMode('reshape')">Reshape (Edit points)</button>
+              <button type="button" class="tool-btn edit-mode-btn" id="edit-mode-resize" aria-pressed="false" title="Resize object" onclick="setEditMode('resize')">Resize</button>
+            </div>
+            <label class="toggle-row" for="snap-toggle" title="Toggle snapping while drawing and editing">
+              <input type="checkbox" id="snap-toggle" checked onchange="toggleSnapping(this.checked)" />
+              <span>Snapping on</span>
+            </label>
+          </div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Structures</div>
+          <div id="tools-structures" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Well &amp; Septic</div>
+          <div id="tools-well-septic" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Access / Driveway</div>
+          <div id="tools-access" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Utilities</div>
+          <div id="tools-utilities" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Parking</div>
+          <div id="tools-parking" class="section-body tool-section-body"></div>
+        </div>
+        <div class="tool-section">
+          <div class="section-head">Draw Tools</div>
+          <div id="tools-draw" class="section-body tool-section-body"></div>
+        </div>
+      </aside>
 
-      popupFields: {
-        parcelNumber:   "geo_id",
-        ownerName:      "py_owner_n",
-        siteAddress:    "full_situs",
-        acreage:        "size_acres",
-        legalDesc:      "legal_desc",
-        fireDistrict:   "FIRE_DIST",
-        platBookPage:   "PLAT_BK_PG",
-        platLink:       "PLAT_LINK",
-        assessorLink:   "link_inter",
+      <div id="map-wrap">
+        <div id="viewDiv"></div>
 
-        mailAddr1:      "py_addr__1",
-        mailCity:       "py_addr_ci",
-        mailState:      "py_addr_st",
-        mailZip:        "py_addr_zi",
-        
-        zoningName:     "ZONE_NAME",
-        zoningAbbrev:   "ZONE_ABBREV",
-        landUseName:    "LU_NAME",
-        landUseAbbrev:  "LU_ABBREV",
-        uga:            "UGA_NAME",
-        shorelineDes:   "SHR_DES",
-        shorelineAbbr:  "SHR_ABBREV",
-        millCreek:      "MILL_CREEK_WPP",
-        mineralLands:   "MINERAL_LANDS",
-        seismicClass:   "SEISMIC_CLASS",
-        setbackFront:   "SETBACK_FRONT",
-        setbackSide:    "SETBACK_SIDE",
-        setbackRear:    "SETBACK_REAR",
-        setbackNote:    "SETBACK_NOTE",
-        caFloodRisk:    "CA_FLOOD_RISK",
-        caFloodZone:    "CA_FLOOD_ZONE",
-        caCaraHigh:     "CA_CARA_HIGH",
-        caCaraMod:      "CA_CARA_MOD",
-        caHawkHab:      "CA_HAB_FER_HAWK",
-        caSongbird:     "CA_HAB_NEO_SONG",
-        caWinterBirds:  "CA_HAB_WIN_PREY",
-        caShrubsteppe:  "CA_SHRUB",
-        caErosion:      "CA_SLOPE",
-        caFaults:       "CA_FAULT",
-        caLiquefaction: "CA_LIQUEFACTION",
-        caWetland:      "CA_WETLAND",
-        caRipName:      "CA_RIP_NAME",
-        caRipBuffer:    "CA_RIP_BUFFER"
-      }
-    }
-  },
+        <div id="basemap-toggle">
+          <div id="basemap-control" class="map-control">
+            <button class="bm-btn control-toggle active" id="bm-basemap" type="button" onclick="toggleBasemapPanel(true)" title="Basemap">
+              <span class="bm-thumb-wrap" id="bm-current-thumb" aria-hidden="true">
+                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f0ede7"/><line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/><line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/></svg>
+              </span>
+              <span class="bm-label" id="bm-current-label">Basemap</span>
+            </button>
+            <div id="basemap-panel" class="map-panel basemap-panel-strip" onclick="event.stopPropagation();">
+              <button type="button" class="basemap-collapse-btn" onclick="toggleBasemapPanel(false)" title="Collapse basemaps" aria-label="Collapse basemap options">›</button>
+              <button type="button" class="basemap-option strip-option" id="bm-option-streets" onclick="switchBasemap('streets-vector', this)" title="Streets">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#e8e0d0"/><rect x="0" y="28" width="64" height="8" fill="#fff" opacity=".7"/><rect x="24" y="0" width="6" height="64" fill="#fff" opacity=".5"/><circle cx="32" cy="22" r="6" fill="#c0392b" opacity=".7"/></svg>
+                <span class="bm-label">Streets</span>
+              </button>
+              <button type="button" class="basemap-option strip-option" id="bm-option-topo" onclick="switchBasemap('topo-vector', this)" title="Topo">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#f0ebe0"/><ellipse cx="32" cy="36" rx="26" ry="16" fill="none" stroke="#b8a882" stroke-width="1.5"/><ellipse cx="32" cy="36" rx="18" ry="10" fill="none" stroke="#b8a882" stroke-width="1.5"/><ellipse cx="32" cy="36" rx="10" ry="5" fill="none" stroke="#b8a882" stroke-width="1.5"/></svg>
+                <span class="bm-label">Topo</span>
+              </button>
+              <button type="button" class="basemap-option strip-option active" id="bm-option-gray" onclick="switchBasemap('gray-vector', this)" title="Gray Canvas">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#f0ede7"/><line x1="0" y1="32" x2="64" y2="32" stroke="#ccc9c2" stroke-width="2.5"/><line x1="32" y1="0" x2="32" y2="64" stroke="#ccc9c2" stroke-width="1.5"/><line x1="0" y1="20" x2="64" y2="20" stroke="#ccc9c2" stroke-width="1"/><line x1="0" y1="48" x2="64" y2="48" stroke="#ccc9c2" stroke-width="1"/></svg>
+                <span class="bm-label">Gray Canvas</span>
+              </button>
+              <button type="button" class="basemap-option strip-option" id="bm-option-imagery" onclick="switchBasemap('satellite', this)" title="Imagery">
+                <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#2d4a1e"/><rect x="0" y="0" width="32" height="32" fill="#3a5c28" opacity=".8"/><rect x="32" y="32" width="32" height="32" fill="#3a5c28" opacity=".8"/><path d="M0 40 Q16 30 32 38 Q48 46 64 36" fill="none" stroke="#5b8cd4" stroke-width="2" opacity=".7"/></svg>
+                <span class="bm-label">Imagery</span>
+              </button>
+            </div>
+          </div>
 
-  branding: {
-    countyName:    "Walla Walla County",
-    agencyName:    "Community Development",
-    toolTitle:     "Site Plan Builder",
-    printHeader:   "Walla Walla County — Permit Application Site Plan",
-    sealUrl:       "https://jobs.wsac.org/wp-content/uploads/job-manager-uploads/company_logo/2022/03/Walla-Walla-County-Seal-147x150.jpg",
-    parcelInfoUrl: "https://experience.arcgis.com/experience/7133ad29736547f2b24bbd0f1753bc24",
-    phone:         "509-524-2610",
-    address:       "310 W. Poplar Street, Suite 200 · Walla Walla, WA 99362",
-    formsUrl:      "https://www.wwcowa.gov/government/community_development/applications.php",
-    municodeUrl:   "https://library.municode.com/wa/walla_walla_county/codes/code_of_ordinances?nodeId=TIT18EN_CH18.08CRARPR"
-  }
-};
+          <div id="layer-control" class="map-control">
+            <button class="bm-btn control-toggle" id="bm-layers" type="button" onclick="toggleLayerPanel()" title="Map layers">
+              <svg class="bm-thumb" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" fill="#eef2f6"/><polygon points="32,10 52,21 32,32 12,21" fill="#0b2d4c" opacity=".85"/><polygon points="32,23 52,34 32,45 12,34" fill="#4b7fa8" opacity=".75"/><polygon points="32,36 52,47 32,58 12,47" fill="#7fa7c7" opacity=".75"/></svg>
+              <span class="bm-label">Layers</span>
+            </button>
+            <div id="layers-panel" class="map-panel" onclick="event.stopPropagation();">
+              <div class="map-panel-head" onclick="toggleLayerPanel(false)" title="Collapse layers"><span>Layers</span><span aria-hidden="true">›</span></div>
+              <div class="map-panel-body">
+                <label class="layer-check-row" for="liquefaction-toggle"><input type="checkbox" id="liquefaction-toggle" onchange="toggleMapLayer('liquefaction', this.checked)" /><span>Liquefaction Susceptibility</span></label>
+                <label class="layer-check-row" for="riparian-toggle"><input type="checkbox" id="riparian-toggle" onchange="toggleMapLayer('riparian', this.checked)" /><span>Riparian Buffer</span></label>
+                <label class="layer-check-row" for="wetlands-toggle"><input type="checkbox" id="wetlands-toggle" onchange="toggleMapLayer('wetlands', this.checked)" /><span>Wetlands</span></label>
+                <label class="layer-check-row" for="cara-toggle"><input type="checkbox" id="cara-toggle" onchange="toggleMapLayer('cara', this.checked)" /><span>Critical Aquifer Recharge Area (CARA)</span></label>
+                <label class="layer-check-row" for="flood-toggle"><input type="checkbox" id="flood-toggle" onchange="toggleMapLayer('flood', this.checked)" /><span>Flood Hazard Areas</span></label>
+                <label class="layer-check-row" for="contours-toggle"><input type="checkbox" id="contours-toggle" onchange="toggleMapLayer('contours', this.checked)" /><span>Contours</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="selection-toolbar" aria-label="Selected drawing actions">
+          <button type="button" id="btn-duplicate-tool" class="selection-tool-btn duplicate" onclick="duplicateSelectedGraphic()" title="Duplicate selected item" aria-label="Duplicate selected item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2"/><rect x="8" y="4" width="12" height="12" rx="2"/></svg>
+          </button>
+          <button type="button" id="rotate-ccw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(45)" title="Rotate counterclockwise 45°" aria-label="Rotate selected item counterclockwise 45 degrees">↶</button>
+          <button type="button" id="rotate-cw-tool" class="selection-tool-btn rotation-step-btn" onclick="rotateSelectedBy(-45)" title="Rotate clockwise 45°" aria-label="Rotate selected item clockwise 45 degrees">↷</button>
+          <button type="button" id="btn-label-tool" class="selection-tool-btn label-tool" onclick="openLabelEditor()" title="Add or edit label" aria-label="Add or edit label">T</button>
+          <button type="button" id="btn-delete-tool" class="selection-tool-btn delete" onclick="deleteSelected()" title="Delete selected item" aria-label="Delete selected item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+          <div id="label-edit-form" role="group" aria-label="Edit label">
+            <div class="label-input-wrap">
+              <input type="text" id="label-edit-input" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Label..." aria-label="Label text" />
+              <button type="button" id="label-edit-clear" class="label-edit-clear" title="Clear label text" aria-label="Clear label text">×</button>
+            </div>
+            <button type="button" id="label-edit-confirm" class="selection-tool-btn label-edit-confirm" title="Confirm" aria-label="Confirm label">✓</button>
+          </div>
+        </div>
+
+        <div id="selected-shape-box" aria-live="polite" aria-hidden="true">
+          <div class="ssb-head">SELECTED SHAPE</div>
+          <div class="ssb-value" id="ssb-value">—</div>
+        </div>
+
+        <div id="loading"><div style="font-size:14px;font-weight:700;color:#0b2d4c;">Initializing map…</div><div style="font-size:12px;color:#000;">Please wait</div></div>
+      </div>
+
+      <aside id="info-panel" aria-label="Parcel information">
+        <div class="ip-head">Parcel Information</div>
+        <div class="ip-body" id="ip-basic"><div class="ip-empty">Load a parcel to view details.</div></div>
+        <div class="ip-head" id="ip-ca-head" style="display:none;">Critical Areas</div>
+        <div class="ip-body" id="ip-ca" style="display:none;"></div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script src="js/runtime.js"></script>
+<script src="js/tools-draw.js"></script>
+<script src="js/tools-structures.js"></script>
+<script src="js/tools-setback.js"></script>
+</body>
+</html>
