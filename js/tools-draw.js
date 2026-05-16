@@ -121,12 +121,180 @@ if (!window.SitePlanRuntimeReady) {
     // Apply the tag and clear the pending state on every new graphic created
     // while a draw tool is active. Other tool files later in the load order
     // will follow this same pattern with their own pendingDrawTool variable.
+    // ── Rectangle invalid-size fallback ──────────────────────────────
+    // Rectangles are click-and-drag objects. If the user mis-clicks or releases
+    // too quickly, Sketch can finalize a near-zero rectangle that is difficult
+    // to grab, resize, or delete. Treat that as an accidental click-to-place
+    // rectangle and replace it with a usable 10 ft × 10 ft starter rectangle.
+    const MIN_RECT_SIDE_FT = 2;
+    const MIN_RECT_AREA_SQFT = 4;
+    const DEFAULT_RECT_SIDE_FT = 10;
+
+    function ringWithoutDuplicateClose(geometry) {
+      if (!geometry || geometry.type !== 'polygon' || !geometry.rings || !geometry.rings.length) return [];
+      const ring = geometry.rings[0] || [];
+      if (ring.length > 2) {
+        const first = ring[0];
+        const last = ring[ring.length - 1];
+        if (first && last && first[0] === last[0] && first[1] === last[1]) {
+          return ring.slice(0, -1);
+        }
+      }
+      return ring.slice();
+    }
+
+    function segmentLengthFt(a, b, spatialReference) {
+      if (!a || !b) return 0;
+      const segment = {
+        type: 'polyline',
+        paths: [[a, b]],
+        spatialReference
+      };
+      let length = 0;
+      try { length = Math.abs(RT.geometryEngine.geodesicLength(segment, 'feet') || 0); }
+      catch (err) {}
+      if (!Number.isFinite(length) || length <= 0) {
+        try { length = Math.abs(RT.geometryEngine.planarLength(segment, 'feet') || 0); }
+        catch (err) {}
+      }
+      return Number.isFinite(length) ? length : 0;
+    }
+
+    function polygonAreaSqFt(geometry) {
+      let area = 0;
+      try { area = Math.abs(RT.geometryEngine.geodesicArea(geometry, 'square-feet') || 0); }
+      catch (err) {}
+      if (!Number.isFinite(area) || area <= 0) {
+        try { area = Math.abs(RT.geometryEngine.planarArea(geometry, 'square-feet') || 0); }
+        catch (err) {}
+      }
+      return Number.isFinite(area) ? area : 0;
+    }
+
+    function rectangleDimensionsFt(geometry) {
+      const pts = ringWithoutDuplicateClose(geometry);
+      if (pts.length < 4) return { widthFt: 0, heightFt: 0, areaSqFt: polygonAreaSqFt(geometry) };
+      return {
+        widthFt: segmentLengthFt(pts[0], pts[1], geometry.spatialReference),
+        heightFt: segmentLengthFt(pts[1], pts[2], geometry.spatialReference),
+        areaSqFt: polygonAreaSqFt(geometry)
+      };
+    }
+
+    function isTooSmallRectangle(geometry) {
+      const dims = rectangleDimensionsFt(geometry);
+      return dims.widthFt < MIN_RECT_SIDE_FT ||
+             dims.heightFt < MIN_RECT_SIDE_FT ||
+             dims.areaSqFt < MIN_RECT_AREA_SQFT;
+    }
+
+    function webMercatorLatRadiansFromY(y) {
+      const radius = 6378137;
+      return (2 * Math.atan(Math.exp(y / radius))) - (Math.PI / 2);
+    }
+
+    function feetToLocalMapUnits(feet, center, spatialReference) {
+      const meters = feet * 0.3048;
+      const wkid = spatialReference && (spatialReference.wkid || spatialReference.latestWkid);
+
+      // ArcGIS basemaps normally place the view in Web Mercator. Web Mercator
+      // local map distance is scaled by sec(latitude), so divide by cos(lat) to
+      // get an approximate ground-distance square at the parcel's latitude.
+      if (wkid === 3857 || wkid === 102100 || wkid === 102113) {
+        const latRad = webMercatorLatRadiansFromY(center.y);
+        const cosLat = Math.max(Math.abs(Math.cos(latRad)), 0.2);
+        return meters / cosLat;
+      }
+
+      // Geographic fallback, unlikely for this app but useful if the map SR is
+      // ever changed. Return degrees for the requested ground distance.
+      if (wkid === 4326 || (spatialReference && spatialReference.isGeographic)) {
+        const latRad = (center.y || 0) * Math.PI / 180;
+        const feetPerDegreeLat = 364000;
+        const feetPerDegreeLon = Math.max(feetPerDegreeLat * Math.cos(latRad), 1);
+        return {
+          dx: feet / feetPerDegreeLon,
+          dy: feet / feetPerDegreeLat
+        };
+      }
+
+      // Projected fallback: assume meters. This keeps the starter object usable
+      // even if it is not survey-grade exact.
+      return meters;
+    }
+
+    function makeDefaultRectangleGeometry(sourceGeometry) {
+      const center = sourceGeometry && sourceGeometry.extent && sourceGeometry.extent.center;
+      if (!center) return null;
+      const sr = sourceGeometry.spatialReference || (center && center.spatialReference);
+      const units = feetToLocalMapUnits(DEFAULT_RECT_SIDE_FT, center, sr);
+      let halfX, halfY;
+      if (typeof units === 'object') {
+        halfX = units.dx / 2;
+        halfY = units.dy / 2;
+      } else {
+        halfX = units / 2;
+        halfY = units / 2;
+      }
+
+      const json = {
+        rings: [[
+          [center.x - halfX, center.y - halfY],
+          [center.x + halfX, center.y - halfY],
+          [center.x + halfX, center.y + halfY],
+          [center.x - halfX, center.y + halfY],
+          [center.x - halfX, center.y - halfY]
+        ]],
+        spatialReference: sr && sr.toJSON ? sr.toJSON() : sr
+      };
+
+      try {
+        if (sourceGeometry.constructor && sourceGeometry.constructor.fromJSON) {
+          return sourceGeometry.constructor.fromJSON(json);
+        }
+      } catch (err) {}
+
+      return Object.assign({ type: 'polygon' }, json);
+    }
+
+    function replaceInvalidRectangleIfNeeded(graphic) {
+      if (!graphic || graphic.__toolType !== 'rectangle' || !graphic.geometry) return false;
+      if (!isTooSmallRectangle(graphic.geometry)) return false;
+
+      const replacement = makeDefaultRectangleGeometry(graphic.geometry);
+      if (!replacement) return false;
+
+      graphic.geometry = replacement;
+      graphic.__usedDefaultRectangleSize = true;
+      graphic.attributes = Object.assign({}, graphic.attributes || {}, {
+        usedDefaultRectangleSize: true,
+        defaultRectangleSizeFt: DEFAULT_RECT_SIDE_FT
+      });
+      RT.refreshSnapSources();
+
+      // Re-select on the next frame so Sketch transform handles and the selected
+      // shape box sync to the replacement geometry rather than the near-zero one.
+      const reselect = () => {
+        try { RT.selectGraphic(graphic); }
+        catch (err) { console.warn('[tools-draw] Unable to reselect default rectangle.', err); }
+      };
+      if (window.requestAnimationFrame) window.requestAnimationFrame(reselect);
+      else setTimeout(reselect, 0);
+
+      return true;
+    }
+
     RT.onGraphicCreated(g => {
       if (!pendingDrawTool) return;
       g.__toolType = pendingDrawTool;
       g.attributes = Object.assign({}, g.attributes || {}, {
         sitePlanTool: pendingDrawTool
       });
+
+      if (pendingDrawTool === 'rectangle') {
+        replaceInvalidRectangleIfNeeded(g);
+      }
+
       pendingDrawTool = null;
       window.__sitePlanPendingToolType = null;
     });
