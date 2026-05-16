@@ -157,8 +157,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
           </button>
           <div id="label-edit-form" role="group" aria-label="Edit label">
-            <input type="text" id="label-edit-input" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Label" aria-label="Label text" />
-            <button type="button" id="label-edit-cancel" class="selection-tool-btn label-edit-cancel" title="Cancel" aria-label="Cancel label edit">✕</button>
+            <div class="label-input-wrap">
+              <input type="text" id="label-edit-input" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Label..." aria-label="Label text" />
+              <button type="button" id="label-edit-clear" class="label-edit-clear" title="Clear label text" aria-label="Clear label text">×</button>
+            </div>
             <button type="button" id="label-edit-confirm" class="selection-tool-btn label-edit-confirm" title="Confirm" aria-label="Confirm label">✓</button>
           </div>
         </div>
