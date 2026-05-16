@@ -85,7 +85,6 @@ if (!window.SitePlanRuntimeReady) {
       btn.title = opts.title || opts.label;
       btn.innerHTML = '<span class="tool-icon ' + (opts.iconClass || '') + '">' + opts.icon + '</span>' +
                       '<span class="tool-label">' + opts.label + '</span>';
-      if (opts.marginTop) btn.style.marginTop = opts.marginTop;
       btn.addEventListener('click', opts.onClick);
       return btn;
     }
@@ -101,7 +100,6 @@ if (!window.SitePlanRuntimeReady) {
       label: 'Polygon',
       title: 'Draw a free-form polygon (click points, double-click to finish)',
       iconClass: 'icon-polygon',
-      marginTop: '5px',
       icon:
         '<svg viewBox="0 0 28 18" aria-hidden="true">' +
           '<polygon points="6,13 10,4 21,5 23,12 14,15" ' +
@@ -115,7 +113,6 @@ if (!window.SitePlanRuntimeReady) {
       label: 'Rectangle',
       title: 'Draw a rectangle (click and drag)',
       iconClass: 'icon-rectangle',
-      marginTop: '5px',
       icon:
         '<svg viewBox="0 0 28 18" aria-hidden="true">' +
           '<rect x="5" y="4" width="18" height="10" rx="1" fill="none" stroke="#000" stroke-width="1.6"></rect>' +
