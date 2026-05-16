@@ -317,8 +317,8 @@
 
     /* Larger/bolder rotate arrows — same 28px button footprint */
     .selection-tool-btn.rotation-step-btn {
-      font-size:22px; font-weight:900; line-height:1;
-      -webkit-text-stroke:0.6px currentColor;
+      font-size:22px; font-weight:400; line-height:1; color:#000;
+      -webkit-text-stroke:0;
     }
 
     /* Inline label-edit replacement — swaps in for the buttons when T is clicked */
@@ -345,7 +345,7 @@
 
     /* Selected-shape measurement summary box (above the map's scale bar) */
     #selected-shape-box {
-      position:absolute; left:15px; bottom:50px; z-index:25;
+      position:absolute; left:15px; bottom:100px; z-index:25;
       min-width:200px; max-width:280px;
       background:rgba(255,255,255,.95); border:1px solid #9ca3af; border-radius:6px;
       padding:6px 10px; box-shadow:0 2px 6px rgba(0,0,0,.18);
@@ -354,11 +354,11 @@
     }
     #selected-shape-box.visible { display:block; }
     #selected-shape-box .ssb-head {
-      font-size:10px; font-weight:700; color:#0b2d4c; letter-spacing:0.06em;
+      font-size:12px; font-weight:400; color:#0b2d4c; letter-spacing:0.06em;
       text-transform:uppercase; margin-bottom:2px;
     }
     #selected-shape-box .ssb-value {
-      font-size:13px; font-weight:700; color:#0b1f3a;
+      font-size:12px; font-weight:400; color:#0b1f3a;
     }
 
     /* Map */
