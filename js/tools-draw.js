@@ -26,13 +26,13 @@ if (!window.SitePlanRuntimeReady) {
     // ── Symbols ──────────────────────────────────────────────
     const polygonSymbol = {
       type: 'simple-fill',
-      color: [120, 160, 220, 0.30],
-      outline: { type: 'simple-line', color: [40, 80, 160, 1], width: 1.5 }
+      color: [225, 225, 225, 0.20],
+      outline: { type: 'simple-line', color: [55, 55, 55, 1], width: 1.5 }
     };
 
     const rectangleSymbol = {
       type: 'simple-fill',
-      color: [225, 225, 225, 0.30],
+      color: [225, 225, 225, 0.20],
       outline: { type: 'simple-line', color: [55, 55, 55, 1], width: 1.5 }
     };
 
