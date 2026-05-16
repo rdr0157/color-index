@@ -172,6 +172,33 @@
       display:block; line-height:1.2;
     }
 
+    .size-row {
+      display:flex; align-items:center; gap:6px;
+      width:calc(100% - 20px); margin:4px 10px 8px 10px;
+      color:#000; font-size:12px;
+    }
+    .size-row input[type="checkbox"] {
+      margin:0; width:14px; height:14px; flex:0 0 auto; cursor:pointer;
+    }
+    .size-lbl {
+      flex:1 1 auto; cursor:pointer; user-select:none; white-space:nowrap;
+    }
+    .dim-input {
+      width:58px; height:28px; box-sizing:border-box;
+      border:1px solid #d5dbe3; border-radius:4px;
+      background:#fff; color:#000; font:inherit; font-size:12px;
+      padding:0 7px; text-align:left;
+    }
+    .dim-input:focus {
+      outline:2px solid #0b2d4c; outline-offset:0; border-color:#0b2d4c;
+    }
+    .dim-input.invalid {
+      border-color:#b91c1c; background:#fff7f7;
+    }
+    .dim-sep {
+      flex:0 0 auto; color:#000; line-height:1;
+    }
+
 
 
     /* Core measurement flyout */
