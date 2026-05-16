@@ -23,6 +23,20 @@
     return String(value).replace(/'/g, "''");
   }
 
+  // Public ready-promise so tool files can wait for the runtime to be ready
+  // before reading window.SitePlanRuntime. Tool files should use:
+  //
+  //   window.SitePlanRuntimeReady.then(RT => { ... tool code ... });
+  //
+  // This avoids race conditions where a tool's <script> tag runs synchronously
+  // after runtime.js but before the ArcGIS require() callback has finished
+  // populating window.SitePlanRuntime. Both window.SitePlanRuntime and the
+  // 'siteplan:ready' event are also dispatched on resolution.
+  let resolveRuntimeReady;
+  window.SitePlanRuntimeReady = new Promise(resolve => {
+    resolveRuntimeReady = resolve;
+  });
+
   require([
     'esri/Map', 'esri/views/MapView',
     'esri/layers/FeatureLayer', 'esri/layers/GraphicsLayer',
@@ -459,6 +473,20 @@
       if (event.state === 'complete' || event.state === 'cancel') {
         if (selectedGraphic) showSelectionToolbar(selectedGraphic);
       }
+    });
+
+    // Tool files call sketch.create('polygon' | 'rectangle' | 'polyline') after
+    // setting sketch.viewModel.polygonSymbol (or polylineSymbol) to their own
+    // symbol. On completion, the runtime gives the new graphic an ID, refreshes
+    // snap sources, and fires onGraphicCreated so subscribers can apply any
+    // tool-specific flags or follow-up logic.
+    sketch.on('create', event => {
+      if (event.state !== 'complete') return;
+      const g = event.graphic;
+      if (!g) return;
+      assignGraphicId(g);
+      refreshSnapSources();
+      fireGraphicCreated(g);
     });
 
     updateEditModeButtons();
@@ -910,10 +938,21 @@
     }
 
     function populateInfoPanel(attrs) {
-      const f = (v, fallback) => fmt(v, fallback);
+      // Parcel attributes are merged into innerHTML below, so every value
+      // that originates from the parcel service must pass through escapeHtml.
+      // The local `f` helper combines fmt() (display formatting + fallback)
+      // with escapeHtml so the rest of this function can use bare ${f(...)}
+      // in template literals safely.
+      const escapeHtml = v => String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      const f = (v, fallback) => escapeHtml(fmt(v, fallback));
       const fmtSetback = v => {
         const s = v == null ? '' : String(v).trim();
-        return s && s !== '0' && s.toLowerCase() !== 'null' ? s + ' ft' : '—';
+        return s && s !== '0' && s.toLowerCase() !== 'null' ? escapeHtml(s) + ' ft' : '—';
       };
       const zoning = f(attrs[pf.zoningAbbrev]) !== '—'
         ? f(attrs[pf.zoningAbbrev]) + (f(attrs[pf.zoningName]) !== '—' ? ' – ' + f(attrs[pf.zoningName]) : '')
@@ -1303,6 +1342,14 @@
         return valid;
       }
     };
+
+    // Resolve the ready-promise and broadcast a 'siteplan:ready' event so
+    // tool files (and any other listeners) can begin running. Both signals
+    // carry the runtime as their value.
+    resolveRuntimeReady(window.SitePlanRuntime);
+    window.dispatchEvent(new CustomEvent('siteplan:ready', {
+      detail: window.SitePlanRuntime
+    }));
 
     refreshBasemapButtons();
     updateAttribution();
