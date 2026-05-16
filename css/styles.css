@@ -156,9 +156,11 @@
       display:flex; align-items:center; gap:12px; width:calc(100% - 20px);
       height:34px; min-height:34px; margin:4px 10px; padding:0 14px;
       border:1px solid #d5dbe3; border-radius:4px; background:#fff;
-      color:#000; font-size:14px; text-align:left;
+      color:#000; font-size:12px; text-align:left;
     }
     .draw-tool-btn.icon-btn:hover { background:#f5f7fa; border-color:#c7d0dc; }
+    .draw-tool-btn.icon-btn.active { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
+    .draw-tool-btn.icon-btn.active:hover { background:#deeeff; border-color:#0b2d4c; color:#0b2d4c; }
     .draw-tool-btn.icon-btn .tool-icon {
       width:40px; height:24px; display:flex; align-items:center; justify-content:center;
       flex:0 0 40px;
