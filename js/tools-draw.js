@@ -45,7 +45,10 @@ if (!window.SitePlanRuntimeReady) {
     let pendingDrawTool = null;
 
     // ── Active button state ──────────────────────────────────
+    let activeDrawTool = null;
+
     function setActiveDrawButton(toolType) {
+      activeDrawTool = toolType || null;
       document.querySelectorAll('.draw-tool-btn.icon-btn').forEach(btn => {
         btn.classList.remove('active');
       });
@@ -59,6 +62,10 @@ if (!window.SitePlanRuntimeReady) {
 
     function clearActiveDrawButton() {
       setActiveDrawButton(null);
+    }
+
+    function isRectangleToolActive() {
+      return activeDrawTool === 'rectangle';
     }
 
     // ── Tool entry points ────────────────────────────────────
@@ -203,7 +210,8 @@ if (!window.SitePlanRuntimeReady) {
 
     function startFixedRectanglePlacement() {
       if (!markFixedRectangleValidity()) {
-        cancelFixedRectanglePlacement(true);
+        cancelFixedRectanglePlacement(false);
+        setActiveDrawButton('rectangle');
         focusFirstInvalidFixedRectangleInput();
         return;
       }
@@ -235,6 +243,54 @@ if (!window.SitePlanRuntimeReady) {
         }
       };
       document.addEventListener('keydown', fixedRectangleEscHandler, true);
+    }
+
+    let lastRectangleSettingsSignature = null;
+
+    function fixedRectangleSettingsSignature() {
+      const dims = fixedRectangleDimensions();
+      return [
+        isFixedRectangleMode() ? 'fixed' : 'manual',
+        Number.isFinite(dims.lengthFt) ? dims.lengthFt : '',
+        Number.isFinite(dims.widthFt) ? dims.widthFt : '',
+        dims.valid ? 'valid' : 'invalid'
+      ].join('|');
+    }
+
+    function cancelActiveSketchForRectangleRestart() {
+      if (RT.sketch && RT.sketch.state === 'active') {
+        ignoreNextSketchCancel = true;
+        try { RT.sketch.cancel(); }
+        catch (err) { ignoreNextSketchCancel = false; }
+      }
+    }
+
+    function restartRectangleToolIfActive(options) {
+      if (!isRectangleToolActive()) return;
+
+      const opts = options || {};
+      const signature = fixedRectangleSettingsSignature();
+      if (!opts.force && signature === lastRectangleSettingsSignature) return;
+      lastRectangleSettingsSignature = signature;
+
+      cancelFixedRectanglePlacement(false);
+      cancelActiveSketchForRectangleRestart();
+
+      pendingDrawTool = null;
+      window.__sitePlanPendingToolType = null;
+      setActiveDrawButton('rectangle');
+
+      if (isFixedRectangleMode()) {
+        const valid = markFixedRectangleValidity();
+        if (!valid) {
+          if (opts.focusInvalid) focusFirstInvalidFixedRectangleInput();
+          return;
+        }
+        startFixedRectanglePlacement();
+        return;
+      }
+
+      beginDrawTool('rectangle', 'rectangle', rectangleSymbol);
     }
 
     function beginDrawTool(toolType, geometryType, symbol) {
@@ -272,6 +328,7 @@ if (!window.SitePlanRuntimeReady) {
     };
 
     window.startRectangleTool = function () {
+      lastRectangleSettingsSignature = fixedRectangleSettingsSignature();
       if (isFixedRectangleMode()) {
         startFixedRectanglePlacement();
         return;
@@ -539,12 +596,22 @@ if (!window.SitePlanRuntimeReady) {
         if (isFixedRectangleMode()) markFixedRectangleValidity();
         else clearFixedRectangleValidation();
       });
+      input.addEventListener('change', () => {
+        restartRectangleToolIfActive({ force: false });
+      });
+      input.addEventListener('blur', () => {
+        restartRectangleToolIfActive({ force: false });
+      });
       input.addEventListener('keydown', event => event.stopPropagation());
     });
     if (fixedEls.checkbox) {
       fixedEls.checkbox.addEventListener('change', () => {
         if (!fixedEls.checkbox.checked) {
           clearFixedRectangleValidation();
+        }
+        if (isRectangleToolActive()) {
+          restartRectangleToolIfActive({ force: true, focusInvalid: fixedEls.checkbox.checked });
+        } else if (!fixedEls.checkbox.checked) {
           cancelFixedRectanglePlacement(true);
         }
       });
